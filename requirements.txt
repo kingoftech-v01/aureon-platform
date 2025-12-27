@@ -1,0 +1,133 @@
+# Django Core
+Django==5.0
+django-environ==0.11.2
+psycopg2-binary==2.9.9
+gunicorn==21.2.0
+whitenoise==6.6.0
+
+# Multi-Tenancy
+django-tenants==3.6.1
+
+# Authentication & Authorization
+django-allauth==0.61.1
+django-allauth[socialaccount]==0.61.1
+djangorestframework==3.14.0
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.3.1
+django-guardian==2.4.0
+argon2-cffi==23.1.0
+
+# Stripe Integration
+stripe==8.2.0
+dj-stripe==2.8.3
+
+# Celery & Task Queue
+celery==5.3.6
+django-celery-beat==2.5.0
+django-celery-results==2.5.1
+redis==5.0.1
+flower==2.0.1
+
+# Database & Caching
+django-redis==5.4.0
+django-extensions==3.2.3
+
+# Forms & Validation
+django-crispy-forms==2.1
+crispy-bootstrap5==2.0.0
+django-widget-tweaks==1.5.0
+
+# File & Document Management
+Pillow==10.2.0
+django-storages==1.14.2
+boto3==1.34.34
+python-magic==0.4.27
+reportlab==4.1.0
+PyPDF2==3.0.1
+weasyprint==60.2
+pdfkit==1.0.0
+
+# E-Signature
+python-docusign==1.0.0
+python-jose==3.3.0
+
+# WYSIWYG Editor for Blog
+django-ckeditor==6.7.0
+django-ckeditor-5==0.2.12
+
+# Email
+django-ses==3.5.2
+django-templated-email==3.0.1
+
+# Security
+django-csp==3.8
+django-security==0.21.0
+cryptography==42.0.2
+django-axes==6.3.0
+django-honeypot==1.2.0
+
+# API & Documentation
+drf-spectacular==0.27.1
+markdown==3.5.2
+django-filter==23.5
+
+# Monitoring & Logging
+sentry-sdk==1.40.5
+django-prometheus==2.3.1
+prometheus-client==0.19.0
+
+# Internationalization & Localization
+django-modeltranslation==0.18.12
+django-phonenumber-field==7.3.0
+phonenumbers==8.13.29
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2024.1
+requests==2.31.0
+python-slugify==8.0.4
+faker==22.6.0
+
+# Testing & Development
+pytest==8.0.0
+pytest-django==4.8.0
+pytest-cov==4.1.0
+factory-boy==3.3.0
+django-debug-toolbar==4.3.0
+
+# Data Export
+django-import-export==3.3.7
+openpyxl==3.1.2
+pandas==2.2.0
+
+# Search
+django-elasticsearch-dsl==8.0
+elasticsearch-dsl==8.12.0
+
+# Webhook Management
+django-webhook==1.1
+
+# Rate Limiting
+django-ratelimit==4.1.0
+
+# Analytics
+mixpanel==4.10.1
+
+# Scheduling
+APScheduler==3.10.4
+
+# Image Processing
+easy-thumbnails==2.8.5
+
+# QR Code Generation & 2FA
+qrcode==7.4.2
+pyotp==2.9.0
+
+# Audit Trail
+django-auditlog==2.3.0
+
+# API Throttling
+django-rest-framework-cache==0.1
+
+# Timezone
+django-timezone-field==6.1.0

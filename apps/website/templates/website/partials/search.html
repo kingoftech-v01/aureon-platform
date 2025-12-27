@@ -1,0 +1,17 @@
+{% load static %}
+
+<!-- Fullscreen search area start -->
+<div class="search-wrap">
+    <div class="search-inner">
+        <i class="fas fa-times search-close" id="search-close"></i>
+        <div class="search-cell">
+            <form method="get" action="{% url 'website:blog' %}">
+                <div class="search-field-holder">
+                    <input type="search" name="q" class="main-search-input" placeholder="Search blog posts, pages...">
+                    <button type="submit" class="btn-one mt-3">Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Fullscreen search area end -->

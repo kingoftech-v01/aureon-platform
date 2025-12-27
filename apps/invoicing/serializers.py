@@ -1,0 +1,143 @@
+"""
+Serializers for the invoicing app.
+"""
+
+from rest_framework import serializers
+from .models import Invoice, InvoiceItem
+from apps.clients.serializers import ClientListSerializer
+from apps.contracts.serializers import ContractListSerializer
+
+
+class InvoiceItemSerializer(serializers.ModelSerializer):
+    """
+    Serializer for invoice items.
+    """
+
+    class Meta:
+        model = InvoiceItem
+        fields = ['id', 'description', 'quantity', 'unit_price', 'amount', 'order']
+        read_only_fields = ['id', 'amount']
+
+
+class InvoiceListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for invoice list view (minimal fields).
+    """
+    client_name = serializers.SerializerMethodField()
+    is_overdue = serializers.ReadOnlyField()
+    balance_due = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Invoice
+        fields = [
+            'id', 'invoice_number', 'client', 'client_name', 'contract',
+            'status', 'issue_date', 'due_date', 'total', 'paid_amount',
+            'balance_due', 'is_overdue', 'currency', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'invoice_number', 'created_at', 'updated_at']
+
+    def get_client_name(self, obj):
+        """Get client display name."""
+        return obj.client.get_display_name()
+
+
+class InvoiceDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed serializer for invoice detail view.
+    """
+    client = ClientListSerializer(read_only=True)
+    contract = ContractListSerializer(read_only=True)
+    items = InvoiceItemSerializer(many=True, read_only=True)
+    is_overdue = serializers.ReadOnlyField()
+    balance_due = serializers.ReadOnlyField()
+    is_fully_paid = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Invoice
+        fields = '__all__'
+        read_only_fields = [
+            'id', 'invoice_number', 'created_at', 'updated_at',
+            'subtotal', 'tax_amount', 'total'
+        ]
+
+
+class InvoiceCreateUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating and updating invoices.
+    """
+    items = InvoiceItemSerializer(many=True, required=False)
+
+    class Meta:
+        model = Invoice
+        fields = [
+            'client', 'contract', 'status', 'issue_date', 'due_date',
+            'tax_rate', 'discount_amount', 'currency', 'notes', 'terms',
+            'metadata', 'items'
+        ]
+
+    def validate(self, data):
+        """Validate invoice data."""
+        # Validate due date is after issue date
+        if data.get('due_date') and data.get('issue_date'):
+            if data['due_date'] < data['issue_date']:
+                raise serializers.ValidationError({
+                    'due_date': 'Due date must be after issue date.'
+                })
+
+        return data
+
+    def create(self, validated_data):
+        """Create invoice with items."""
+        items_data = validated_data.pop('items', [])
+        invoice = Invoice.objects.create(**validated_data)
+
+        # Create items
+        for item_data in items_data:
+            InvoiceItem.objects.create(invoice=invoice, **item_data)
+
+        # Calculate totals
+        invoice.calculate_totals()
+
+        return invoice
+
+    def update(self, instance, validated_data):
+        """Update invoice and items."""
+        items_data = validated_data.pop('items', None)
+
+        # Update invoice fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Update items if provided
+        if items_data is not None:
+            # Delete existing items not in the update
+            existing_item_ids = [i.get('id') for i in items_data if i.get('id')]
+            instance.items.exclude(id__in=existing_item_ids).delete()
+
+            # Update or create items
+            for item_data in items_data:
+                item_id = item_data.pop('id', None)
+                if item_id:
+                    InvoiceItem.objects.filter(id=item_id).update(**item_data)
+                else:
+                    InvoiceItem.objects.create(invoice=instance, **item_data)
+
+        # Recalculate totals
+        instance.calculate_totals()
+
+        return instance
+
+
+class InvoiceStatsSerializer(serializers.Serializer):
+    """
+    Serializer for invoice statistics.
+    """
+    total_invoices = serializers.IntegerField()
+    draft_invoices = serializers.IntegerField()
+    sent_invoices = serializers.IntegerField()
+    paid_invoices = serializers.IntegerField()
+    overdue_invoices = serializers.IntegerField()
+    total_invoiced = serializers.DecimalField(max_digits=12, decimal_places=2)
+    total_paid = serializers.DecimalField(max_digits=12, decimal_places=2)
+    total_outstanding = serializers.DecimalField(max_digits=12, decimal_places=2)

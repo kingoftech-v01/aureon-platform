@@ -1,0 +1,177 @@
+{% load static %}
+
+<!-- Footer area start -->
+<footer class="footer-area secondary-bg">
+    <div class="footer__shape-regular-left wow slideInLeft" data-wow-delay="00ms" data-wow-duration="1500ms">
+        <img src="{% static 'website/images/shape/footer-regular-left.png' %}" alt="shape">
+    </div>
+    <div class="footer__shape-solid-left wow slideInLeft" data-wow-delay="200ms" data-wow-duration="1500ms">
+        <img class="sway_Y__animation" src="{% static 'website/images/shape/footer-solid-left.png' %}" alt="shape">
+    </div>
+    <div class="footer__shape-solid-right wow slideInRight" data-wow-delay="00ms" data-wow-duration="1500ms">
+        <img class="sway_Y__animation" src="{% static 'website/images/shape/footer-regular-right.png' %}" alt="shape">
+    </div>
+    <div class="footer__shape-regular-right wow slideInRight" data-wow-delay="200ms" data-wow-duration="1500ms">
+        <img src="{% static 'website/images/shape/footer-solid-right.png' %}" alt="shape">
+    </div>
+    <div class="footer__shadow-shape">
+        <img src="{% static 'website/images/shape/footer-shadow-shape.png' %}" alt="shadow">
+    </div>
+
+    <div class="container">
+        <div class="footer__wrp pt-100 pb-100">
+            <!-- Company Info -->
+            <div class="footer__item item-big wow fadeInUp" data-wow-delay="00ms" data-wow-duration="1500ms">
+                <a href="{% url 'website:home' %}" class="logo mb-30">
+                    <img src="{% static 'website/images/logo/logo.svg' %}" alt="{{ site_settings.company_name }}">
+                </a>
+                <p>{{ site_settings.tagline }}</p>
+                <div class="social-icon">
+                    {% if site_settings.facebook_url %}
+                    <a href="{{ site_settings.facebook_url }}" target="_blank" rel="noopener"><i class="fa-brands fa-facebook-f"></i></a>
+                    {% endif %}
+                    {% if site_settings.twitter_url %}
+                    <a href="{{ site_settings.twitter_url }}" target="_blank" rel="noopener"><i class="fa-brands fa-twitter"></i></a>
+                    {% endif %}
+                    {% if site_settings.linkedin_url %}
+                    <a href="{{ site_settings.linkedin_url }}" target="_blank" rel="noopener"><i class="fa-brands fa-linkedin-in"></i></a>
+                    {% endif %}
+                    {% if site_settings.youtube_url %}
+                    <a href="{{ site_settings.youtube_url }}" target="_blank" rel="noopener"><i class="fa-brands fa-youtube"></i></a>
+                    {% endif %}
+                    {% if site_settings.github_url %}
+                    <a href="{{ site_settings.github_url }}" target="_blank" rel="noopener"><i class="fa-brands fa-github"></i></a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Services -->
+            <div class="footer__item item-sm wow fadeInUp" data-wow-delay="200ms" data-wow-duration="1500ms">
+                <h3 class="footer-title">Our Solutions</h3>
+                <ul>
+                    <li><a href="{% url 'website:service_detail' slug='contract-management' %}"><i class="fa-regular fa-angles-right me-1"></i> Contract Management</a></li>
+                    <li><a href="{% url 'website:service_detail' slug='invoicing-billing' %}"><i class="fa-regular fa-angles-right me-1"></i> Invoicing & Billing</a></li>
+                    <li><a href="{% url 'website:service_detail' slug='payment-processing' %}"><i class="fa-regular fa-angles-right me-1"></i> Payment Processing</a></li>
+                    <li><a href="{% url 'website:service_detail' slug='e-signatures' %}"><i class="fa-regular fa-angles-right me-1"></i> E-Signatures</a></li>
+                    <li><a href="{% url 'website:service_detail' slug='document-management' %}"><i class="fa-regular fa-angles-right me-1"></i> Document Management</a></li>
+                </ul>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="footer__item item-sm wow fadeInUp" data-wow-delay="400ms" data-wow-duration="1500ms">
+                <h3 class="footer-title">Quick Links</h3>
+                <ul>
+                    <li><a href="{% url 'website:about' %}"><i class="fa-regular fa-angles-right me-1"></i> About Aureon</a></li>
+                    <li><a href="{% url 'website:services' %}"><i class="fa-regular fa-angles-right me-1"></i> Our Services</a></li>
+                    <li><a href="{% url 'website:pricing' %}"><i class="fa-regular fa-angles-right me-1"></i> Pricing Plans</a></li>
+                    {% if show_blog %}
+                    <li><a href="{% url 'website:blog' %}"><i class="fa-regular fa-angles-right me-1"></i> Blog & Resources</a></li>
+                    {% endif %}
+                    <li><a href="{% url 'website:team' %}"><i class="fa-regular fa-angles-right me-1"></i> Our Team</a></li>
+                    <li><a href="{% url 'website:faq' %}"><i class="fa-regular fa-angles-right me-1"></i> FAQ</a></li>
+                </ul>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="footer__item item-big wow fadeInUp" data-wow-delay="600ms" data-wow-duration="1500ms">
+                <h3 class="footer-title">Contact Us</h3>
+                {% if site_settings.address %}
+                <p class="mb-20">{{ site_settings.address }}</p>
+                {% endif %}
+                <ul class="footer-contact">
+                    <li>
+                        <i class="fa-duotone fa-envelope"></i>
+                        <div class="info">
+                            <h5>Email Us:</h5>
+                            <p>
+                                <a href="mailto:{{ site_settings.contact_email }}">{{ site_settings.contact_email }}</a><br>
+                                <a href="mailto:{{ site_settings.support_email }}">{{ site_settings.support_email }}</a>
+                            </p>
+                        </div>
+                    </li>
+                    {% if site_settings.phone %}
+                    <li>
+                        <i class="fa-duotone fa-phone"></i>
+                        <div class="info">
+                            <h5>Phone Call:</h5>
+                            <p>{{ site_settings.phone }}</p>
+                        </div>
+                    </li>
+                    {% endif %}
+                </ul>
+
+                <!-- Newsletter Signup -->
+                {% if allow_newsletter_signup %}
+                <div class="newsletter-form mt-4">
+                    <h5 class="mb-3">Subscribe to Our Newsletter</h5>
+                    <form id="newsletter-form" class="d-flex">
+                        {% csrf_token %}
+                        <input type="email" name="email" class="form-control" placeholder="Your email address" required>
+                        <button type="submit" class="btn btn-one ms-2">Subscribe</button>
+                    </form>
+                    <div id="newsletter-message" class="mt-2"></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Copyright -->
+    <div class="footer__copyright">
+        <div class="container">
+            <div class="d-flex gap-1 flex-wrap align-items-center justify-content-md-between justify-content-center">
+                <p class="wow fadeInDown" data-wow-delay="00ms" data-wow-duration="1500ms">
+                    &copy; {{ current_year }} <a href="{% url 'website:home' %}">{{ site_settings.company_name }}</a>. All Rights Reserved.
+                </p>
+                <ul class="d-flex align-items-center gap-4 wow fadeInDown" data-wow-delay="200ms" data-wow-duration="1500ms">
+                    <li><a href="{% url 'website:terms_of_service' %}">Terms & Conditions</a></li>
+                    <li><a href="{% url 'website:privacy_policy' %}">Privacy Policy</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</footer>
+<!-- Footer area end -->
+
+{% if allow_newsletter_signup %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('newsletter-form');
+    const messageDiv = document.getElementById('newsletter-message');
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const email = formData.get('email');
+
+            fetch('{% url "website:newsletter_subscribe" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageDiv.innerHTML = '<div class="alert alert-success">' + data.message + '</div>';
+                    form.reset();
+                } else {
+                    let errorMsg = 'An error occurred. Please try again.';
+                    if (data.errors && data.errors.email) {
+                        errorMsg = data.errors.email[0];
+                    }
+                    messageDiv.innerHTML = '<div class="alert alert-danger">' + errorMsg + '</div>';
+                }
+            })
+            .catch(error => {
+                messageDiv.innerHTML = '<div class="alert alert-danger">An error occurred. Please try again.</div>';
+            });
+        });
+    }
+});
+</script>
+{% endif %}
