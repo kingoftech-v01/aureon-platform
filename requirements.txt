@@ -50,7 +50,7 @@ pdfkit==1.0.0
 
 # E-Signature
 # ( dont exist ) python-docusign==1.0.0
-docusign-esign==3.30.0
+docusign-esign==5.4.0
 python-jose==3.3.0
 
 # WYSIWYG Editor for Blog
