@@ -129,7 +129,7 @@ pyotp==2.9.0
 django-auditlog==2.3.0
 
 # API Throttling
-rest-framework-cache==0.0.2
+# rest-framework-cache==0.0.2
 
 # Timezone
 django-timezone-field==6.1.0
