@@ -48,7 +48,8 @@ weasyprint==60.2
 pdfkit==1.0.0
 
 # E-Signature
-python-docusign==1.0.0
+# ( dont exist ) python-docusign==1.0.0
+docusign-esign==3.30.0
 python-jose==3.3.0
 
 # WYSIWYG Editor for Blog
