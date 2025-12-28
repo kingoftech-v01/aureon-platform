@@ -65,7 +65,7 @@ django-templated-email==3.0.1
 
 # Security
 django-csp==3.8
-django-security==0.12.0
+django-security==0.11.3
 cryptography==42.0.2
 django-axes==6.3.0
 django-honeypot==1.2.0
