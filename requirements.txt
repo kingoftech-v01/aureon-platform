@@ -1,7 +1,7 @@
 # Django Core
 Django==5.0
 django-environ==0.11.2
-psycopg2-binary==2.9.9
+psycopg2-binary>=2.9.10,<3.0
 gunicorn==21.2.0
 whitenoise==6.6.0
 
@@ -26,7 +26,7 @@ celery==5.3.6
 django-celery-beat==2.5.0
 django-celery-results==2.5.1
 redis==5.0.1
-flower==2.0.1
+flower>=1.3.0,<2.0
 
 # Database & Caching
 django-redis==5.4.0
@@ -43,8 +43,9 @@ django-storages==1.14.2
 boto3==1.34.34
 python-magic==0.4.27
 reportlab==4.1.0
-PyPDF2==3.0.1
-weasyprint==60.2
+# PyPDF2==3.0.1
+pypdf>=4.3.0,<5.0
+weasyprint==64.0
 pdfkit==1.0.0
 
 # E-Signature
