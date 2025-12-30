@@ -1,0 +1,38 @@
+{% extends "account/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Account Inactive" %} - Aureon{% endblock %}
+{% block meta_description %}Your account is currently inactive.{% endblock %}
+
+{% block page_title %}{% trans "Account Inactive" %}{% endblock %}
+{% block breadcrumb_title %}{% trans "Account Status" %}{% endblock %}
+
+{% block auth_content %}
+<div class="text-center">
+    <div class="mb-4">
+        <i class="fas fa-user-lock fa-4x text-warning"></i>
+    </div>
+    <h2 class="auth-title">{% trans "Account Inactive" %}</h2>
+    <p class="auth-subtitle mb-4">
+        {% trans "Your account is currently inactive. This may be because your account has been disabled or is pending activation." %}
+    </p>
+
+    <div class="alert alert-warning text-start" role="alert">
+        <h6 class="alert-heading mb-2">{% trans "What you can do:" %}</h6>
+        <ul class="mb-0 ps-3">
+            <li>{% trans "Check your email for an activation link" %}</li>
+            <li>{% trans "Contact support if you believe this is an error" %}</li>
+            <li>{% trans "Review our terms of service for account requirements" %}</li>
+        </ul>
+    </div>
+
+    <div class="d-grid gap-3 mt-4">
+        <a href="{% url 'website:contact' %}" class="btn btn-primary">
+            {% trans "Contact Support" %}
+        </a>
+        <a href="{% url 'website:home' %}" class="btn btn-secondary">
+            {% trans "Back to Home" %}
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -2353,6 +2353,7 @@ input.main-search-input::placeholder {
 
 .header-area {
   position: relative;
+  transition: all 0.3s ease-in-out;
 }
 .header-area::after {
   position: absolute;
@@ -5278,4 +5279,77 @@ input.main-search-input::placeholder {
     opacity: 0;
     transform: scale(2);
   }
-}/*# sourceMappingURL=style.css.map */
+}
+
+/* ===== Custom Aureon Styles ===== */
+
+/* Sticky Header Improvements */
+.header-area {
+  left: 0;
+  right: 0;
+}
+
+.header-area.menu-fixed {
+  animation: slideDown 0.3s ease-in-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Pricing Cards - Equal Height Layout */
+.pricing__cards .row {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.pricing__cards .row > [class*="col-"] {
+  display: flex;
+}
+
+.pricing__card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.pricing__card .pricing__header {
+  flex-shrink: 0;
+}
+
+.pricing__card .pricing__body {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.pricing__card .pricing__body ul {
+  flex-grow: 1;
+}
+
+.pricing__card .pricing__footer {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+/* Ensure all pricing cards have same visual structure */
+.pricing__card .pricing__price {
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Popular badge positioning */
+.pricing__card .popular-badge {
+  z-index: 10;
+}
+
+/*# sourceMappingURL=style.css.map */
