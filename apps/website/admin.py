@@ -373,7 +373,7 @@ class CaseStudyAdmin(admin.ModelAdmin):
         'title', 'client_name', 'category', 'status',
         'featured_badge', 'published_at', 'created_at'
     ]
-    list_filter = ['status', 'is_featured', 'category', 'created_at', 'published_at']
+    list_filter = ['status', 'featured', 'category', 'created_at', 'published_at']
     search_fields = ['title', 'client_name', 'excerpt', 'challenge', 'solution', 'results']
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ['created_at', 'updated_at']
@@ -404,7 +404,7 @@ class CaseStudyAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Publishing', {
-            'fields': ('status', 'published_at', 'is_featured', 'order')
+            'fields': ('status', 'published_at', 'featured')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
@@ -413,7 +413,7 @@ class CaseStudyAdmin(admin.ModelAdmin):
     )
 
     def featured_badge(self, obj):
-        if obj.is_featured:
+        if obj.featured:
             return format_html('<span style="color: gold;">★ Featured</span>')
         return '-'
     featured_badge.short_description = 'Featured'
@@ -434,7 +434,7 @@ class CaseStudyAdmin(admin.ModelAdmin):
     unpublish_case_studies.short_description = 'Unpublish selected case studies'
 
     def feature_case_studies(self, request, queryset):
-        updated = queryset.update(is_featured=True)
+        updated = queryset.update(featured=True)
         self.message_user(request, f'{updated} case study(ies) featured.')
     feature_case_studies.short_description = 'Feature selected case studies'
 

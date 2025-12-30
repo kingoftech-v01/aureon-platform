@@ -723,7 +723,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1  # hours
-AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]  # Lock by combination of user and IP
 AXES_RESET_ON_SUCCESS = True
 
 # ====================
