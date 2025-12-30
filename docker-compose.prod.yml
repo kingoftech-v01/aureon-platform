@@ -1,17 +1,22 @@
+# ============================================================
+# AUREON SaaS Platform - Production Docker Compose
+# Rhematek Production Shield + Scale8 Configuration
+# Domain: aureon.rhematek-solutions.com
+# Supports: 1M users, 500K concurrent connections
+# ============================================================
+
 version: '3.8'
 
-# Aureon by Rhematek Solutions
-# Production Docker Compose Configuration
-# Domain: aureon.rhematek-solutions.com
-
 services:
-  # PostgreSQL Database with Multi-Tenancy Support
+  # ============================================================
+  # POSTGRESQL MASTER DATABASE (PostgreSQL 16)
+  # ============================================================
   db:
-    image: postgres:15-alpine
-    container_name: aureon_db
+    image: postgres:16-alpine
+    container_name: aureon-db-master
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ./backups:/backups
     environment:
       - POSTGRES_DB=${DB_NAME:-aureon_db}
@@ -19,299 +24,345 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
       - PGDATA=/var/lib/postgresql/data/pgdata
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=128MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c log_statement=mod
+      -c log_min_duration_statement=100
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-aureon_user} -d ${DB_NAME:-aureon_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - aureon_network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - aureon-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
 
-  # Redis for Caching and Celery Broker
-  redis:
-    image: redis:7-alpine
-    container_name: aureon_redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 512mb --maxmemory-policy allkeys-lru
+  # ============================================================
+  # REDIS CACHE (Dedicated for Django Cache - Redis 7.4)
+  # ============================================================
+  redis-cache:
+    image: redis:7.4-alpine
+    container_name: aureon-redis-cache
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 300
     volumes:
-      - redis_data:/data
+      - redis_cache_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - aureon_network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - aureon-network
+    restart: always
 
-  # Django Web Application
+  # ============================================================
+  # REDIS QUEUE (Dedicated for Celery Broker - Redis 7.4)
+  # ============================================================
+  redis-queue:
+    image: redis:7.4-alpine
+    container_name: aureon-redis-queue
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 1gb
+      --maxmemory-policy noeviction
+    volumes:
+      - redis_queue_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aureon-network
+    restart: always
+
+  # ============================================================
+  # DJANGO WEB APPLICATION (Gunicorn + ASGI)
+  # Scale: 10-100 replicas
+  # ============================================================
   web:
     build:
       context: .
-      dockerfile: docker/Dockerfile
-      args:
-        - DJANGO_SETTINGS_MODULE=config.settings_aureon
-    container_name: aureon_web
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --timeout 60 --access-logfile - --error-logfile - --log-level info
+      dockerfile: Dockerfile
+    container_name: aureon-web
+    command: >
+      gunicorn config.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers 4
+      --threads 4
+      --worker-class gthread
+      --worker-connections 1000
+      --max-requests 10000
+      --max-requests-jitter 1000
+      --timeout 30
+      --keep-alive 5
+      --access-logfile -
+      --error-logfile -
+      --capture-output
     volumes:
-      - .:/app
       - static_volume:/app/staticfiles
-      - media_volume:/app/mediafiles
-      - logs_volume:/app/logs
-    expose:
-      - "8000"
+      - media_volume:/app/media
     env_file:
       - .env
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings_aureon
+      - DJANGO_SETTINGS_MODULE=config.settings
       - DATABASE_URL=postgresql://${DB_USER:-aureon_user}:${DB_PASSWORD}@db:5432/${DB_NAME:-aureon_db}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis-cache:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis-queue:6379/1
     depends_on:
       db:
         condition: service_healthy
-      redis:
+      redis-cache:
+        condition: service_healthy
+      redis-queue:
         condition: service_healthy
     networks:
-      - aureon_network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - aureon-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      replicas: 5
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
 
-  # Celery Worker for Background Tasks
-  celery_worker:
+  # ============================================================
+  # CELERY WORKER - HIGH PRIORITY TASKS
+  # ============================================================
+  celery-high:
     build:
       context: .
-      dockerfile: docker/Dockerfile
-    container_name: aureon_celery_worker
-    command: celery -A config worker -l info --concurrency=4 --max-tasks-per-child=1000
-    volumes:
-      - .:/app
-      - media_volume:/app/mediafiles
-      - logs_volume:/app/logs
+      dockerfile: Dockerfile
+    container_name: aureon-celery-high
+    command: >
+      celery -A config worker
+      --loglevel=info
+      --concurrency=4
+      --queues=high_priority,default
+      --max-tasks-per-child=1000
     env_file:
       - .env
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings_aureon
+      - DJANGO_SETTINGS_MODULE=config.settings
       - DATABASE_URL=postgresql://${DB_USER:-aureon_user}:${DB_PASSWORD}@db:5432/${DB_NAME:-aureon_db}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis-queue:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis-queue:6379/2
     depends_on:
       db:
         condition: service_healthy
-      redis:
+      redis-queue:
         condition: service_healthy
     networks:
-      - aureon_network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - aureon-network
+    restart: always
+    deploy:
+      replicas: 5
 
-  # Celery Beat for Scheduled Tasks
-  celery_beat:
+  # ============================================================
+  # CELERY WORKER - LOW PRIORITY / BATCH TASKS
+  # ============================================================
+  celery-low:
     build:
       context: .
-      dockerfile: docker/Dockerfile
-    container_name: aureon_celery_beat
-    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    volumes:
-      - .:/app
-      - logs_volume:/app/logs
+      dockerfile: Dockerfile
+    container_name: aureon-celery-low
+    command: >
+      celery -A config worker
+      --loglevel=info
+      --concurrency=2
+      --queues=low_priority,batch,analytics
+      --max-tasks-per-child=500
     env_file:
       - .env
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings_aureon
+      - DJANGO_SETTINGS_MODULE=config.settings
       - DATABASE_URL=postgresql://${DB_USER:-aureon_user}:${DB_PASSWORD}@db:5432/${DB_NAME:-aureon_db}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis-queue:6379/1
     depends_on:
       db:
         condition: service_healthy
-      redis:
+      redis-queue:
         condition: service_healthy
     networks:
-      - aureon_network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - aureon-network
+    restart: always
+    deploy:
+      replicas: 3
 
-  # Celery Flower for Monitoring
-  celery_flower:
+  # ============================================================
+  # CELERY BEAT SCHEDULER
+  # ============================================================
+  celery-beat:
     build:
       context: .
-      dockerfile: docker/Dockerfile
-    container_name: aureon_celery_flower
-    command: celery -A config flower --port=5555 --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-admin}
-    expose:
-      - "5555"
+      dockerfile: Dockerfile
+    container_name: aureon-celery-beat
+    command: >
+      celery -A config beat
+      --loglevel=info
+      --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file:
       - .env
     environment:
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - DATABASE_URL=postgresql://${DB_USER:-aureon_user}:${DB_PASSWORD}@db:5432/${DB_NAME:-aureon_db}
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis-queue:6379/1
     depends_on:
-      - redis
-      - celery_worker
+      db:
+        condition: service_healthy
+      redis-queue:
+        condition: service_healthy
     networks:
-      - aureon_network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - aureon-network
+    restart: always
 
-  # Nginx Reverse Proxy with SSL
+  # ============================================================
+  # NGINX REVERSE PROXY + SSL + LOAD BALANCER
+  # ============================================================
   nginx:
-    image: nginx:alpine
-    container_name: aureon_nginx
+    image: nginx:1.25-alpine
+    container_name: aureon-nginx
     volumes:
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
       - static_volume:/app/staticfiles:ro
-      - media_volume:/app/mediafiles:ro
-      - ./docker/nginx/logs:/var/log/nginx
-      - certbot_conf:/etc/letsencrypt:ro
-      - certbot_www:/var/www/certbot:ro
+      - media_volume:/app/media:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - ./docker/nginx/error_pages:/usr/share/nginx/error_pages:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
       - "80:80"
       - "443:443"
     depends_on:
       - web
     networks:
-      - aureon_network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - aureon-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Certbot for SSL Certificates
-  certbot:
-    image: certbot/certbot:latest
-    container_name: aureon_certbot
-    volumes:
-      - certbot_conf:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    networks:
-      - aureon_network
-    restart: unless-stopped
-
-  # Prometheus for Monitoring
+  # ============================================================
+  # PROMETHEUS MONITORING
+  # ============================================================
   prometheus:
-    image: prom/prometheus:latest
-    container_name: aureon_prometheus
+    image: prom/prometheus:v2.48.0
+    container_name: aureon-prometheus
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=30d'
       - '--web.enable-lifecycle'
-    expose:
-      - "9090"
+    ports:
+      - "9090:9090"
     networks:
-      - aureon_network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - aureon-network
+    restart: always
 
-  # Grafana for Visualization
+  # ============================================================
+  # GRAFANA DASHBOARDS
+  # ============================================================
   grafana:
-    image: grafana/grafana:latest
-    container_name: aureon_grafana
+    image: grafana/grafana:10.2.0
+    container_name: aureon-grafana
     volumes:
       - grafana_data:/var/lib/grafana
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_SERVER_ROOT_URL=https://aureon.rhematek-solutions.com/grafana
-      - GF_SERVER_SERVE_FROM_SUB_PATH=true
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
-    expose:
-      - "3000"
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+    ports:
+      - "3000:3000"
     depends_on:
       - prometheus
     networks:
-      - aureon_network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - aureon-network
+    restart: always
 
-  # PostgreSQL Backup Service
-  backup:
-    image: postgres:15-alpine
-    container_name: aureon_backup
-    volumes:
-      - ./backups:/backups
-      - ./docker/backup/backup.sh:/backup.sh:ro
+  # ============================================================
+  # FLOWER - CELERY MONITORING
+  # ============================================================
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aureon-flower
+    command: >
+      celery -A config flower
+      --port=5555
+      --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-admin}
+    env_file:
+      - .env
     environment:
-      - POSTGRES_DB=${DB_NAME:-aureon_db}
-      - POSTGRES_USER=${DB_USER:-aureon_user}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - PGHOST=db
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do /backup.sh; sleep 24h & wait $${!}; done;'"
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis-queue:6379/1
+    ports:
+      - "5555:5555"
     depends_on:
-      - db
+      - redis-queue
     networks:
-      - aureon_network
-    restart: unless-stopped
+      - aureon-network
+    restart: always
 
+# ============================================================
+# NETWORKS
+# ============================================================
+networks:
+  aureon-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ============================================================
+# VOLUMES
+# ============================================================
 volumes:
   postgres_data:
     driver: local
-  redis_data:
+  redis_cache_data:
+    driver: local
+  redis_queue_data:
     driver: local
   static_volume:
     driver: local
   media_volume:
     driver: local
-  logs_volume:
-    driver: local
   prometheus_data:
     driver: local
   grafana_data:
     driver: local
-  certbot_conf:
-    driver: local
-  certbot_www:
-    driver: local
-
-networks:
-  aureon_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.0.0/16

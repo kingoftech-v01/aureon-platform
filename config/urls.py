@@ -12,12 +12,18 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+# Import health check views
+from config.health import get_health_urls
+
 urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
     # Homepage - Serve React frontend
     path('', TemplateView.as_view(template_name='index.html'), name='home'),
+
+    # Health Check Endpoints (Rhematek Production Shield)
+    *get_health_urls(),
 
     # Authentication API
     path('api/auth/', include('apps.accounts.urls')),
@@ -58,3 +64,9 @@ if settings.DEBUG:
 admin.site.site_header = 'Aureon Platform Administration'
 admin.site.site_title = 'Aureon Admin'
 admin.site.index_title = 'Welcome to Aureon by Rhematek Solutions'
+
+# Custom error handlers (Rhematek Production Shield)
+handler400 = 'config.error_handlers.handler400'
+handler403 = 'config.error_handlers.handler403'
+handler404 = 'config.error_handlers.handler404'
+handler500 = 'config.error_handlers.handler500'

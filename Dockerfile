@@ -1,4 +1,5 @@
 # Multi-stage Dockerfile for Aureon SaaS Platform
+# Rhematek Production Shield
 
 # Stage 1: Build stage for Python dependencies
 FROM python:3.11-slim as python-build
@@ -25,19 +26,22 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DJANGO_SETTINGS_MODULE=config.settings
+    DJANGO_SETTINGS_MODULE=config.settings \
+    PORT=8000
 
 # Create app user
 RUN groupadd -r aureon && useradd -r -g aureon aureon
 
-# Install runtime dependencies
+# Install runtime dependencies (including redis-tools for healthcheck)
 RUN apt-get update && apt-get install -y \
     libpq5 \
     libjpeg62-turbo \
     libpng16-16 \
     libmagic1 \
     postgresql-client \
+    redis-tools \
     curl \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Set work directory
@@ -61,15 +65,15 @@ RUN chmod +x /docker-entrypoint.sh
 # Switch to app user
 USER aureon
 
-# Expose port
+# Expose port (configurable via env)
 EXPOSE 8000
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8000}/api/health/ || exit 1
 
 # Entrypoint
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Default command
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "60"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--threads", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]

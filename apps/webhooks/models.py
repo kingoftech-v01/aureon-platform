@@ -154,6 +154,7 @@ class WebhookEvent(models.Model):
     )
 
     class Meta:
+        app_label = 'webhooks'
         verbose_name = _('Webhook Event')
         verbose_name_plural = _('Webhook Events')
         ordering = ['-received_at']
@@ -319,6 +320,7 @@ class WebhookEndpoint(models.Model):
     updated_at = models.DateTimeField(_('Updated At'), auto_now=True)
 
     class Meta:
+        app_label = 'webhooks'
         verbose_name = _('Webhook Endpoint')
         verbose_name_plural = _('Webhook Endpoints')
         ordering = ['-created_at']

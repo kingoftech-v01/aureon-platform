@@ -1,0 +1,107 @@
+{% extends "base_error.html" %}
+
+{% block title %}Too Many Requests{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .countdown {
+        font-size: 48px;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin: 24px 0;
+    }
+
+    .countdown-label {
+        font-size: 14px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: var(--background);
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 24px 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+        border-radius: 3px;
+        animation: progress 60s linear forwards;
+    }
+
+    @keyframes progress {
+        from { width: 0%; }
+        to { width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-code error-429">429</div>
+<h1 class="error-title">Too Many Requests</h1>
+<p class="error-message">
+    You've made too many requests in a short period.
+    Please wait a moment before trying again.
+</p>
+
+<div class="countdown-label">Please wait</div>
+<div class="countdown" id="countdown">60</div>
+<div class="progress-bar">
+    <div class="progress-fill" id="progress"></div>
+</div>
+
+<div class="error-actions">
+    <button id="retry-btn" class="btn btn-primary" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span id="btn-text">Wait 60s</span>
+    </button>
+    <a href="/" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        Go Home
+    </a>
+</div>
+
+<script>
+    (function() {
+        var seconds = 60;
+        var countdown = document.getElementById('countdown');
+        var retryBtn = document.getElementById('retry-btn');
+        var btnText = document.getElementById('btn-text');
+
+        var timer = setInterval(function() {
+            seconds--;
+            countdown.textContent = seconds;
+            btnText.textContent = 'Wait ' + seconds + 's';
+
+            if (seconds <= 0) {
+                clearInterval(timer);
+                countdown.textContent = 'Ready!';
+                retryBtn.disabled = false;
+                btnText.textContent = 'Retry Now';
+                retryBtn.onclick = function() {
+                    location.reload();
+                };
+            }
+        }, 1000);
+    })();
+</script>
+{% endblock %}
+
+{% block details %}
+<p>
+    Rate limiting protects our service. If you need higher limits,
+    <a href="mailto:support@rhematek-solutions.com" class="support-link">contact us</a> to discuss your needs.
+</p>
+{% endblock %}

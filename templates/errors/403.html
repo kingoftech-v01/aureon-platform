@@ -1,0 +1,36 @@
+{% extends "base_error.html" %}
+
+{% block title %}Access Denied{% endblock %}
+
+{% block content %}
+<div class="error-code error-403">403</div>
+<h1 class="error-title">Access Denied</h1>
+<p class="error-message">
+    You don't have permission to access this resource.
+    If you believe this is a mistake, please contact your administrator.
+</p>
+<div class="error-actions">
+    <a href="/" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        Go Home
+    </a>
+    <a href="/api/auth/login/" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+            <polyline points="10 17 15 12 10 7"></polyline>
+            <line x1="15" y1="12" x2="3" y2="12"></line>
+        </svg>
+        Sign In
+    </a>
+</div>
+{% endblock %}
+
+{% block details %}
+<p>
+    Need access? Contact your organization administrator or
+    <a href="mailto:support@rhematek-solutions.com" class="support-link">support@rhematek-solutions.com</a>
+</p>
+{% endblock %}
