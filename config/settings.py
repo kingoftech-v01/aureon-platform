@@ -90,6 +90,10 @@ INSTALLED_APPS = [
     'apps.webhooks',
 ]
 
+# Django Tenants Configuration
+TENANT_MODEL = "tenants.Tenant"
+TENANT_DOMAIN_MODEL = "tenants.Domain"
+
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'django.middleware.security.SecurityMiddleware',
