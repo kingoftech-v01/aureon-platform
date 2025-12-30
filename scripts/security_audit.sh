@@ -385,6 +385,225 @@ check_api_security() {
 }
 
 # ============================================================
+# ENHANCED SECURITY CHECKS (15 Protections)
+# ============================================================
+
+check_15_protections() {
+    log_info "Verifying all 15 security protections..."
+    echo ""
+
+    settings_file="$PROJECT_DIR/config/settings.py"
+    middleware_file="$PROJECT_DIR/config/middleware/security.py"
+    core_security="$PROJECT_DIR/apps/core/security.py"
+    validators_file="$PROJECT_DIR/apps/core/validators.py"
+
+    # Protection 1: HTTPS/TLS Settings
+    if grep -q "SECURE_SSL_REDIRECT" "$settings_file" 2>/dev/null; then
+        log_success "[1/15] HTTPS/TLS Settings - ACTIVE"
+    else
+        log_error "[1/15] HTTPS/TLS Settings - MISSING"
+    fi
+
+    # Protection 2: Secure Cookies
+    if grep -q "SESSION_COOKIE_SECURE" "$settings_file" && grep -q "CSRF_COOKIE_SECURE" "$settings_file" 2>/dev/null; then
+        log_success "[2/15] Secure Cookie Settings - ACTIVE"
+    else
+        log_error "[2/15] Secure Cookie Settings - MISSING"
+    fi
+
+    # Protection 3: HSTS
+    if grep -q "SECURE_HSTS_SECONDS" "$settings_file" && grep -q "SECURE_HSTS_PRELOAD" "$settings_file" 2>/dev/null; then
+        log_success "[3/15] HSTS Protection - ACTIVE"
+    else
+        log_error "[3/15] HSTS Protection - MISSING"
+    fi
+
+    # Protection 4: X-Frame-Options
+    if grep -q "X_FRAME_OPTIONS = 'DENY'" "$settings_file" 2>/dev/null; then
+        log_success "[4/15] X-Frame-Options DENY - ACTIVE"
+    else
+        log_error "[4/15] X-Frame-Options DENY - MISSING"
+    fi
+
+    # Protection 5: Content Type Sniffing
+    if grep -q "SECURE_CONTENT_TYPE_NOSNIFF = True" "$settings_file" 2>/dev/null; then
+        log_success "[5/15] Content Type Sniffing Protection - ACTIVE"
+    else
+        log_error "[5/15] Content Type Sniffing Protection - MISSING"
+    fi
+
+    # Protection 6: XSS Protection
+    if grep -q "SECURE_BROWSER_XSS_FILTER = True" "$settings_file" && [ -f "$middleware_file" ] && grep -q "XSSSanitizationMiddleware" "$middleware_file" 2>/dev/null; then
+        log_success "[6/15] XSS Protection - ACTIVE"
+    else
+        log_error "[6/15] XSS Protection - MISSING"
+    fi
+
+    # Protection 7: CSP
+    if grep -q "CSP_DEFAULT_SRC" "$settings_file" && grep -q "CSPMiddleware" "$settings_file" 2>/dev/null; then
+        log_success "[7/15] Content Security Policy - ACTIVE"
+    else
+        log_error "[7/15] Content Security Policy - MISSING"
+    fi
+
+    # Protection 8: Session Security
+    if grep -q "SESSION_COOKIE_HTTPONLY = True" "$settings_file" && grep -q "SESSION_COOKIE_SAMESITE" "$settings_file" 2>/dev/null; then
+        log_success "[8/15] Session Security - ACTIVE"
+    else
+        log_error "[8/15] Session Security - MISSING"
+    fi
+
+    # Protection 9: Permissions Policy
+    if grep -q "PERMISSIONS_POLICY" "$settings_file" 2>/dev/null; then
+        log_success "[9/15] Permissions Policy - ACTIVE"
+    else
+        log_warning "[9/15] Permissions Policy - NOT CONFIGURED"
+    fi
+
+    # Protection 10: Cross-Origin Policies
+    if grep -q "CROSS_ORIGIN_POLICIES" "$settings_file" 2>/dev/null; then
+        log_success "[10/15] Cross-Origin Policies - ACTIVE"
+    else
+        log_warning "[10/15] Cross-Origin Policies - NOT CONFIGURED"
+    fi
+
+    # Protection 11: Honeypot
+    if [ -f "$middleware_file" ] && grep -q "HoneypotMiddleware" "$middleware_file" 2>/dev/null; then
+        log_success "[11/15] Honeypot Protection - ACTIVE"
+    else
+        log_error "[11/15] Honeypot Protection - MISSING"
+    fi
+
+    # Protection 12: IP Blocking
+    if [ -f "$core_security" ] && grep -q "IPBlocker" "$core_security" 2>/dev/null; then
+        log_success "[12/15] IP Blocking - ACTIVE"
+    else
+        log_error "[12/15] IP Blocking - MISSING"
+    fi
+
+    # Protection 13: Login Security / Brute Force
+    if [ -f "$core_security" ] && grep -q "LoginTracker" "$core_security" 2>/dev/null; then
+        log_success "[13/15] Brute Force Protection - ACTIVE"
+    else
+        log_error "[13/15] Brute Force Protection - MISSING"
+    fi
+
+    # Protection 14: Rate Limiting
+    if [ -f "$core_security" ] && grep -q "RateLimiter" "$core_security" 2>/dev/null; then
+        log_success "[14/15] Rate Limiting - ACTIVE"
+    else
+        log_error "[14/15] Rate Limiting - MISSING"
+    fi
+
+    # Protection 15: Input Validation
+    if [ -f "$validators_file" ] && grep -q "FileUploadValidator" "$validators_file" 2>/dev/null; then
+        log_success "[15/15] Input Validation - ACTIVE"
+    else
+        log_error "[15/15] Input Validation - MISSING"
+    fi
+}
+
+run_npm_audit() {
+    log_info "Running npm audit for frontend dependencies..."
+
+    frontend_dir="$PROJECT_DIR/frontend"
+
+    if [ -d "$frontend_dir" ] && [ -f "$frontend_dir/package.json" ]; then
+        if command -v npm &> /dev/null; then
+            cd "$frontend_dir"
+            npm_output=$(npm audit --json 2>/dev/null || true)
+
+            if [ -n "$npm_output" ]; then
+                high_vulns=$(echo "$npm_output" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('metadata',{}).get('vulnerabilities',{}).get('high',0))" 2>/dev/null || echo "0")
+                critical_vulns=$(echo "$npm_output" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('metadata',{}).get('vulnerabilities',{}).get('critical',0))" 2>/dev/null || echo "0")
+
+                if [ "$critical_vulns" -gt 0 ]; then
+                    log_error "npm audit found $critical_vulns CRITICAL vulnerabilities"
+                else
+                    log_success "No CRITICAL npm vulnerabilities"
+                fi
+
+                if [ "$high_vulns" -gt 0 ]; then
+                    log_warning "npm audit found $high_vulns HIGH vulnerabilities"
+                else
+                    log_success "No HIGH npm vulnerabilities"
+                fi
+            else
+                log_success "npm audit completed successfully"
+            fi
+            cd "$PROJECT_DIR"
+        else
+            log_warning "npm not installed, skipping frontend audit"
+        fi
+    else
+        log_info "No frontend directory found, skipping npm audit"
+    fi
+}
+
+check_security_middleware() {
+    log_info "Checking security middleware configuration..."
+
+    settings_file="$PROJECT_DIR/config/settings.py"
+
+    # Check custom security middleware
+    middleware_checks=(
+        "RequestLoggingMiddleware"
+        "SecurityHeadersMiddleware"
+        "HoneypotMiddleware"
+        "XSSSanitizationMiddleware"
+        "CSRFEnhancementMiddleware"
+    )
+
+    for middleware in "${middleware_checks[@]}"; do
+        if grep -q "$middleware" "$settings_file" 2>/dev/null; then
+            log_success "Custom $middleware is configured"
+        else
+            log_warning "Custom $middleware not found in MIDDLEWARE"
+        fi
+    done
+}
+
+generate_security_report() {
+    log_info "Generating detailed security report..."
+
+    report_date=$(date '+%Y-%m-%d_%H-%M-%S')
+    detailed_report="${PROJECT_DIR}/security_report_${report_date}.json"
+
+    cat > "$detailed_report" << EOF
+{
+    "report_date": "$(date -Iseconds)",
+    "project": "Aureon SaaS Platform",
+    "audit_version": "2.0.0",
+    "summary": {
+        "passed": $PASSED,
+        "warnings": $WARNINGS,
+        "failed": $FAILED,
+        "score": $(( (PASSED * 100) / (PASSED + WARNINGS + FAILED + 1) ))
+    },
+    "protections": {
+        "https_tls": $(grep -q "SECURE_SSL_REDIRECT" "$PROJECT_DIR/config/settings.py" && echo "true" || echo "false"),
+        "secure_cookies": $(grep -q "SESSION_COOKIE_SECURE" "$PROJECT_DIR/config/settings.py" && echo "true" || echo "false"),
+        "hsts": $(grep -q "SECURE_HSTS_PRELOAD" "$PROJECT_DIR/config/settings.py" && echo "true" || echo "false"),
+        "x_frame_options": $(grep -q "X_FRAME_OPTIONS = 'DENY'" "$PROJECT_DIR/config/settings.py" && echo "true" || echo "false"),
+        "content_type_nosniff": $(grep -q "SECURE_CONTENT_TYPE_NOSNIFF = True" "$PROJECT_DIR/config/settings.py" && echo "true" || echo "false"),
+        "xss_protection": $(grep -q "XSSSanitizationMiddleware" "$PROJECT_DIR/config/settings.py" && echo "true" || echo "false"),
+        "csp": $(grep -q "CSP_DEFAULT_SRC" "$PROJECT_DIR/config/settings.py" && echo "true" || echo "false"),
+        "session_security": $(grep -q "SESSION_COOKIE_HTTPONLY = True" "$PROJECT_DIR/config/settings.py" && echo "true" || echo "false"),
+        "permissions_policy": $(grep -q "PERMISSIONS_POLICY" "$PROJECT_DIR/config/settings.py" && echo "true" || echo "false"),
+        "cross_origin_policies": $(grep -q "CROSS_ORIGIN_POLICIES" "$PROJECT_DIR/config/settings.py" && echo "true" || echo "false"),
+        "honeypot": $([ -f "$PROJECT_DIR/config/middleware/security.py" ] && grep -q "HoneypotMiddleware" "$PROJECT_DIR/config/middleware/security.py" && echo "true" || echo "false"),
+        "ip_blocking": $([ -f "$PROJECT_DIR/apps/core/security.py" ] && grep -q "IPBlocker" "$PROJECT_DIR/apps/core/security.py" && echo "true" || echo "false"),
+        "brute_force_protection": $([ -f "$PROJECT_DIR/apps/core/security.py" ] && grep -q "LoginTracker" "$PROJECT_DIR/apps/core/security.py" && echo "true" || echo "false"),
+        "rate_limiting": $([ -f "$PROJECT_DIR/apps/core/security.py" ] && grep -q "RateLimiter" "$PROJECT_DIR/apps/core/security.py" && echo "true" || echo "false"),
+        "input_validation": $([ -f "$PROJECT_DIR/apps/core/validators.py" ] && grep -q "FileUploadValidator" "$PROJECT_DIR/apps/core/validators.py" && echo "true" || echo "false")
+    }
+}
+EOF
+
+    log_success "Detailed security report saved to: $detailed_report"
+}
+
+# ============================================================
 # MAIN EXECUTION
 # ============================================================
 
@@ -412,9 +631,13 @@ main() {
     echo ""
     run_safety_check
     echo ""
+    run_npm_audit
+    echo ""
     check_django_settings
     echo ""
     check_security_headers
+    echo ""
+    check_security_middleware
     echo ""
     check_authentication
     echo ""
@@ -427,6 +650,10 @@ main() {
     check_logging
     echo ""
     check_api_security
+    echo ""
+    check_15_protections
+    echo ""
+    generate_security_report
 
     # Summary
     echo ""

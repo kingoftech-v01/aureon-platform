@@ -1,12 +1,15 @@
 from django import forms
 from django.core.validators import EmailValidator
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column, Field, HTML
+from crispy_forms.layout import Layout, Submit, Row, Column, Field, HTML, Div
 from crispy_forms.bootstrap import FormActions
 from .models import ContactSubmission, NewsletterSubscriber
 
+# Import security mixins
+from apps.core.forms import SecureFormMixin, SecureModelFormMixin
 
-class ContactForm(forms.ModelForm):
+
+class ContactForm(SecureModelFormMixin, forms.ModelForm):
     """Contact form for the contact page"""
 
     class Meta:
@@ -99,8 +102,8 @@ class ContactForm(forms.ModelForm):
         return message
 
 
-class NewsletterForm(forms.ModelForm):
-    """Newsletter subscription form"""
+class NewsletterForm(SecureModelFormMixin, forms.ModelForm):
+    """Newsletter subscription form with security protection"""
 
     class Meta:
         model = NewsletterSubscriber
@@ -139,8 +142,8 @@ class NewsletterForm(forms.ModelForm):
         return email
 
 
-class SalesInquiryForm(forms.Form):
-    """Sales inquiry form for pricing page or sales contact"""
+class SalesInquiryForm(SecureFormMixin, forms.Form):
+    """Sales inquiry form for pricing page or sales contact with security protection"""
 
     COMPANY_SIZE_CHOICES = [
         ('', 'Select Company Size'),
@@ -335,8 +338,8 @@ Message:
         )
 
 
-class QuickContactForm(forms.Form):
-    """Quick contact form for sidebar/footer"""
+class QuickContactForm(SecureFormMixin, forms.Form):
+    """Quick contact form for sidebar/footer with security protection"""
 
     name = forms.CharField(
         max_length=200,

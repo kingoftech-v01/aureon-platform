@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     'phonenumber_field',
 
     # Local apps
+    'apps.core',  # Core security utilities
     'apps.tenants',
     'apps.accounts',
     'apps.clients',  # Fixed: was 'apps.crm'
@@ -111,13 +112,18 @@ TENANT_DOMAIN_MODEL = "tenants.Domain"
 
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
+    'config.middleware.security.RequestLoggingMiddleware',  # Security request logging (early)
     'django.middleware.security.SecurityMiddleware',
+    'config.middleware.security.SecurityHeadersMiddleware',  # Enhanced security headers
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'config.middleware.security.CSRFEnhancementMiddleware',  # Enhanced CSRF protection
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'config.middleware.security.HoneypotMiddleware',  # Bot detection
+    'config.middleware.security.XSSSanitizationMiddleware',  # XSS protection
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'csp.middleware.CSPMiddleware',
@@ -149,9 +155,68 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database
+# ====================
+# DATABASE CONFIGURATION
+# Optimized for 1M users with connection pooling via PgBouncer
+# ====================
+
+# Primary database (writes go through PgBouncer to master)
 DATABASES = {
-    'default': env.db('DATABASE_URL', default='postgresql://finance_user:password@localhost:5432/finance_saas')
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME', default='aureon_db'),
+        'USER': env('DB_USER', default='aureon_user'),
+        'PASSWORD': env('DB_PASSWORD', default=''),
+        'HOST': env('DB_HOST', default='pgbouncer'),  # Use PgBouncer for connection pooling
+        'PORT': env.int('DB_PORT', default=6432),  # PgBouncer port
+        'CONN_MAX_AGE': env.int('DB_CONN_MAX_AGE', default=0),  # Let PgBouncer handle pooling
+        'CONN_HEALTH_CHECKS': True,
+        'OPTIONS': {
+            'connect_timeout': 10,
+            'options': '-c statement_timeout=30000',  # 30 second query timeout
+        },
+        'ATOMIC_REQUESTS': False,  # Handle transactions explicitly
+    },
+    # Read replica for read-heavy operations (optional - use with database router)
+    'replica': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME', default='aureon_db'),
+        'USER': env('DB_USER', default='aureon_user'),
+        'PASSWORD': env('DB_PASSWORD', default=''),
+        'HOST': env('DB_REPLICA_HOST', default='db-replica-1'),
+        'PORT': env.int('DB_REPLICA_PORT', default=5432),
+        'CONN_MAX_AGE': env.int('DB_CONN_MAX_AGE', default=60),
+        'CONN_HEALTH_CHECKS': True,
+        'OPTIONS': {
+            'connect_timeout': 10,
+            'options': '-c statement_timeout=60000',  # 60 second for read queries
+        },
+    },
+}
+
+# Use environment variable to enable/disable read replica
+if not env.bool('USE_READ_REPLICA', default=False):
+    del DATABASES['replica']
+
+# Database Router for read/write splitting (when replica is enabled)
+if env.bool('USE_READ_REPLICA', default=False):
+    DATABASE_ROUTERS = ['config.db_router.ReadWriteRouter']
+
+# PgBouncer-specific settings
+# These are passed to the database engine and work with PgBouncer
+PGBOUNCER_SETTINGS = {
+    'pool_mode': 'transaction',  # Transaction pooling mode
+    'max_client_conn': 10000,  # Maximum client connections
+    'default_pool_size': 100,  # Default pool size per user/database pair
+    'min_pool_size': 20,  # Minimum pool size
+    'reserve_pool_size': 50,  # Reserve connections for burst traffic
+    'reserve_pool_timeout': 5,  # Timeout for reserve pool
+    'max_db_connections': 200,  # Maximum connections to database
+    'max_user_connections': 200,  # Maximum connections per user
+    'server_idle_timeout': 600,  # Idle server connection timeout
+    'server_lifetime': 3600,  # Maximum server connection lifetime
+    'client_idle_timeout': 300,  # Idle client connection timeout
+    'query_timeout': 60,  # Query timeout in seconds
 }
 
 # Password validation
@@ -202,76 +267,356 @@ SITE_ID = 1
 # SECURITY SETTINGS
 # ====================
 
-# HTTPS Settings
-SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=False)
-SESSION_COOKIE_SECURE = env.bool('SESSION_COOKIE_SECURE', default=False)
-CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=False)
-SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=0)
+# ------------------------------------------------
+# PROTECTION 1: HTTPS/TLS Settings
+# ------------------------------------------------
+SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=not DEBUG)
+SECURE_REDIRECT_EXEMPT = []  # No exemptions from HTTPS
+
+# ------------------------------------------------
+# PROTECTION 2: Secure Cookie Settings
+# ------------------------------------------------
+SESSION_COOKIE_SECURE = env.bool('SESSION_COOKIE_SECURE', default=not DEBUG)
+CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=not DEBUG)
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_NAME = '__Host-sessionid' if not DEBUG else 'sessionid'  # Cookie prefix for HTTPS
+CSRF_COOKIE_NAME = '__Host-csrftoken' if not DEBUG else 'csrftoken'  # Cookie prefix for HTTPS
+CSRF_USE_SESSIONS = False
+
+# ------------------------------------------------
+# PROTECTION 3: HSTS (HTTP Strict Transport Security)
+# ------------------------------------------------
+SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=31536000 if not DEBUG else 0)  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+SECURE_HSTS_PRELOAD = True  # Enable HSTS preload
 
-# Security Headers
+# ------------------------------------------------
+# PROTECTION 4: X-Frame-Options & Clickjacking Protection
+# ------------------------------------------------
+X_FRAME_OPTIONS = 'DENY'  # Prevent all framing
+
+# ------------------------------------------------
+# PROTECTION 5: Content Type Sniffing Protection
+# ------------------------------------------------
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = 'DENY'
 
-# Content Security Policy
+# ------------------------------------------------
+# PROTECTION 6: XSS Protection Headers
+# ------------------------------------------------
+SECURE_BROWSER_XSS_FILTER = True  # Legacy browser support
+
+# ------------------------------------------------
+# PROTECTION 7: Content Security Policy (Strict Mode)
+# ------------------------------------------------
+# Note: 'unsafe-inline' needed for some third-party integrations
+# Consider using nonces for inline scripts in production
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'", "'unsafe-eval'", "https://js.stripe.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com")
-CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net")
+CSP_SCRIPT_SRC = (
+    "'self'",
+    "'unsafe-inline'",  # Required for Stripe and some UI frameworks
+    "'unsafe-eval'",    # Required for some JS frameworks
+    "https://js.stripe.com",
+    "https://cdn.jsdelivr.net",
+    "https://cdnjs.cloudflare.com",
+)
+CSP_STYLE_SRC = (
+    "'self'",
+    "'unsafe-inline'",  # Required for inline styles
+    "https://fonts.googleapis.com",
+    "https://cdn.jsdelivr.net",
+)
 CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com", "data:", "https://cdn.jsdelivr.net")
 CSP_IMG_SRC = ("'self'", "data:", "https:", "blob:")
-CSP_CONNECT_SRC = ("'self'", "https://api.stripe.com")
+CSP_CONNECT_SRC = ("'self'", "https://api.stripe.com", "wss:", "https:")
 CSP_FRAME_SRC = ("'self'", "https://js.stripe.com", "https://hooks.stripe.com")
 CSP_OBJECT_SRC = ("'none'",)
 CSP_BASE_URI = ("'self'",)
 CSP_FORM_ACTION = ("'self'",)
-CSP_FRAME_ANCESTORS = ("'none'",)
+CSP_FRAME_ANCESTORS = ("'none'",)  # Equivalent to X-Frame-Options DENY
 CSP_UPGRADE_INSECURE_REQUESTS = not DEBUG
+CSP_BLOCK_ALL_MIXED_CONTENT = True
+CSP_REPORT_URI = env('CSP_REPORT_URI', default=None)  # Optional CSP violation reporting
+CSP_REPORT_ONLY = env.bool('CSP_REPORT_ONLY', default=False)
 
-# Session Security
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Lax'
+# ------------------------------------------------
+# PROTECTION 8: Session Security
+# ------------------------------------------------
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-SESSION_CACHE_ALIAS = 'default'
+SESSION_CACHE_ALIAS = 'sessions'  # Use dedicated session cache
+SESSION_COOKIE_AGE = 1209600  # 14 days
+SESSION_SAVE_EVERY_REQUEST = True  # Extend session on activity
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
-# CSRF Security
-CSRF_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_USE_SESSIONS = False
+# ------------------------------------------------
+# PROTECTION 9: Permissions Policy (Feature Policy)
+# ------------------------------------------------
+PERMISSIONS_POLICY = {
+    'accelerometer': [],
+    'ambient-light-sensor': [],
+    'autoplay': [],
+    'camera': [],
+    'display-capture': [],
+    'document-domain': [],
+    'encrypted-media': [],
+    'fullscreen': ['self'],
+    'geolocation': [],
+    'gyroscope': [],
+    'interest-cohort': [],  # Disable FLoC
+    'magnetometer': [],
+    'microphone': [],
+    'midi': [],
+    'payment': ['self'],
+    'picture-in-picture': [],
+    'publickey-credentials-get': [],
+    'speaker-selection': [],
+    'sync-xhr': [],
+    'usb': [],
+    'xr-spatial-tracking': [],
+}
+
+# ------------------------------------------------
+# PROTECTION 10: Cross-Origin Policies
+# ------------------------------------------------
+CROSS_ORIGIN_POLICIES = {
+    'Cross-Origin-Embedder-Policy': 'require-corp',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Resource-Policy': 'same-origin',
+}
+
+# ------------------------------------------------
+# PROTECTION 11: Honeypot Configuration
+# ------------------------------------------------
+HONEYPOT_FIELDS = [
+    'website_url',
+    'phone_number_2',
+    'email_confirm',
+    'hp_field',
+    'contact_me_by_fax',
+    'leave_blank',
+    'company_fax',
+    'url',
+    'address2',
+    'name_confirm',
+]
+HONEYPOT_MIN_FORM_SUBMISSION_TIME = 2  # seconds
+
+# ------------------------------------------------
+# PROTECTION 12: IP Whitelist/Blacklist
+# ------------------------------------------------
+IP_WHITELIST = env.list('IP_WHITELIST', default=[
+    '127.0.0.1',
+])
+
+# ------------------------------------------------
+# PROTECTION 13: Login Security Settings
+# ------------------------------------------------
+LOGIN_MAX_ATTEMPTS = 5
+LOGIN_LOCKOUT_TIMES = [60, 300, 900, 3600, 86400]  # Progressive lockout
+
+# ------------------------------------------------
+# PROTECTION 14: Security Monitoring Thresholds
+# ------------------------------------------------
+SECURITY_THRESHOLDS = {
+    'failed_logins_per_hour': 100,
+    'blocked_ips_per_hour': 50,
+    'rate_limits_per_hour': 200,
+    'suspicious_requests_per_hour': 100,
+}
+
+# ------------------------------------------------
+# PROTECTION 15: File Upload Security
+# ------------------------------------------------
+BLOCK_ON_SCAN_ERROR = True  # Block file if virus scan fails
+MAX_IMAGE_DIMENSION = 4096  # Maximum image dimension in pixels
+XSS_SKIP_FIELDS = set()  # Fields to skip XSS sanitization (e.g., WYSIWYG editors)
 
 # ====================
-# CACHING
+# CACHING (Redis Cluster Configuration)
+# Multi-layer caching optimized for 1M users
 # ====================
+
+# Redis connection settings
+REDIS_PASSWORD = env('REDIS_PASSWORD', default='')
+REDIS_CACHE_HOST = env('REDIS_CACHE_HOST', default='redis-cache')
+REDIS_CACHE_PORT = env.int('REDIS_CACHE_PORT', default=6379)
+REDIS_QUEUE_HOST = env('REDIS_QUEUE_HOST', default='redis-queue')
+REDIS_RESULT_HOST = env('REDIS_RESULT_HOST', default='redis-result')
+
+# Base Redis connection options
+_REDIS_BASE_OPTIONS = {
+    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+    'PASSWORD': REDIS_PASSWORD,
+    'SOCKET_CONNECT_TIMEOUT': 5,
+    'SOCKET_TIMEOUT': 5,
+    'RETRY_ON_TIMEOUT': True,
+    'CONNECTION_POOL_KWARGS': {
+        'max_connections': 100,
+        'retry_on_timeout': True,
+        'socket_keepalive': True,
+    },
+    'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+    'SERIALIZER': 'django_redis.serializers.json.JSONSerializer',
+}
 
 CACHES = {
+    # Default cache - General purpose caching (Redis node 1)
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': env('REDIS_URL', default='redis://localhost:6379/0'),
+        'LOCATION': f'redis://:{REDIS_PASSWORD}@{REDIS_CACHE_HOST}:{REDIS_CACHE_PORT}/0',
         'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'PASSWORD': env('REDIS_PASSWORD', default=''),
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
+            **_REDIS_BASE_OPTIONS,
+            'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',
+            'CONNECTION_POOL_KWARGS': {
+                **_REDIS_BASE_OPTIONS['CONNECTION_POOL_KWARGS'],
+                'max_connections': 200,
+                'timeout': 20,
+            },
         },
-        'KEY_PREFIX': 'finance_saas',
-        'TIMEOUT': 300,
-    }
+        'KEY_PREFIX': 'aureon',
+        'TIMEOUT': 900,  # 15 minutes default
+    },
+
+    # Session cache - User sessions (Redis node 1, database 1)
+    'sessions': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f'redis://:{REDIS_PASSWORD}@{REDIS_CACHE_HOST}:{REDIS_CACHE_PORT}/1',
+        'OPTIONS': {
+            **_REDIS_BASE_OPTIONS,
+            'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',
+            'CONNECTION_POOL_KWARGS': {
+                **_REDIS_BASE_OPTIONS['CONNECTION_POOL_KWARGS'],
+                'max_connections': 150,
+                'timeout': 20,
+            },
+        },
+        'KEY_PREFIX': 'aureon_session',
+        'TIMEOUT': 1209600,  # 14 days for sessions
+    },
+
+    # Lock cache - Distributed locking (Redis node 1, database 2)
+    'locks': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f'redis://:{REDIS_PASSWORD}@{REDIS_CACHE_HOST}:{REDIS_CACHE_PORT}/2',
+        'OPTIONS': {
+            **_REDIS_BASE_OPTIONS,
+            'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',
+            'CONNECTION_POOL_KWARGS': {
+                **_REDIS_BASE_OPTIONS['CONNECTION_POOL_KWARGS'],
+                'max_connections': 50,
+            },
+        },
+        'KEY_PREFIX': 'aureon_lock',
+        'TIMEOUT': 300,  # 5 minutes max lock time
+    },
+
+    # Throttle cache - Rate limiting (Redis node 1, database 3)
+    'throttle': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f'redis://:{REDIS_PASSWORD}@{REDIS_CACHE_HOST}:{REDIS_CACHE_PORT}/3',
+        'OPTIONS': {
+            **_REDIS_BASE_OPTIONS,
+            'CONNECTION_POOL_KWARGS': {
+                **_REDIS_BASE_OPTIONS['CONNECTION_POOL_KWARGS'],
+                'max_connections': 100,
+            },
+        },
+        'KEY_PREFIX': 'aureon_throttle',
+        'TIMEOUT': 3600,  # 1 hour
+    },
+
+    # Local memory cache - L1 cache layer (no Redis, in-process)
+    'local': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'aureon-local-cache',
+        'OPTIONS': {
+            'MAX_ENTRIES': 10000,
+            'CULL_FREQUENCY': 4,
+        },
+        'TIMEOUT': 300,  # 5 minutes
+    },
 }
 
 # ====================
 # CELERY CONFIGURATION
+# Optimized for 1M users with Redis cluster
 # ====================
 
-CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/1')
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_CACHE_BACKEND = 'default'
+# Broker settings - Use dedicated Redis queue node
+CELERY_BROKER_URL = env(
+    'CELERY_BROKER_URL',
+    default=f'redis://:{REDIS_PASSWORD}@{REDIS_QUEUE_HOST}:6379/1'
+)
+
+# Result backend - Use dedicated Redis result node for high throughput
+CELERY_RESULT_BACKEND = env(
+    'CELERY_RESULT_BACKEND',
+    default=f'redis://:{REDIS_PASSWORD}@{REDIS_RESULT_HOST}:6379/0'
+)
+
+# Broker connection settings for high availability
+CELERY_BROKER_CONNECTION_RETRY = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
+CELERY_BROKER_CONNECTION_TIMEOUT = 10
+CELERY_BROKER_POOL_LIMIT = 100
+CELERY_BROKER_HEARTBEAT = 10
+
+# Broker transport options for Redis cluster
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'visibility_timeout': 3600,  # 1 hour
+    'fanout_prefix': True,
+    'fanout_patterns': True,
+    'socket_connect_timeout': 5,
+    'socket_keepalive': True,
+    'socket_timeout': 5,
+    'retry_on_timeout': True,
+    'health_check_interval': 30,
+}
+
+# Result backend settings
+CELERY_RESULT_EXPIRES = 3600  # Results expire after 1 hour
+CELERY_RESULT_EXTENDED = True
+CELERY_RESULT_COMPRESSION = 'gzip'
+
+# Serialization
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+CELERY_EVENT_SERIALIZER = 'json'
+
+# Timezone
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Task execution settings
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes hard limit
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes soft limit
+CELERY_TASK_ALWAYS_EAGER = False  # Never run synchronously in production
+
+# Task acknowledgment settings
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+
+# Worker settings (configured in celery.py, but defaults here)
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
+CELERY_WORKER_MAX_MEMORY_PER_CHILD = 400000  # 400MB
+
+# Task publishing settings
+CELERY_TASK_PUBLISH_RETRY = True
+CELERY_TASK_PUBLISH_RETRY_POLICY = {
+    'max_retries': 3,
+    'interval_start': 0,
+    'interval_step': 0.2,
+    'interval_max': 0.5,
+}
+
+# Cache backend for rate limiting
+CELERY_CACHE_BACKEND = 'default'
 
 # ====================
 # DJANGO ALLAUTH
@@ -397,10 +742,21 @@ LOGGING = {
             'format': '{levelname} {message}',
             'style': '{',
         },
+        'security': {
+            'format': '[SECURITY] {levelname} {asctime} {name} {message}',
+            'style': '{',
+        },
+        'json': {
+            '()': 'django.utils.log.ServerFormatter',
+            'format': '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s"}',
+        },
     },
     'filters': {
         'require_debug_true': {
             '()': 'django.utils.log.RequireDebugTrue',
+        },
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
         },
     },
     'handlers': {
@@ -417,6 +773,27 @@ LOGGING = {
             'backupCount': 10,
             'formatter': 'verbose',
         },
+        'security_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'security.log',
+            'maxBytes': 1024 * 1024 * 50,  # 50MB - security logs need more space
+            'backupCount': 20,
+            'formatter': 'security',
+        },
+        'security_console': {
+            'level': 'WARNING',
+            'class': 'logging.StreamHandler',
+            'formatter': 'security',
+        },
+        'security_requests_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'security_requests.log',
+            'maxBytes': 1024 * 1024 * 100,  # 100MB for request logs
+            'backupCount': 30,
+            'formatter': 'json',
+        },
     },
     'root': {
         'handlers': ['console', 'file'],
@@ -428,8 +805,35 @@ LOGGING = {
             'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
+        'django.security': {
+            'handlers': ['security_console', 'security_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
         'celery': {
             'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Security loggers
+        'security': {
+            'handlers': ['security_console', 'security_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'security.requests': {
+            'handlers': ['security_requests_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'security.validation': {
+            'handlers': ['security_console', 'security_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        # Django Axes logging
+        'axes': {
+            'handlers': ['security_console', 'security_file'],
             'level': 'INFO',
             'propagate': False,
         },

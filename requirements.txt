@@ -1,5 +1,5 @@
 # Django Core
-Django==5.0
+Django==5.1.4
 django-environ==0.11.2
 psycopg2-binary>=2.9.10,<3.0
 gunicorn==21.2.0
@@ -24,7 +24,7 @@ stripe>=4.0.0,<5.0.0
 dj-stripe>=2.8.0,<6.0
 
 # Celery & Task Queue
-celery==5.3.6
+celery==5.4.0
 django-celery-beat==2.6.0
 django-celery-results==2.5.1
 redis==5.0.1
@@ -66,7 +66,7 @@ django-templated-email==3.0.1
 # Security
 django-csp==3.8
 # django-security==0.11.3
-cryptography==42.0.2
+cryptography==44.0.0
 django-axes==6.3.0
 django-honeypot==1.2.0
 
@@ -76,7 +76,7 @@ markdown==3.5.2
 django-filter==23.5
 
 # Monitoring & Logging
-sentry-sdk==1.40.5
+sentry-sdk==2.19.2
 django-prometheus==2.3.1
 prometheus-client==0.19.0
 
@@ -88,7 +88,7 @@ phonenumbers==8.13.29
 # Utilities
 python-dateutil==2.8.2
 pytz==2024.1
-requests==2.31.0
+requests==2.32.3
 python-slugify==8.0.4
 faker==22.6.0
 

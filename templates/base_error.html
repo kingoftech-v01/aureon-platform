@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>{% block title %}Error{% endblock %} - Aureon by Rhematek</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#2563eb">
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <style>
         :root {
             --primary-color: #2563eb;
@@ -16,12 +24,21 @@
             --error-red: #ef4444;
             --warning-yellow: #f59e0b;
             --success-green: #22c55e;
+            --focus-ring: #2563eb;
         }
 
-        * {
+        *, *::before, *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
 
         body {
@@ -32,6 +49,51 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Skip link for accessibility */
+        .skip-link {
+            position: absolute;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary-color);
+            color: #ffffff;
+            padding: 0.75rem 1.5rem;
+            z-index: 9999;
+            border-radius: 0 0 0.5rem 0.5rem;
+            text-decoration: none;
+            font-weight: 600;
+            transition: top 0.3s ease;
+        }
+
+        .skip-link:focus {
+            top: 0;
+            outline: 2px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
+
+        /* Focus visible styles */
+        :focus-visible {
+            outline: 2px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
+
+        /* Visually hidden for screen readers */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
 
         .error-container {
@@ -144,6 +206,11 @@
             border: none;
         }
 
+        .btn:focus-visible {
+            outline: 2px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
+
         .btn-primary {
             background: var(--primary-color);
             color: white;
@@ -165,6 +232,13 @@
             background: #e2e8f0;
         }
 
+        /* Disabled button state */
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .error-details {
             margin-top: 32px;
             padding-top: 24px;
@@ -174,7 +248,7 @@
         }
 
         .error-id {
-            font-family: monospace;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
             background: var(--background);
             padding: 4px 8px;
             border-radius: 4px;
@@ -187,6 +261,22 @@
 
         .support-link:hover {
             text-decoration: underline;
+        }
+
+        .support-link:focus-visible {
+            outline: 2px solid var(--focus-ring);
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
+
+        /* High contrast mode support */
+        @media (forced-colors: active) {
+            .btn {
+                border: 2px solid currentColor;
+            }
+            .error-code {
+                -webkit-text-fill-color: currentColor;
+            }
         }
 
         @media (max-width: 480px) {
@@ -211,26 +301,49 @@
                 justify-content: center;
             }
         }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+            }
+            .error-container {
+                box-shadow: none;
+                border: 1px solid #e2e8f0;
+            }
+            .btn {
+                display: none;
+            }
+        }
     </style>
     {% block extra_styles %}{% endblock %}
 </head>
 <body>
-    <div class="error-container">
-        <div class="logo">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-            <div class="logo-text">Aureon</div>
-            <div class="logo-subtitle">by Rhematek Solutions</div>
-        </div>
+    <!-- Skip link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-        {% block content %}{% endblock %}
+    <main id="main-content" role="main" aria-labelledby="error-heading">
+        <div class="error-container">
+            <div class="logo" aria-hidden="true">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                <div class="logo-text">Aureon</div>
+                <div class="logo-subtitle">by Rhematek Solutions</div>
+            </div>
 
-        <div class="error-details">
-            {% block details %}
-            Need help? Contact <a href="mailto:support@rhematek-solutions.com" class="support-link">support@rhematek-solutions.com</a>
-            {% endblock %}
+            {% block content %}{% endblock %}
+
+            <div class="error-details" role="contentinfo">
+                {% block details %}
+                <p>
+                    Need help? Contact <a href="mailto:support@rhematek-solutions.com" class="support-link">support@rhematek-solutions.com</a>
+                </p>
+                {% endblock %}
+            </div>
         </div>
-    </div>
+    </main>
+
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

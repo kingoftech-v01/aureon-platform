@@ -1,39 +1,49 @@
+# ============================================================
+# AUREON SaaS Platform - Development Docker Compose
+# Rhematek Production Shield
+# Port: 8001 (development)
+# ============================================================
+
 version: '3.8'
 
-# Aureon SaaS Platform - Docker Compose
-# Rhematek Production Shield
-# Dockploy Compatible Configuration
-# Port: 8001 (8000 is in use by another project)
-
 services:
+  # ============================================================
   # PostgreSQL Database
+  # ============================================================
   db:
-    image: postgres:15-alpine
-    container_name: aureon-db
+    image: postgres:16-alpine
+    container_name: aureon-dev-db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     environment:
-      - POSTGRES_DB=${DB_NAME:-finance_saas}
-      - POSTGRES_USER=${DB_USER:-finance_user}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-change_me_in_production}
-      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+      POSTGRES_DB: ${DB_NAME:-aureon_dev}
+      POSTGRES_USER: ${DB_USER:-aureon_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_password_123}
+      POSTGRES_INITDB_ARGS: --encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-finance_user} -d ${DB_NAME:-finance_saas}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-aureon_user} -d ${DB_NAME:-aureon_dev}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
     networks:
-      - aureon-network
+      - aureon-dev-network
     restart: unless-stopped
 
+  # ============================================================
   # Redis for Caching and Celery Broker
+  # ============================================================
   redis:
-    image: redis:7-alpine
-    container_name: aureon-redis
+    image: redis:7.4-alpine
+    container_name: aureon-dev-redis
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
+    ports:
+      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -41,17 +51,26 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - aureon-network
+      - aureon-dev-network
     restart: unless-stopped
 
-  # Django Web Application
+  # ============================================================
+  # Django Web Application (Development with Hot Reload)
+  # ============================================================
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: aureon-web
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --timeout 120 --access-logfile - --error-logfile -
+      target: development
+    container_name: aureon-dev-web
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
+      # Mount source code for hot reload
+      - .:/app:cached
+      # Exclude node_modules and virtual env
+      - /app/.venv
+      - /app/frontend/node_modules
+      # Persistent volumes for generated files
       - static_volume:/app/staticfiles
       - media_volume:/app/media
       - logs_volume:/app/logs
@@ -60,70 +79,75 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-finance_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-finance_saas}
+      - DEBUG=True
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - DATABASE_URL=postgresql://${DB_USER:-aureon_user}:${DB_PASSWORD:-dev_password_123}@db:5432/${DB_NAME:-aureon_dev}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
-      - COLLECT_STATIC=true
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - COLLECT_STATIC=false
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - aureon-network
+      - aureon-dev-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    stdin_open: true
+    tty: true
 
-  # Celery Worker for Background Tasks
+  # ============================================================
+  # Celery Worker (Development)
+  # ============================================================
   celery_worker:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: aureon-celery-worker
-    command: celery -A config worker -l info --concurrency=4
+      target: development
+    container_name: aureon-dev-celery-worker
+    command: celery -A config worker -l debug --concurrency=2
     volumes:
+      - .:/app:cached
       - media_volume:/app/media
       - logs_volume:/app/logs
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-finance_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-finance_saas}
+      - DEBUG=True
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - DATABASE_URL=postgresql://${DB_USER:-aureon_user}:${DB_PASSWORD:-dev_password_123}@db:5432/${DB_NAME:-aureon_dev}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - aureon-network
+      - aureon-dev-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$HOSTNAME || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
-  # Celery Beat for Scheduled Tasks
+  # ============================================================
+  # Celery Beat (Development)
+  # ============================================================
   celery_beat:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: aureon-celery-beat
-    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+      target: development
+    container_name: aureon-dev-celery-beat
+    command: celery -A config beat -l debug --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
+      - .:/app:cached
       - logs_volume:/app/logs
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-finance_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-finance_saas}
-      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=True
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - DATABASE_URL=postgresql://${DB_USER:-aureon_user}:${DB_PASSWORD:-dev_password_123}@db:5432/${DB_NAME:-aureon_dev}
       - CELERY_BROKER_URL=redis://redis:6379/1
     depends_on:
       db:
@@ -131,16 +155,101 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - aureon-network
+      - aureon-dev-network
     restart: unless-stopped
 
+  # ============================================================
+  # Flower - Celery Monitoring (Development)
+  # ============================================================
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: aureon-dev-flower
+    command: celery -A config flower --port=5555
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/1
+    depends_on:
+      - redis
+      - celery_worker
+    networks:
+      - aureon-dev-network
+    restart: unless-stopped
+
+  # ============================================================
+  # Frontend Development Server (Vite with HMR)
+  # ============================================================
+  frontend:
+    image: node:20-alpine
+    container_name: aureon-dev-frontend
+    working_dir: /app
+    command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host 0.0.0.0"
+    volumes:
+      - ./frontend:/app:cached
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8001
+    networks:
+      - aureon-dev-network
+    restart: unless-stopped
+
+  # ============================================================
+  # MailHog - Email Testing (Development)
+  # ============================================================
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: aureon-dev-mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - aureon-dev-network
+    restart: unless-stopped
+
+  # ============================================================
+  # Adminer - Database Management UI (Development)
+  # ============================================================
+  adminer:
+    image: adminer:latest
+    container_name: aureon-dev-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+    depends_on:
+      - db
+    networks:
+      - aureon-dev-network
+    restart: unless-stopped
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  aureon-dev-network:
+    driver: bridge
+
+# ============================================================
+# Volumes
+# ============================================================
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
   static_volume:
+    driver: local
   media_volume:
+    driver: local
   logs_volume:
-
-networks:
-  aureon-network:
-    driver: bridge
+    driver: local
+  frontend_node_modules:
+    driver: local

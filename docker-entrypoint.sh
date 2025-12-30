@@ -1,6 +1,9 @@
 #!/bin/bash
-# Docker entrypoint script for Aureon SaaS Platform
-# Rhematek Production Shield
+# ============================================================
+# AUREON SaaS Platform - Docker Entrypoint
+# Rhematek Production Shield + Scale8
+# ONE COMMAND DEPLOYMENT - Everything is automatic
+# ============================================================
 
 set -e
 
@@ -106,6 +109,13 @@ if not User.objects.filter(email=email).exists():
 else:
     print(f'Superuser {email} already exists')
 " 2>/dev/null || echo "Superuser creation skipped"
+fi
+
+# Seed demo data if SEED_DEMO_DATA is set
+if [ "$SEED_DEMO_DATA" = "true" ] || [ "$SEED_DEMO_DATA" = "1" ]; then
+    echo ""
+    echo "Seeding demo data..."
+    python manage.py seed_demo_data 2>/dev/null || echo "Demo data seeding skipped"
 fi
 
 echo ""

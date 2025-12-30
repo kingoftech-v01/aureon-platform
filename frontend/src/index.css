@@ -1,22 +1,309 @@
 /**
  * Global Styles
  * Aureon by Rhematek Solutions
+ *
+ * Optimized for Lighthouse 95+ scores in Performance, Accessibility, SEO, and Best Practices
  */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ===================================
+   CSS Custom Properties (Design Tokens)
+   =================================== */
+:root {
+  /* Color Palette */
+  --color-primary: 37 99 235;
+  --color-primary-dark: 29 78 216;
+  --color-secondary: 16 185 129;
+  --color-accent: 0 217 192;
+
+  /* Semantic Colors */
+  --color-success: 34 197 94;
+  --color-warning: 245 158 11;
+  --color-error: 239 68 68;
+  --color-info: 59 130 246;
+
+  /* Neutral Colors */
+  --color-text-primary: 30 41 59;
+  --color-text-secondary: 100 116 139;
+  --color-background: 255 255 255;
+  --color-surface: 248 250 252;
+
+  /* Focus Ring */
+  --focus-ring-color: 37 99 235;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* Animation Durations */
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+
+  /* Z-Index Scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-skip-link: 9999;
+}
+
+/* Dark mode color overrides */
+.dark {
+  --color-text-primary: 241 245 249;
+  --color-text-secondary: 148 163 184;
+  --color-background: 15 23 42;
+  --color-surface: 30 41 59;
+}
+
+/* ===================================
+   Base Styles
+   =================================== */
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
     @apply border-border;
+  }
+
+  html {
+    /* Improve text rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+
+    /* Prevent text inflation on mobile */
+    -webkit-text-size-adjust: 100%;
+
+    /* Smooth scrolling with accessibility consideration */
+    scroll-behavior: smooth;
+
+    /* Better font stacking */
+    font-family:
+      'Inter',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      Roboto,
+      'Helvetica Neue',
+      Arial,
+      sans-serif;
   }
 
   body {
     @apply bg-background text-foreground;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Focus styles for accessibility */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid rgb(var(--focus-ring-color));
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  /* Remove focus outline for mouse users */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Improve anchor accessibility */
+  a {
+    color: inherit;
+    text-decoration-skip-ink: auto;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  /* Image optimization hints */
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Improve form accessibility */
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Disable animations for users who prefer reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (forced-colors: active) {
+    button,
+    a {
+      forced-color-adjust: none;
+    }
+  }
+
+  /* Selection styling */
+  ::selection {
+    background-color: rgb(var(--color-primary) / 0.2);
+    color: rgb(var(--color-text-primary));
+  }
+
+  /* Scrollbar styling (WebKit) */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--color-surface));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--color-text-secondary) / 0.3);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--color-text-secondary) / 0.5);
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-text-secondary) / 0.3) rgb(var(--color-surface));
   }
 }
 
+/* ===================================
+   Component Styles
+   =================================== */
+@layer components {
+  /* Skip Link - Accessibility */
+  .skip-link {
+    @apply fixed left-1/2 -translate-x-1/2 z-[9999];
+    @apply bg-primary text-white px-6 py-3 rounded-b-lg;
+    @apply font-semibold text-sm shadow-lg;
+    @apply transition-transform duration-200 ease-in-out;
+    @apply -translate-y-full;
+    @apply focus:translate-y-0;
+    @apply focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary;
+  }
+
+  /* Visually Hidden - Screen reader only content */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Not visually hidden (toggle) */
+  .not-sr-only {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  /* Focus ring utility */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  }
+
+  /* Interactive element base */
+  .interactive {
+    @apply cursor-pointer transition-colors duration-150;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  }
+
+  /* Card container */
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700;
+  }
+
+  /* Form input base */
+  .form-input {
+    @apply w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600;
+    @apply bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100;
+    @apply placeholder-gray-500 dark:placeholder-gray-400;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+    @apply disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed;
+  }
+
+  /* Button base styles */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-4 py-2 rounded-lg font-medium;
+    @apply transition-all duration-150;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-white hover:bg-primary-dark;
+    @apply focus-visible:ring-primary;
+  }
+
+  .btn-secondary {
+    @apply btn bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100;
+    @apply hover:bg-gray-200 dark:hover:bg-gray-600;
+    @apply focus-visible:ring-gray-500;
+  }
+
+  .btn-outline {
+    @apply btn border-2 border-primary text-primary;
+    @apply hover:bg-primary hover:text-white;
+    @apply focus-visible:ring-primary;
+  }
+
+  .btn-ghost {
+    @apply btn text-gray-700 dark:text-gray-300;
+    @apply hover:bg-gray-100 dark:hover:bg-gray-700;
+    @apply focus-visible:ring-gray-500;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+    @apply focus-visible:ring-red-500;
+  }
+}
+
+/* ===================================
+   Utility Classes
+   =================================== */
 @layer utilities {
   /* Custom animations */
   @keyframes shimmer {
@@ -31,5 +318,308 @@
   .animate-shimmer {
     animation: shimmer 2s infinite linear;
     background-size: 1000px 100%;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in var(--duration-normal) ease-out;
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-up {
+    animation: slide-up var(--duration-normal) ease-out;
+  }
+
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-down {
+    animation: slide-down var(--duration-normal) ease-out;
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-scale-in {
+    animation: scale-in var(--duration-normal) ease-out;
+  }
+
+  /* Spin animation for loading indicators */
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spin 2s linear infinite;
+  }
+
+  /* Pulse animation */
+  @keyframes pulse-subtle {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
+
+  /* Text truncation utilities */
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .truncate-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glass morphism effect */
+  .glass {
+    background: rgb(255 255 255 / 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .dark .glass {
+    background: rgb(15 23 42 / 0.8);
+  }
+}
+
+/* ===================================
+   Print Styles
+   =================================== */
+@media print {
+  /* Reset colors for printing */
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Ensure readable fonts */
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  /* Show URLs for links */
+  a[href]::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.8em;
+    font-weight: normal;
+  }
+
+  a[href^='#']::after,
+  a[href^='javascript:']::after {
+    content: '';
+  }
+
+  /* Ensure images don't overflow */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  /* Prevent breaking inside important elements */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  p,
+  blockquote,
+  pre,
+  ul,
+  ol,
+  dl,
+  figure,
+  table {
+    page-break-inside: avoid;
+  }
+
+  /* Hide non-essential elements */
+  nav,
+  aside,
+  footer,
+  .no-print,
+  .skip-link,
+  button:not(.print-btn) {
+    display: none !important;
+  }
+
+  /* Ensure main content is visible */
+  main {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Table styling */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th,
+  td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+
+  th {
+    background-color: #f2f2f2 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 2cm;
+  }
+
+  /* First page margin */
+  @page :first {
+    margin-top: 3cm;
+  }
+}
+
+/* ===================================
+   Reduced Motion Styles
+   =================================== */
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer,
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-slide-down,
+  .animate-scale-in,
+  .animate-spin,
+  .animate-spin-slow,
+  .animate-pulse,
+  .animate-pulse-subtle,
+  .animate-bounce {
+    animation: none !important;
+  }
+
+  .transition,
+  .transition-all,
+  .transition-colors,
+  .transition-opacity,
+  .transition-shadow,
+  .transition-transform {
+    transition: none !important;
+  }
+}
+
+/* ===================================
+   High Contrast Mode
+   =================================== */
+@media (forced-colors: active) {
+  .btn,
+  .card,
+  .form-input {
+    border: 2px solid currentColor !important;
+  }
+
+  .gradient-text {
+    -webkit-text-fill-color: currentColor;
+    background: none;
+  }
+
+  /* Ensure focus is visible */
+  :focus-visible {
+    outline: 3px solid CanvasText !important;
+    outline-offset: 2px !important;
+  }
+}
+
+/* ===================================
+   Container Queries (Modern Browsers)
+   =================================== */
+@supports (container-type: inline-size) {
+  .container-query {
+    container-type: inline-size;
+  }
+
+  @container (min-width: 400px) {
+    .container-sm\:flex {
+      display: flex;
+    }
+
+    .container-sm\:grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 600px) {
+    .container-md\:flex {
+      display: flex;
+    }
+
+    .container-md\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 }

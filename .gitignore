@@ -1,2 +1,113 @@
-/.env.example
-/.venv
+# ============================================
+# AUREON SAAS PLATFORM - GITIGNORE
+# ============================================
+
+# Environment Variables (SECURITY CRITICAL)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Keep example file
+!.env.example
+
+# Python Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / Packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Database
+*.sqlite3
+*.db
+
+# Static and Media (production)
+staticfiles/
+media/
+
+# Node modules (frontend)
+node_modules/
+.npm/
+
+# Frontend build
+frontend/dist/
+frontend/build/
+
+# Secrets and Keys
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.bak
+
+# Docker
+docker/postgres/data/
+docker/redis/data/
+
+# Backups
+backups/
+*.sql
+*.dump
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Coverage reports
+coverage.xml
+.coverage.*
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MyPy
+.mypy_cache/
+
+# Local development
+local_settings.py
+*.local.py
