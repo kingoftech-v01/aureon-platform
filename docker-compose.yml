@@ -11,7 +11,7 @@ services:
   # PostgreSQL Database
   # ============================================================
   db:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: aureon-dev-db
     volumes:
       - postgres_data:/var/lib/postgresql/data

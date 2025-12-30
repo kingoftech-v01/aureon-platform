@@ -55,7 +55,7 @@ services:
   # Primary write node with streaming replication
   # ============================================================
   db-master:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: aureon-db-master
     volumes:
       - postgres_master_data:/var/lib/postgresql/data
@@ -120,7 +120,7 @@ services:
   # Streaming replication for read scaling
   # ============================================================
   db-replica-1:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: aureon-db-replica-1
     volumes:
       - postgres_replica_1_data:/var/lib/postgresql/data
@@ -164,7 +164,7 @@ services:
   # Additional read scaling capacity
   # ============================================================
   db-replica-2:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: aureon-db-replica-2
     volumes:
       - postgres_replica_2_data:/var/lib/postgresql/data
