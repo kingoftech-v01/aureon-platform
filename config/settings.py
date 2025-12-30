@@ -321,17 +321,47 @@ CSP_SCRIPT_SRC = (
     "https://js.stripe.com",
     "https://cdn.jsdelivr.net",
     "https://cdnjs.cloudflare.com",
+    "https://www.googletagmanager.com",
+    "https://www.google-analytics.com",
+    "https://connect.facebook.net",
+    "https://www.facebook.com",
 )
 CSP_STYLE_SRC = (
     "'self'",
     "'unsafe-inline'",  # Required for inline styles
     "https://fonts.googleapis.com",
     "https://cdn.jsdelivr.net",
+    "https://cdnjs.cloudflare.com",
 )
-CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com", "data:", "https://cdn.jsdelivr.net")
-CSP_IMG_SRC = ("'self'", "data:", "https:", "blob:")
-CSP_CONNECT_SRC = ("'self'", "https://api.stripe.com", "wss:", "https:")
-CSP_FRAME_SRC = ("'self'", "https://js.stripe.com", "https://hooks.stripe.com")
+CSP_FONT_SRC = (
+    "'self'",
+    "https://fonts.gstatic.com",
+    "data:",
+    "https://cdn.jsdelivr.net",
+    "https://cdnjs.cloudflare.com",
+)
+CSP_IMG_SRC = (
+    "'self'",
+    "data:",
+    "https:",
+    "blob:",
+    "https://www.facebook.com",
+    "https://www.google-analytics.com",
+)
+CSP_CONNECT_SRC = (
+    "'self'",
+    "https://api.stripe.com",
+    "wss:",
+    "https:",
+    "https://www.google-analytics.com",
+    "https://www.facebook.com",
+)
+CSP_FRAME_SRC = (
+    "'self'",
+    "https://js.stripe.com",
+    "https://hooks.stripe.com",
+    "https://www.googletagmanager.com",
+)
 CSP_OBJECT_SRC = ("'none'",)
 CSP_BASE_URI = ("'self'",)
 CSP_FORM_ACTION = ("'self'",)

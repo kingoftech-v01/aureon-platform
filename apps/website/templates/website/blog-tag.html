@@ -1,0 +1,137 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block title %}{{ tag.name }} - Blog Articles & Resources | Aureon{% endblock %}
+
+{% block meta_description %}Explore articles tagged with {{ tag.name }} on the Aureon blog. Find insights about business automation and financial workflow optimization.{% endblock %}
+
+{% block meta_keywords %}{{ tag.name }}, aureon blog, business automation, tagged articles, {{ tag.name|lower }} resources{% endblock %}
+
+{% block extra_head %}
+<!-- Structured Data - CollectionPage -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Posts tagged with {{ tag.name }} - Aureon Blog",
+    "description": "Articles and resources tagged with {{ tag.name }}",
+    "url": "{{ request.build_absolute_uri }}",
+    "isPartOf": {
+        "@type": "Blog",
+        "name": "Aureon Blog",
+        "url": "{% url 'website:blog' %}"
+    }
+}
+</script>
+<!-- Structured Data - BreadcrumbList -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{% url 'website:home' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Blog",
+            "item": "{% url 'website:blog' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Tag: {{ tag.name }}",
+            "item": "{{ request.build_absolute_uri }}"
+        }
+    ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Banner area start -->
+<section class="banner__inner-page bg-image pt-160 pb-160" data-background="{% static 'website/images/banner/banner-inner-page.jpg' %}">
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="banner__inner-page-item">
+                    <h1 class="title split-text right">Tag: {{ tag.name }}</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'website:home' %}">Home</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'website:blog' %}">Blog</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">{{ tag.name }}</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Banner area end -->
+
+<!-- Blog tag section start -->
+<section class="blog__tag pt-120 pb-120">
+    <div class="container">
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-8 text-center">
+                <h2 class="section-title">Posts tagged with "{{ tag.name }}"</h2>
+            </div>
+        </div>
+        <div class="row">
+            {% for post in posts %}
+            <div class="col-md-4 mb-4">
+                <article class="blog__card bg-white rounded shadow-sm overflow-hidden h-100">
+                    {% if post.featured_image %}
+                    <a href="{% url 'website:blog_detail' post.slug %}">
+                        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="img-fluid" style="height: 200px; width: 100%; object-fit: cover;" loading="lazy">
+                    </a>
+                    {% endif %}
+                    <div class="p-4">
+                        <span class="text-muted small">{{ post.published_at|date:"M d, Y" }}</span>
+                        <h5 class="blog__title mt-2 mb-3">
+                            <a href="{% url 'website:blog_detail' post.slug %}" class="text-dark">{{ post.title }}</a>
+                        </h5>
+                        <p class="text-muted small mb-3">{{ post.excerpt|truncatewords:15 }}</p>
+                        <a href="{% url 'website:blog_detail' post.slug %}" class="btn btn-sm btn-outline-primary">Read More</a>
+                    </div>
+                </article>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5">
+                <h4>No posts with this tag</h4>
+                <a href="{% url 'website:blog' %}" class="btn btn-primary mt-3">View All Posts</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Blog pagination" class="mt-5">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                </li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</section>
+<!-- Blog tag section end -->
+{% endblock %}

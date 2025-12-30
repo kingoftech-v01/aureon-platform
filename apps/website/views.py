@@ -702,7 +702,7 @@ class CaseStudyListView(ListView):
         )
         context['featured_case_studies'] = CaseStudy.objects.filter(
             status='published',
-            is_featured=True
+            featured=True
         )[:3]
         context['page_title'] = 'Case Studies'
         context['meta_description'] = 'Discover how businesses have transformed their operations with Aureon. Read our success stories and case studies.'

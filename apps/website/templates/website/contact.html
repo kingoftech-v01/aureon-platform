@@ -1,0 +1,222 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block title %}Contact Us - Get in Touch with Aureon | Business Automation Support{% endblock %}
+
+{% block meta_description %}Contact Aureon for business automation inquiries, demos, or support. Our team is ready to help you streamline your financial workflows with our comprehensive SaaS platform.{% endblock %}
+
+{% block meta_keywords %}contact aureon, business automation support, SaaS demo, financial workflow help, customer support, sales inquiry{% endblock %}
+
+{% block extra_head %}
+<!-- Structured Data - ContactPage -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    "name": "Contact Aureon",
+    "description": "Contact page for Aureon business automation platform",
+    "url": "{{ request.build_absolute_uri }}",
+    "mainEntity": {
+        "@type": "Organization",
+        "name": "Aureon",
+        "telephone": "{{ site_settings.contact_phone|default:'+33 1 23 45 67 89' }}",
+        "email": "{{ site_settings.contact_email|default:'contact@rhematek-solutions.com' }}",
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "{{ site_settings.address|default:'Paris, France' }}"
+        }
+    }
+}
+</script>
+<!-- Structured Data - BreadcrumbList -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{% url 'website:home' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Contact",
+            "item": "{{ request.build_absolute_uri }}"
+        }
+    ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Banner area start -->
+<section class="banner__inner-page bg-image pt-160 pb-160" data-background="{% static 'website/images/banner/banner-inner-page.jpg' %}">
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="banner__inner-page-item">
+                    <h1 class="title split-text right">Contact Us</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'website:home' %}">Home</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Contact</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Banner area end -->
+
+<!-- Contact section start -->
+<section class="contact__section pt-120 pb-120">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-4 mb-5 mb-lg-0">
+                <div class="contact__info" itemscope itemtype="https://schema.org/Organization">
+                    <h2 class="mb-4 h3">Get in Touch</h2>
+                    <p class="text-muted mb-5">
+                        Have a question or need help? We'd love to hear from you.
+                        Fill out the form and we'll get back to you as soon as possible.
+                    </p>
+
+                    <div class="contact__info-item d-flex mb-4">
+                        <div class="icon me-3">
+                            <div class="bg-primary rounded p-3">
+                                <i class="fas fa-envelope text-white" aria-hidden="true"></i>
+                            </div>
+                        </div>
+                        <div class="content">
+                            <h3 class="mb-1 h6">Email</h3>
+                            <p class="text-muted mb-0" itemprop="email">
+                                <a href="mailto:{{ site_settings.contact_email|default:'contact@rhematek-solutions.com' }}">
+                                    {{ site_settings.contact_email|default:"contact@rhematek-solutions.com" }}
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="contact__info-item d-flex mb-4">
+                        <div class="icon me-3">
+                            <div class="bg-primary rounded p-3">
+                                <i class="fas fa-phone text-white" aria-hidden="true"></i>
+                            </div>
+                        </div>
+                        <div class="content">
+                            <h3 class="mb-1 h6">Phone</h3>
+                            <p class="text-muted mb-0" itemprop="telephone">
+                                <a href="tel:{{ site_settings.phone|default:'+33123456789' }}">
+                                    {{ site_settings.phone|default:"+33 1 23 45 67 89" }}
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="contact__info-item d-flex mb-4">
+                        <div class="icon me-3">
+                            <div class="bg-primary rounded p-3">
+                                <i class="fas fa-map-marker-alt text-white" aria-hidden="true"></i>
+                            </div>
+                        </div>
+                        <div class="content">
+                            <h3 class="mb-1 h6">Address</h3>
+                            <p class="text-muted mb-0" itemprop="address">{{ site_settings.address|default:"Paris, France" }}</p>
+                        </div>
+                    </div>
+
+                    <div class="social__links mt-5">
+                        <h3 class="mb-3 h6">Follow Us</h3>
+                        <a href="{{ site_settings.facebook_url|default:'#' }}" class="me-2" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Facebook"><i class="fab fa-facebook-f fa-lg" aria-hidden="true"></i></a>
+                        <a href="{{ site_settings.twitter_url|default:'#' }}" class="me-2" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Twitter"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a>
+                        <a href="{{ site_settings.linkedin_url|default:'#' }}" class="me-2" target="_blank" rel="noopener noreferrer" aria-label="Follow us on LinkedIn"><i class="fab fa-linkedin-in fa-lg" aria-hidden="true"></i></a>
+                        <a href="{{ site_settings.instagram_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Instagram"><i class="fab fa-instagram fa-lg" aria-hidden="true"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="contact__form bg-light p-5 rounded">
+                    <h2 class="mb-4 h3">Send us a Message</h2>
+                    <form method="post" action="{% url 'website:contact' %}" novalidate>
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                {{ form.first_name }}
+                                {% if form.first_name.errors %}
+                                <div class="text-danger small" role="alert">{{ form.first_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                {{ form.last_name }}
+                                {% if form.last_name.errors %}
+                                <div class="text-danger small" role="alert">{{ form.last_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_email" class="form-label">Email <span class="text-danger">*</span></label>
+                                {{ form.email }}
+                                {% if form.email.errors %}
+                                <div class="text-danger small" role="alert">{{ form.email.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_phone" class="form-label">Phone</label>
+                                {{ form.phone }}
+                                {% if form.phone.errors %}
+                                <div class="text-danger small" role="alert">{{ form.phone.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_company" class="form-label">Company</label>
+                            {{ form.company }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_subject" class="form-label">Subject <span class="text-danger">*</span></label>
+                            {{ form.subject }}
+                            {% if form.subject.errors %}
+                            <div class="text-danger small" role="alert">{{ form.subject.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-4">
+                            <label for="id_message" class="form-label">Message <span class="text-danger">*</span></label>
+                            {{ form.message }}
+                            {% if form.message.errors %}
+                            <div class="text-danger small" role="alert">{{ form.message.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg">Send Message</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Contact section end -->
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .contact__form input.form-control,
+    .contact__form textarea.form-control,
+    .contact__form select.form-control {
+        border: 1px solid #dee2e6;
+        padding: 12px 16px;
+        border-radius: 8px;
+    }
+    .contact__form input.form-control:focus,
+    .contact__form textarea.form-control:focus,
+    .contact__form select.form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.15);
+    }
+</style>
+{% endblock %}

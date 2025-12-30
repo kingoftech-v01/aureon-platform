@@ -1,0 +1,214 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block title %}Blog - Business Automation Insights & Tips | Aureon{% endblock %}
+
+{% block meta_description %}Explore the Aureon blog for expert insights on business automation, contract management, invoicing, and payment processing. Stay updated with the latest industry trends.{% endblock %}
+
+{% block meta_keywords %}business automation blog, contract management tips, invoicing best practices, payment processing insights, SaaS automation, financial workflow{% endblock %}
+
+{% block extra_head %}
+<!-- Structured Data - Blog -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "name": "Aureon Blog",
+    "description": "Expert insights on business automation, contract management, and financial workflows",
+    "url": "{{ request.build_absolute_uri }}",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Aureon",
+        "logo": {
+            "@type": "ImageObject",
+            "url": "{% static 'website/images/logo/logo.svg' %}"
+        }
+    }
+}
+</script>
+<!-- Structured Data - BreadcrumbList -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{% url 'website:home' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Blog",
+            "item": "{{ request.build_absolute_uri }}"
+        }
+    ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Banner area start -->
+<section class="banner__inner-page bg-image pt-160 pb-160" data-background="{% static 'website/images/banner/banner-inner-page.jpg' %}">
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="banner__inner-page-item">
+                    <h1 class="title split-text right">Blog</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'website:home' %}">Home</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Blog</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Banner area end -->
+
+<!-- Blog section start -->
+<section class="blog__section pt-120 pb-120">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Search results info -->
+                {% if search_query %}
+                <div class="search-info mb-4">
+                    <h5>Search results for: "{{ search_query }}"</h5>
+                </div>
+                {% endif %}
+
+                <!-- Blog posts -->
+                <div class="row">
+                    {% for post in posts %}
+                    <div class="col-md-6 mb-4">
+                        <article class="blog__card bg-white rounded shadow-sm overflow-hidden h-100">
+                            {% if post.featured_image %}
+                            <a href="{% url 'website:blog_detail' post.slug %}">
+                                <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="img-fluid" style="height: 200px; width: 100%; object-fit: cover;" loading="lazy">
+                            </a>
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="fas fa-newspaper fa-3x text-muted" aria-hidden="true"></i>
+                            </div>
+                            {% endif %}
+                            <div class="p-4">
+                                <div class="blog__meta mb-2">
+                                    {% if post.category %}
+                                    <a href="{% url 'website:blog_category' post.category.slug %}" class="badge bg-primary text-decoration-none">{{ post.category.name }}</a>
+                                    {% endif %}
+                                    <span class="text-muted small ms-2">{{ post.published_at|date:"M d, Y" }}</span>
+                                </div>
+                                <h5 class="blog__title mb-3">
+                                    <a href="{% url 'website:blog_detail' post.slug %}" class="text-dark">{{ post.title }}</a>
+                                </h5>
+                                <p class="text-muted small mb-3">{{ post.excerpt|truncatewords:20 }}</p>
+                                <a href="{% url 'website:blog_detail' post.slug %}" class="btn btn-sm btn-outline-primary">Read More</a>
+                            </div>
+                        </article>
+                    </div>
+                    {% empty %}
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <i class="fas fa-newspaper fa-4x text-muted mb-4" aria-hidden="true"></i>
+                            <h4>No posts found</h4>
+                            <p class="text-muted">{% if search_query %}Try a different search term.{% else %}Check back soon for new content.{% endif %}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <nav aria-label="Blog pagination" class="mt-5">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">Previous</a>
+                        </li>
+                        {% endif %}
+                        {% for num in page_obj.paginator.page_range %}
+                        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endfor %}
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+
+            <div class="col-lg-4">
+                <div class="blog__sidebar">
+                    <!-- Search -->
+                    <div class="sidebar__widget bg-light p-4 rounded mb-4">
+                        <h5 class="mb-3">Search</h5>
+                        <form action="{% url 'website:blog' %}" method="get">
+                            <div class="input-group">
+                                <input type="text" name="q" class="form-control" placeholder="Search posts..." value="{{ search_query }}">
+                                <button class="btn btn-primary" type="submit" aria-label="Search"><i class="fas fa-search" aria-hidden="true"></i></button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Categories -->
+                    {% if categories %}
+                    <div class="sidebar__widget bg-light p-4 rounded mb-4">
+                        <h5 class="mb-3">Categories</h5>
+                        <ul class="list-unstyled mb-0">
+                            {% for category in categories %}
+                            <li class="mb-2">
+                                <a href="{% url 'website:blog_category' category.slug %}" class="d-flex justify-content-between text-dark">
+                                    {{ category.name }}
+                                    <span class="badge bg-secondary">{{ category.post_count }}</span>
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <!-- Featured posts -->
+                    {% if featured_posts %}
+                    <div class="sidebar__widget bg-light p-4 rounded mb-4">
+                        <h5 class="mb-3">Featured Posts</h5>
+                        {% for post in featured_posts %}
+                        <div class="featured-post d-flex mb-3">
+                            {% if post.featured_image %}
+                            <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="rounded me-3" style="width: 80px; height: 60px; object-fit: cover;" loading="lazy">
+                            {% endif %}
+                            <div>
+                                <a href="{% url 'website:blog_detail' post.slug %}" class="text-dark small fw-bold">{{ post.title|truncatewords:8 }}</a>
+                                <p class="text-muted small mb-0">{{ post.published_at|date:"M d, Y" }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Tags -->
+                    {% if tags %}
+                    <div class="sidebar__widget bg-light p-4 rounded">
+                        <h5 class="mb-3">Tags</h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for tag in tags %}
+                            <a href="{% url 'website:blog_tag' tag.slug %}" class="badge bg-secondary text-decoration-none">{{ tag.name }}</a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Blog section end -->
+{% endblock %}

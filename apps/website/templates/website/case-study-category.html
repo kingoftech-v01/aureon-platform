@@ -1,0 +1,148 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block title %}{{ category.name }} Case Studies - Industry Success Stories | Aureon{% endblock %}
+
+{% block meta_description %}Explore {{ category.name }} case studies showcasing how businesses in this industry transformed their operations with Aureon's financial automation platform.{% endblock %}
+
+{% block meta_keywords %}{{ category.name }} case studies, {{ category.name|lower }} automation, business success stories, industry results{% endblock %}
+
+{% block extra_head %}
+<!-- Structured Data - CollectionPage -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "{{ category.name }} Case Studies - Aureon",
+    "description": "{{ category.description|default:'Case studies showcasing business success in '|add:category.name }}",
+    "url": "{{ request.build_absolute_uri }}",
+    "isPartOf": {
+        "@type": "WebSite",
+        "name": "Aureon",
+        "url": "{% url 'website:home' %}"
+    }
+}
+</script>
+<!-- Structured Data - BreadcrumbList -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{% url 'website:home' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Case Studies",
+            "item": "{% url 'website:case_studies' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "{{ category.name }}",
+            "item": "{{ request.build_absolute_uri }}"
+        }
+    ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Banner area start -->
+<section class="banner__inner-page bg-image pt-160 pb-160" data-background="{% static 'website/images/banner/banner-inner-page.jpg' %}">
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="banner__inner-page-item">
+                    <h1 class="title split-text right">{{ category.name }}</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'website:home' %}">Home</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'website:case_studies' %}">Case Studies</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">{{ category.name }}</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Banner area end -->
+
+<!-- Case studies category list -->
+<section class="case-studies__category pt-120 pb-120">
+    <div class="container">
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-8 text-center">
+                <h2 class="section-title">{{ category.name }} Case Studies</h2>
+                {% if category.description %}
+                <p class="text-muted">{{ category.description }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Categories filter -->
+        <div class="d-flex flex-wrap justify-content-center gap-2 mb-5">
+            <a href="{% url 'website:case_studies' %}" class="btn btn-sm btn-outline-primary">All</a>
+            {% for cat in categories %}
+            <a href="{% url 'website:case_study_category' cat.slug %}" class="btn btn-sm {% if cat.slug == category.slug %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                {{ cat.name }} ({{ cat.case_study_count }})
+            </a>
+            {% endfor %}
+        </div>
+
+        <div class="row">
+            {% for case_study in case_studies %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="case-study__card bg-white rounded shadow-sm overflow-hidden h-100">
+                    {% if case_study.featured_image %}
+                    <a href="{% url 'website:case_study_detail' case_study.slug %}">
+                        <img src="{{ case_study.featured_image.url }}" alt="{{ case_study.title }}" class="img-fluid" style="height: 200px; width: 100%; object-fit: cover;" loading="lazy">
+                    </a>
+                    {% endif %}
+                    <div class="p-4">
+                        <h5><a href="{% url 'website:case_study_detail' case_study.slug %}" class="text-dark">{{ case_study.title }}</a></h5>
+                        <p class="text-muted small mb-3">{{ case_study.client_name }}</p>
+                        <p class="text-muted small mb-3">{{ case_study.excerpt|truncatewords:15 }}</p>
+                        <a href="{% url 'website:case_study_detail' case_study.slug %}" class="btn btn-sm btn-outline-primary">Read Case Study</a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5">
+                <h4>No case studies in this category</h4>
+                <a href="{% url 'website:case_studies' %}" class="btn btn-primary mt-3">View All Case Studies</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Case studies pagination" class="mt-5">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                </li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

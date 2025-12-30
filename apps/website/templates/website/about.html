@@ -1,0 +1,270 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block title %}About Us - Financial Automation Platform | Aureon{% endblock %}
+
+{% block meta_description %}Learn about Aureon, the leading SaaS platform automating financial workflows. From contracts to payments, we help businesses reduce manual effort and accelerate growth.{% endblock %}
+
+{% block meta_keywords %}about aureon, financial automation, business automation platform, contract management, invoice automation, payment processing{% endblock %}
+
+{% block extra_head %}
+<!-- Structured Data - Organization -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Aureon",
+    "description": "Comprehensive SaaS platform that automates end-to-end client financial workflows",
+    "url": "{{ request.build_absolute_uri }}",
+    "logo": "{% static 'website/images/logo/logo.svg' %}",
+    "sameAs": [
+        "{{ site_settings.twitter_url|default:'' }}",
+        "{{ site_settings.linkedin_url|default:'' }}",
+        "{{ site_settings.facebook_url|default:'' }}"
+    ],
+    "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "{{ site_settings.contact_phone|default:'' }}",
+        "contactType": "customer service",
+        "email": "{{ site_settings.contact_email|default:'' }}"
+    }
+}
+</script>
+<!-- Structured Data - BreadcrumbList -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{% url 'website:home' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "About Us",
+            "item": "{{ request.build_absolute_uri }}"
+        }
+    ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Banner area start -->
+<section class="banner__inner-page bg-image pt-160 pb-160 bg-image" data-background="{% static 'website/images/banner/banner-inner-page.jpg' %}">
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="banner__inner-page-item">
+                    <h1 class="title split-text right">About Aureon</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'website:home' %}">Home</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">About Us</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Banner area end -->
+
+<!-- About section start -->
+<section class="about__section pt-120 pb-120">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-xl-6 col-lg-6">
+                <div class="about__left-item">
+                    <div class="image">
+                        <img src="{% static 'website/images/about/about-image1.jpg' %}" alt="About Aureon - Financial Automation Platform" loading="lazy" width="570" height="400">
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6 col-lg-6">
+                <div class="about__right-item">
+                    <span class="section-subtitle">About Aureon</span>
+                    <h2 class="section-title">Automating Financial Workflows for Modern Businesses</h2>
+                    <p class="mb-4">
+                        Aureon is a comprehensive SaaS platform developed by Rhematek Solutions that automates
+                        end-to-end client financial workflows. From lead-to-contract, contract generation and
+                        e-signature, auto-invoicing, payment collection via Stripe, receipt delivery, to
+                        real-time dashboards - we handle it all.
+                    </p>
+                    <p class="mb-4">
+                        Our mission is to reduce manual effort, shorten sales cycles, improve cash flow,
+                        and provide airtight audit trails for both freelancers and growing businesses.
+                    </p>
+                    <div class="about__feature-list">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check-circle text-primary me-2"></i> End-to-end Automation</li>
+                                    <li><i class="fas fa-check-circle text-primary me-2"></i> Faster Cash Flow</li>
+                                    <li><i class="fas fa-check-circle text-primary me-2"></i> E-Signatures</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check-circle text-primary me-2"></i> Stripe Integration</li>
+                                    <li><i class="fas fa-check-circle text-primary me-2"></i> Real-time Analytics</li>
+                                    <li><i class="fas fa-check-circle text-primary me-2"></i> Compliance Ready</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- About section end -->
+
+<!-- Mission & Vision section start -->
+<section class="mission__section pt-80 pb-80 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <div class="mission__item bg-white p-5 rounded shadow-sm h-100">
+                    <div class="icon mb-4">
+                        <i class="fas fa-bullseye fa-3x text-primary" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="mb-3">Our Mission</h3>
+                    <p>
+                        To empower businesses of all sizes with automated financial workflows that save time,
+                        reduce errors, and accelerate growth. We believe that managing contracts, invoices,
+                        and payments should be effortless.
+                    </p>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="vision__item bg-white p-5 rounded shadow-sm h-100">
+                    <div class="icon mb-4">
+                        <i class="fas fa-eye fa-3x text-primary" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="mb-3">Our Vision</h3>
+                    <p>
+                        To become the leading platform for business automation, enabling every company -
+                        from freelancers to enterprises - to operate with the efficiency and professionalism
+                        of Fortune 500 companies.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Mission & Vision section end -->
+
+<!-- Team section start -->
+{% if team_members %}
+<section class="team__section pt-120 pb-120">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-xl-8 text-center">
+                <span class="section-subtitle">Our Team</span>
+                <h2 class="section-title mb-60">Meet the People Behind Aureon</h2>
+            </div>
+        </div>
+        <div class="row">
+            {% for member in team_members %}
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+                <div class="team__item text-center" itemscope itemtype="https://schema.org/Person">
+                    <div class="team__image mb-3">
+                        {% if member.photo %}
+                        <img src="{{ member.photo.url }}" alt="{{ member.name }} - {{ member.position }}" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;" loading="lazy" itemprop="image">
+                        {% else %}
+                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto" style="width: 150px; height: 150px;">
+                            <span class="text-white display-4">{{ member.name|slice:":1" }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <h4 class="team__name" itemprop="name">{{ member.name }}</h4>
+                    <p class="team__position text-muted" itemprop="jobTitle">{{ member.position }}</p>
+                    {% if member.linkedin or member.twitter %}
+                    <div class="team__social mt-3">
+                        {% if member.linkedin %}
+                        <a href="{{ member.linkedin }}" target="_blank" rel="noopener noreferrer" class="me-2" aria-label="{{ member.name }}'s LinkedIn"><i class="fab fa-linkedin" aria-hidden="true"></i></a>
+                        {% endif %}
+                        {% if member.twitter %}
+                        <a href="{{ member.twitter }}" target="_blank" rel="noopener noreferrer" aria-label="{{ member.name }}'s Twitter"><i class="fab fa-twitter" aria-hidden="true"></i></a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+<!-- Team section end -->
+
+<!-- Testimonials section start -->
+{% if testimonials %}
+<section class="testimonial__section pt-80 pb-120 bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-xl-8 text-center">
+                <span class="section-subtitle">Testimonials</span>
+                <h2 class="section-title mb-60">What Our Clients Say</h2>
+            </div>
+        </div>
+        <div class="row">
+            {% for testimonial in testimonials %}
+            <div class="col-lg-4 mb-4">
+                <div class="testimonial__item bg-white p-4 rounded shadow-sm h-100" itemscope itemtype="https://schema.org/Review">
+                    <div class="rating mb-3" itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating">
+                        <meta itemprop="ratingValue" content="{{ testimonial.rating }}">
+                        <meta itemprop="bestRating" content="5">
+                        {% for i in "12345" %}
+                        {% if forloop.counter <= testimonial.rating %}
+                        <i class="fas fa-star text-warning" aria-hidden="true"></i>
+                        {% else %}
+                        <i class="far fa-star text-warning" aria-hidden="true"></i>
+                        {% endif %}
+                        {% endfor %}
+                        <span class="visually-hidden">{{ testimonial.rating }} out of 5 stars</span>
+                    </div>
+                    <p class="testimonial__content mb-4" itemprop="reviewBody">"{{ testimonial.content }}"</p>
+                    <div class="testimonial__author d-flex align-items-center" itemprop="author" itemscope itemtype="https://schema.org/Person">
+                        {% if testimonial.client_photo %}
+                        <img src="{{ testimonial.client_photo.url }}" alt="{{ testimonial.client_name }}" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;" loading="lazy" itemprop="image">
+                        {% else %}
+                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                            <span class="text-white">{{ testimonial.client_name|slice:":1" }}</span>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <h6 class="mb-0" itemprop="name">{{ testimonial.client_name }}</h6>
+                            <small class="text-muted"><span itemprop="jobTitle">{{ testimonial.client_role }}</span>{% if testimonial.client_company %}, <span itemprop="worksFor">{{ testimonial.client_company }}</span>{% endif %}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+<!-- Testimonials section end -->
+
+<!-- CTA section start -->
+<section class="cta__section pt-80 pb-80 bg-primary">
+    <div class="container">
+        <div class="row align-items-center justify-content-between">
+            <div class="col-lg-8">
+                <h2 class="text-white mb-3">Ready to Transform Your Business?</h2>
+                <p class="text-white opacity-75 mb-0">Start your free trial today and experience the power of automation.</p>
+            </div>
+            <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+                <a href="{% url 'website:pricing' %}" class="btn btn-light btn-lg">Get Started Free</a>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- CTA section end -->
+{% endblock %}

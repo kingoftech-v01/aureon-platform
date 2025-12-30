@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You for Contacting Us</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .email-wrapper {
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background-color: #4f46e5;
+            color: #ffffff;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px;
+        }
+        .success-icon {
+            width: 60px;
+            height: 60px;
+            background-color: #10b981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        .success-icon svg {
+            width: 30px;
+            height: 30px;
+        }
+        h2 {
+            text-align: center;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        .message-recap {
+            background-color: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .message-recap h3 {
+            font-size: 14px;
+            color: #6b7280;
+            text-transform: uppercase;
+            margin: 0 0 10px 0;
+        }
+        .message-recap p {
+            margin: 0;
+            color: #374151;
+        }
+        .info-section {
+            margin: 30px 0;
+        }
+        .info-section h3 {
+            color: #1f2937;
+            margin-bottom: 15px;
+        }
+        .info-section ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #4b5563;
+        }
+        .info-section li {
+            margin-bottom: 8px;
+        }
+        .footer {
+            padding: 20px 30px;
+            background-color: #f9fafb;
+            text-align: center;
+            font-size: 13px;
+            color: #6b7280;
+        }
+        .social-links {
+            margin: 15px 0;
+        }
+        .social-links a {
+            display: inline-block;
+            margin: 0 8px;
+            color: #6b7280;
+            text-decoration: none;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #4f46e5;
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="email-wrapper">
+            <div class="header">
+                <h1>Aureon</h1>
+            </div>
+            <div class="content">
+                <div class="success-icon">
+                    <svg fill="none" stroke="white" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+
+                <h2>Thank You, {{ contact.name }}!</h2>
+                <p class="subtitle">We've received your message and will get back to you soon.</p>
+
+                <div class="message-recap">
+                    <h3>Your Message</h3>
+                    <p><strong>Subject:</strong> {{ contact.subject }}</p>
+                    <p style="margin-top: 10px;">{{ contact.message|truncatewords:50 }}</p>
+                </div>
+
+                <div class="info-section">
+                    <h3>What happens next?</h3>
+                    <ul>
+                        <li>Our team will review your inquiry within 24-48 business hours</li>
+                        <li>You'll receive a personalized response at {{ contact.email }}</li>
+                        <li>For urgent matters, you can reach us directly at {{ site_settings.contact_phone|default:"our support line" }}</li>
+                    </ul>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="{{ site_settings.site_url|default:'#' }}" class="btn">Visit Our Website</a>
+                </div>
+            </div>
+            <div class="footer">
+                <p><strong>Aureon</strong></p>
+                {% if site_settings.address %}
+                <p>{{ site_settings.address }}</p>
+                {% endif %}
+                <p>
+                    {% if site_settings.contact_email %}
+                    <a href="mailto:{{ site_settings.contact_email }}">{{ site_settings.contact_email }}</a>
+                    {% endif %}
+                    {% if site_settings.contact_phone %}
+                     | {{ site_settings.contact_phone }}
+                    {% endif %}
+                </p>
+                <div class="social-links">
+                    {% if site_settings.twitter_url %}
+                    <a href="{{ site_settings.twitter_url }}">Twitter</a>
+                    {% endif %}
+                    {% if site_settings.linkedin_url %}
+                    <a href="{{ site_settings.linkedin_url }}">LinkedIn</a>
+                    {% endif %}
+                    {% if site_settings.facebook_url %}
+                    <a href="{{ site_settings.facebook_url }}">Facebook</a>
+                    {% endif %}
+                </div>
+                <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
+                    You received this email because you submitted a contact form on our website.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

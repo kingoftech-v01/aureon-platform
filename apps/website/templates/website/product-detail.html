@@ -1,0 +1,213 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block title %}{{ product.name }} - Business Automation Product | Aureon{% endblock %}
+
+{% block meta_description %}{{ product.short_description|default:product.description|striptags|truncatewords:30 }}{% endblock %}
+
+{% block meta_keywords %}{{ product.name }}, business software, aureon product, {{ product.name|lower }}{% endblock %}
+
+{% block extra_head %}
+<!-- Structured Data - Product -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "{{ product.name|escapejs }}",
+    "description": "{{ product.short_description|escapejs }}",
+    {% if product.price %}"offers": {
+        "@type": "Offer",
+        "price": "{{ product.price }}",
+        "priceCurrency": "USD"
+    },{% endif %}
+    "brand": {
+        "@type": "Brand",
+        "name": "Aureon"
+    },
+    "url": "{{ request.build_absolute_uri }}"
+}
+</script>
+<!-- Structured Data - BreadcrumbList -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{% url 'website:home' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Products",
+            "item": "{% url 'website:products' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "{{ product.name|escapejs }}",
+            "item": "{{ request.build_absolute_uri }}"
+        }
+    ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Banner area start -->
+<section class="banner__inner-page bg-image pt-160 pb-160" data-background="{% static 'website/images/banner/banner-inner-page.jpg' %}">
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="banner__inner-page-item">
+                    <h1 class="title split-text right">{{ product.name }}</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'website:home' %}">Home</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'website:products' %}">Products</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">{{ product.name }}</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Banner area end -->
+
+<!-- Product detail -->
+<section class="product__detail pt-120 pb-120">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8">
+                {% if product.image %}
+                <div class="product__image mb-5">
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}" class="img-fluid rounded">
+                </div>
+                {% endif %}
+
+                <div class="product__header mb-5">
+                    <h1 class="mb-3">{{ product.name }}</h1>
+                    {% if product.short_description %}
+                    <p class="lead text-muted">{{ product.short_description }}</p>
+                    {% endif %}
+                </div>
+
+                {% if product.description %}
+                <div class="product__description mb-5">
+                    <h3 class="mb-4">Description</h3>
+                    <div class="product__content">
+                        {{ product.description|safe }}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if product.features %}
+                <div class="product__features mb-5">
+                    <h3 class="mb-4">Features</h3>
+                    <div class="product__content">
+                        {{ product.features|safe }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Gallery -->
+                {% if product.gallery_image_1 or product.gallery_image_2 or product.gallery_image_3 %}
+                <div class="product__gallery mb-5">
+                    <h3 class="mb-4">Gallery</h3>
+                    <div class="row">
+                        {% if product.gallery_image_1 %}
+                        <div class="col-md-4 mb-3">
+                            <img src="{{ product.gallery_image_1.url }}" alt="Gallery image 1" class="img-fluid rounded">
+                        </div>
+                        {% endif %}
+                        {% if product.gallery_image_2 %}
+                        <div class="col-md-4 mb-3">
+                            <img src="{{ product.gallery_image_2.url }}" alt="Gallery image 2" class="img-fluid rounded">
+                        </div>
+                        {% endif %}
+                        {% if product.gallery_image_3 %}
+                        <div class="col-md-4 mb-3">
+                            <img src="{{ product.gallery_image_3.url }}" alt="Gallery image 3" class="img-fluid rounded">
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="col-lg-4">
+                <div class="product__sidebar">
+                    <!-- Pricing card -->
+                    <div class="sidebar__widget bg-primary text-white p-4 rounded mb-4">
+                        {% if product.price %}
+                        <div class="text-center mb-4">
+                            <span class="small opacity-75">Starting at</span>
+                            <h2 class="text-white mb-0">${{ product.price }}</h2>
+                        </div>
+                        {% endif %}
+                        <a href="{% url 'website:contact' %}" class="btn btn-light w-100 mb-3">Get Started</a>
+                        <a href="{% url 'website:pricing' %}" class="btn btn-outline-light w-100">View Pricing</a>
+                    </div>
+
+                    <!-- Product info -->
+                    <div class="sidebar__widget bg-light p-4 rounded mb-4">
+                        <h5 class="mb-4">Product Details</h5>
+                        {% if product.category %}
+                        <div class="mb-3">
+                            <strong>Category:</strong><br>
+                            {{ product.category }}
+                        </div>
+                        {% endif %}
+                        {% if product.version %}
+                        <div class="mb-3">
+                            <strong>Version:</strong><br>
+                            {{ product.version }}
+                        </div>
+                        {% endif %}
+                        {% if product.updated_at %}
+                        <div>
+                            <strong>Last Updated:</strong><br>
+                            {{ product.updated_at|date:"F j, Y" }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Related products -->
+                    {% if related_products %}
+                    <div class="sidebar__widget bg-light p-4 rounded">
+                        <h5 class="mb-4">Related Products</h5>
+                        {% for related in related_products %}
+                        <div class="mb-3">
+                            <a href="{% url 'website:product_detail' related.slug %}" class="text-dark">
+                                <strong>{{ related.name }}</strong>
+                            </a>
+                            <p class="text-muted small mb-0">{{ related.short_description|truncatewords:10 }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA section -->
+<section class="cta__section pt-80 pb-80 bg-primary">
+    <div class="container">
+        <div class="row align-items-center justify-content-between">
+            <div class="col-lg-8">
+                <h2 class="text-white mb-3">Ready to Get Started?</h2>
+                <p class="text-white opacity-75 mb-0">Start your free trial and experience {{ product.name }} today.</p>
+            </div>
+            <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+                <a href="{% url 'website:pricing' %}" class="btn btn-light btn-lg">Start Free Trial</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

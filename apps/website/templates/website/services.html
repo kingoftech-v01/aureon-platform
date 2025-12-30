@@ -1,0 +1,220 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block title %}Business Automation Services - Contract, Invoice & Payment Solutions | Aureon{% endblock %}
+
+{% block meta_description %}Explore Aureon's comprehensive business automation services including contract management, automated invoicing, payment processing, and financial workflow optimization for modern businesses.{% endblock %}
+
+{% block meta_keywords %}business automation services, contract management, invoice automation, payment processing, financial workflow, SaaS services, e-signature, billing automation{% endblock %}
+
+{% block extra_head %}
+<!-- Structured Data - Service -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "serviceType": "Business Automation Platform",
+    "provider": {
+        "@type": "Organization",
+        "name": "Aureon",
+        "url": "{% url 'website:home' %}"
+    },
+    "description": "Comprehensive business automation solutions including contract management, invoicing, and payment processing",
+    "areaServed": "Worldwide"
+}
+</script>
+<!-- Structured Data - BreadcrumbList -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{% url 'website:home' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Services",
+            "item": "{{ request.build_absolute_uri }}"
+        }
+    ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Banner area start -->
+<section class="banner__inner-page bg-image pt-160 pb-160" data-background="{% static 'website/images/banner/banner-inner-page.jpg' %}">
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-12">
+                <div class="banner__inner-page-item">
+                    <h1 class="title split-text right">Our Services</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'website:home' %}">Home</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Services</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Banner area end -->
+
+<!-- Services intro section start -->
+<section class="services__intro pt-120 pb-60">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-xl-8 text-center">
+                <span class="section-subtitle">What We Offer</span>
+                <h2 class="section-title">Comprehensive Business Automation Solutions</h2>
+                <p class="lead text-muted">
+                    Aureon provides a complete suite of tools to automate your financial workflows,
+                    from contract creation to payment collection. Discover how we can help your business grow.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Services intro section end -->
+
+<!-- Services list section start -->
+<section class="services__list pb-120">
+    <div class="container">
+        <div class="row">
+            {% for service in services %}
+            <div class="col-xl-4 col-lg-6 mb-4">
+                <article class="service__item bg-white p-4 rounded shadow-sm h-100 hover-shadow transition" itemscope itemtype="https://schema.org/Service">
+                    <div class="service__icon mb-4">
+                        {% if service.icon %}
+                        <img src="{{ service.icon.url }}" alt="{{ service.name }} icon" style="width: 64px; height: 64px;" loading="lazy">
+                        {% else %}
+                        <div class="icon-placeholder bg-primary rounded p-3 d-inline-block">
+                            <i class="fas fa-cog fa-2x text-white" aria-hidden="true"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <h3 class="service__title mb-3 h4" itemprop="name">{{ service.name }}</h3>
+                    <p class="service__description text-muted mb-4" itemprop="description">{{ service.short_description }}</p>
+                    <a href="{% url 'website:service_detail' service.slug %}" class="btn btn-outline-primary" itemprop="url">Learn More <span class="visually-hidden">about {{ service.name }}</span></a>
+                </article>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5">
+                <p class="text-muted">Services information coming soon.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+<!-- Services list section end -->
+
+<!-- Features section start -->
+<section class="features__section pt-80 pb-80 bg-light">
+    <div class="container">
+        <div class="row justify-content-center mb-5">
+            <div class="col-xl-8 text-center">
+                <span class="section-subtitle">Why Choose Us</span>
+                <h2 class="section-title">The Aureon Advantage</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-4 mb-4">
+                <div class="feature__item text-center p-4">
+                    <div class="feature__icon mb-3">
+                        <i class="fas fa-bolt fa-3x text-primary" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="h4">Fast Implementation</h3>
+                    <p class="text-muted">Get up and running in minutes, not weeks. Our intuitive setup process means you can start automating immediately.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="feature__item text-center p-4">
+                    <div class="feature__icon mb-3">
+                        <i class="fas fa-lock fa-3x text-primary" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="h4">Enterprise Security</h3>
+                    <p class="text-muted">Bank-level encryption, SOC 2 compliance, and GDPR-ready. Your data is always secure with us.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="feature__item text-center p-4">
+                    <div class="feature__icon mb-3">
+                        <i class="fas fa-headset fa-3x text-primary" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="h4">24/7 Support</h3>
+                    <p class="text-muted">Our dedicated support team is always here to help you succeed with Aureon.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Features section end -->
+
+<!-- Testimonials section start -->
+{% if testimonials %}
+<section class="testimonial__section pt-80 pb-80">
+    <div class="container">
+        <div class="row justify-content-center mb-5">
+            <div class="col-xl-8 text-center">
+                <span class="section-subtitle">Testimonials</span>
+                <h2 class="section-title">What Our Clients Say</h2>
+            </div>
+        </div>
+        <div class="row justify-content-center">
+            {% for testimonial in testimonials %}
+            <div class="col-lg-4 mb-4">
+                <div class="testimonial__item bg-light p-4 rounded h-100" itemscope itemtype="https://schema.org/Review">
+                    <div class="rating mb-3" itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating">
+                        <meta itemprop="ratingValue" content="{{ testimonial.rating }}">
+                        <meta itemprop="bestRating" content="5">
+                        {% for i in "12345" %}
+                        {% if forloop.counter <= testimonial.rating %}
+                        <i class="fas fa-star text-warning" aria-hidden="true"></i>
+                        {% else %}
+                        <i class="far fa-star text-warning" aria-hidden="true"></i>
+                        {% endif %}
+                        {% endfor %}
+                        <span class="visually-hidden">{{ testimonial.rating }} out of 5 stars</span>
+                    </div>
+                    <p class="testimonial__content mb-4" itemprop="reviewBody">"{{ testimonial.content }}"</p>
+                    <div class="testimonial__author d-flex align-items-center" itemprop="author" itemscope itemtype="https://schema.org/Person">
+                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                            <span class="text-white">{{ testimonial.client_name|slice:":1" }}</span>
+                        </div>
+                        <div>
+                            <h6 class="mb-0" itemprop="name">{{ testimonial.client_name }}</h6>
+                            <small class="text-muted" itemprop="jobTitle">{{ testimonial.client_role }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+<!-- Testimonials section end -->
+
+<!-- CTA section start -->
+<section class="cta__section pt-80 pb-80 bg-primary">
+    <div class="container">
+        <div class="row align-items-center justify-content-between">
+            <div class="col-lg-8">
+                <h2 class="text-white mb-3">Ready to Get Started?</h2>
+                <p class="text-white opacity-75 mb-0">Contact us today for a personalized demo of our services.</p>
+            </div>
+            <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+                <a href="{% url 'website:contact' %}" class="btn btn-light btn-lg">Contact Us</a>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- CTA section end -->
+{% endblock %}
