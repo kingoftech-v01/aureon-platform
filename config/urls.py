@@ -22,6 +22,9 @@ urlpatterns = [
     # Homepage - Tenant-aware home view
     path('', HomeView.as_view(), name='home'),
 
+    # Public Website (for namespace resolution in templates)
+    path('', include('apps.website.urls')),
+
     # Tenant Authentication
     path('login/', TenantLoginView.as_view(), name='tenant_login'),
     path('logout/', TenantLogoutView.as_view(), name='tenant_logout'),
