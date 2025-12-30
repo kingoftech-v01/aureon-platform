@@ -30,6 +30,15 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[
     '.rhematek-solutions.com',  # Allow subdomains
 ])
 
+# CSRF and Security settings for reverse proxy
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
+    'https://aureon.rhematek-solutions.com',
+    'https://*.rhematek-solutions.com',
+])
+
+# Trust X-Forwarded-Proto header from reverse proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
