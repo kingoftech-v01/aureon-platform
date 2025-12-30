@@ -1,9 +1,11 @@
 """
-Home view with tenant detection for Aureon SaaS Platform.
+Home and authentication views for Aureon SaaS Platform.
 """
 from django.shortcuts import render, redirect
 from django.views import View
 from django.http import Http404
+from django.contrib.auth import authenticate, login, logout
+from django.contrib import messages
 
 
 class HomeView(View):
@@ -72,3 +74,88 @@ class HomeView(View):
             return render(request, 'tenant/not_found.html', {
                 'host': host,
             }, status=404)
+
+
+class TenantLoginView(View):
+    """
+    Login view for tenant subdomains.
+    """
+
+    def get_tenant(self, request):
+        """Get the tenant from the request host."""
+        from apps.tenants.models import Domain
+
+        host = request.get_host().split(':')[0]
+        try:
+            domain = Domain.objects.select_related('tenant').get(domain=host)
+            return domain.tenant
+        except Domain.DoesNotExist:
+            return None
+
+    def get(self, request):
+        tenant = self.get_tenant(request)
+        if not tenant:
+            return redirect('home')
+
+        # Already logged in? Go to dashboard
+        if request.user.is_authenticated:
+            return redirect('home')
+
+        return render(request, 'tenant/login.html', {
+            'tenant': tenant,
+            'next': request.GET.get('next', '/'),
+        })
+
+    def post(self, request):
+        tenant = self.get_tenant(request)
+        if not tenant:
+            return redirect('home')
+
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        next_url = request.POST.get('next', '/')
+
+        if not email or not password:
+            return render(request, 'tenant/login.html', {
+                'tenant': tenant,
+                'error': 'Please enter both email and password.',
+                'email': email,
+                'next': next_url,
+            })
+
+        # Authenticate user
+        user = authenticate(request, username=email, password=password)
+
+        if user is not None:
+            # Check if user belongs to this tenant (or is superuser)
+            if user.is_superuser or (user.tenant and user.tenant.id == tenant.id):
+                login(request, user)
+                return redirect(next_url if next_url else '/')
+            else:
+                return render(request, 'tenant/login.html', {
+                    'tenant': tenant,
+                    'error': 'You do not have access to this workspace.',
+                    'email': email,
+                    'next': next_url,
+                })
+        else:
+            return render(request, 'tenant/login.html', {
+                'tenant': tenant,
+                'error': 'Invalid email or password.',
+                'email': email,
+                'next': next_url,
+            })
+
+
+class TenantLogoutView(View):
+    """
+    Logout view for tenant subdomains.
+    """
+
+    def get(self, request):
+        logout(request)
+        return redirect('home')
+
+    def post(self, request):
+        logout(request)
+        return redirect('home')

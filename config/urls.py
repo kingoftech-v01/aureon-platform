@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from config.views import HomeView
+from config.views import HomeView, TenantLoginView, TenantLogoutView
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -21,6 +21,10 @@ urlpatterns = [
 
     # Homepage - Tenant-aware home view
     path('', HomeView.as_view(), name='home'),
+
+    # Tenant Authentication
+    path('login/', TenantLoginView.as_view(), name='tenant_login'),
+    path('logout/', TenantLogoutView.as_view(), name='tenant_logout'),
 
     # Health Check Endpoints (Rhematek Production Shield)
     *get_health_urls(),
