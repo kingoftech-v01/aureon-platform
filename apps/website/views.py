@@ -16,7 +16,8 @@ import json
 
 from .models import (
     BlogPost, BlogCategory, BlogTag, Product,
-    ContactSubmission, NewsletterSubscriber, SiteSettings
+    ContactSubmission, NewsletterSubscriber, SiteSettings,
+    CaseStudyCategory, CaseStudy, Service, TeamMember, FAQ, Testimonial
 )
 from .forms import ContactForm, NewsletterForm, SalesInquiryForm, QuickContactForm
 
@@ -40,6 +41,10 @@ class HomeView(TemplateView):
             is_active=True,
             is_featured=True
         )[:3]
+        context['services'] = Service.objects.filter(is_active=True).order_by('order')[:6]
+        context['testimonials'] = Testimonial.objects.filter(is_active=True, is_featured=True).order_by('order')[:6]
+        context['case_studies'] = CaseStudy.objects.filter(status='published', is_featured=True).order_by('-published_at')[:3]
+        context['team_members'] = TeamMember.objects.filter(is_active=True, is_leadership=True).order_by('order')[:4]
         return context
 
 
@@ -53,6 +58,8 @@ class AboutView(TemplateView):
         context['site_settings'] = SiteSettings.get_settings()
         context['page_title'] = 'About Aureon'
         context['meta_description'] = 'Learn about Aureon by Rhematek Solutions - automating business workflows for growth.'
+        context['team_members'] = TeamMember.objects.filter(is_active=True).order_by('order')
+        context['testimonials'] = Testimonial.objects.filter(is_active=True).order_by('order')[:6]
         return context
 
 
@@ -66,6 +73,8 @@ class TeamView(TemplateView):
         context['site_settings'] = SiteSettings.get_settings()
         context['page_title'] = 'Our Team'
         context['meta_description'] = 'Meet the team behind Aureon - experts in SaaS, automation, and business growth.'
+        context['leadership'] = TeamMember.objects.filter(is_active=True, is_leadership=True).order_by('order')
+        context['team_members'] = TeamMember.objects.filter(is_active=True, is_leadership=False).order_by('order')
         return context
 
 
@@ -79,19 +88,30 @@ class ServicesView(TemplateView):
         context['site_settings'] = SiteSettings.get_settings()
         context['page_title'] = 'Our Services'
         context['meta_description'] = 'Comprehensive SaaS solutions for contract management, invoicing, payments, and more.'
+        context['services'] = Service.objects.filter(is_active=True).order_by('order')
+        context['testimonials'] = Testimonial.objects.filter(is_active=True, is_featured=True).order_by('order')[:3]
         return context
 
 
 # Service Detail Page
-class ServiceDetailView(TemplateView):
+class ServiceDetailView(DetailView):
     """Individual service detail page"""
+    model = Service
     template_name = 'website/service-detail.html'
+    context_object_name = 'service'
+    slug_field = 'slug'
+
+    def get_queryset(self):
+        return Service.objects.filter(is_active=True)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['site_settings'] = SiteSettings.get_settings()
-        # Could load service from database or use slug to show different content
-        context['service_slug'] = kwargs.get('slug', 'contract-management')
+        service = self.get_object()
+        context['page_title'] = service.meta_title or service.name
+        context['meta_description'] = service.meta_description or service.short_description
+        context['other_services'] = Service.objects.filter(is_active=True).exclude(id=service.id).order_by('order')[:4]
+        context['testimonials'] = Testimonial.objects.filter(is_active=True, is_featured=True).order_by('order')[:2]
         return context
 
 
@@ -616,6 +636,16 @@ class FAQView(TemplateView):
         context = super().get_context_data(**kwargs)
         context['site_settings'] = SiteSettings.get_settings()
         context['page_title'] = 'Frequently Asked Questions'
+        context['meta_description'] = 'Find answers to common questions about Aureon platform, pricing, features, and support.'
+
+        # Group FAQs by category
+        context['general_faqs'] = FAQ.objects.filter(is_active=True, category='general').order_by('order')
+        context['pricing_faqs'] = FAQ.objects.filter(is_active=True, category='pricing').order_by('order')
+        context['features_faqs'] = FAQ.objects.filter(is_active=True, category='features').order_by('order')
+        context['security_faqs'] = FAQ.objects.filter(is_active=True, category='security').order_by('order')
+        context['support_faqs'] = FAQ.objects.filter(is_active=True, category='support').order_by('order')
+        context['technical_faqs'] = FAQ.objects.filter(is_active=True, category='technical').order_by('order')
+        context['featured_faqs'] = FAQ.objects.filter(is_active=True, is_featured=True).order_by('order')
         return context
 
 
@@ -640,4 +670,101 @@ class TermsOfServiceView(TemplateView):
         context = super().get_context_data(**kwargs)
         context['site_settings'] = SiteSettings.get_settings()
         context['page_title'] = 'Terms of Service'
+        return context
+
+
+# ============================================================
+# CASE STUDY VIEWS
+# ============================================================
+
+class CaseStudyListView(ListView):
+    """Case studies listing page"""
+    model = CaseStudy
+    template_name = 'website/case-studies.html'
+    context_object_name = 'case_studies'
+    paginate_by = 9
+
+    def get_queryset(self):
+        queryset = CaseStudy.objects.filter(status='published')
+
+        # Category filter
+        category_slug = self.request.GET.get('category')
+        if category_slug:
+            queryset = queryset.filter(category__slug=category_slug)
+
+        return queryset.select_related('category').order_by('-published_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_settings'] = SiteSettings.get_settings()
+        context['categories'] = CaseStudyCategory.objects.annotate(
+            case_study_count=Count('case_studies', filter=Q(case_studies__status='published'))
+        )
+        context['featured_case_studies'] = CaseStudy.objects.filter(
+            status='published',
+            is_featured=True
+        )[:3]
+        context['page_title'] = 'Case Studies'
+        context['meta_description'] = 'Discover how businesses have transformed their operations with Aureon. Read our success stories and case studies.'
+        return context
+
+
+class CaseStudyDetailView(DetailView):
+    """Individual case study page"""
+    model = CaseStudy
+    template_name = 'website/case-study-detail.html'
+    context_object_name = 'case_study'
+    slug_field = 'slug'
+
+    def get_queryset(self):
+        return CaseStudy.objects.filter(status='published').select_related('category')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_settings'] = SiteSettings.get_settings()
+
+        case_study = self.get_object()
+
+        # Related case studies
+        related_case_studies = CaseStudy.objects.filter(
+            status='published'
+        ).exclude(id=case_study.id)
+
+        if case_study.category:
+            related_case_studies = related_case_studies.filter(category=case_study.category)
+
+        context['related_case_studies'] = related_case_studies[:3]
+
+        # SEO meta tags
+        context['page_title'] = case_study.meta_title or case_study.title
+        context['meta_description'] = case_study.meta_description or case_study.excerpt
+        context['meta_keywords'] = case_study.meta_keywords
+        context['og_image'] = case_study.featured_image.url if case_study.featured_image else None
+
+        return context
+
+
+class CaseStudyCategoryView(ListView):
+    """Case studies filtered by category"""
+    model = CaseStudy
+    template_name = 'website/case-study-category.html'
+    context_object_name = 'case_studies'
+    paginate_by = 9
+
+    def get_queryset(self):
+        self.category = get_object_or_404(CaseStudyCategory, slug=self.kwargs['slug'])
+        return CaseStudy.objects.filter(
+            status='published',
+            category=self.category
+        ).order_by('-published_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_settings'] = SiteSettings.get_settings()
+        context['category'] = self.category
+        context['categories'] = CaseStudyCategory.objects.annotate(
+            case_study_count=Count('case_studies', filter=Q(case_studies__status='published'))
+        )
+        context['page_title'] = f'{self.category.name} Case Studies'
+        context['meta_description'] = self.category.description or f'Case studies in {self.category.name}'
         return context

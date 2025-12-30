@@ -19,6 +19,11 @@ urlpatterns = [
     path('services/', views.ServicesView.as_view(), name='services'),
     path('services/<slug:slug>/', views.ServiceDetailView.as_view(), name='service_detail'),
 
+    # Case Studies
+    path('case-studies/', views.CaseStudyListView.as_view(), name='case_studies'),
+    path('case-studies/category/<slug:slug>/', views.CaseStudyCategoryView.as_view(), name='case_study_category'),
+    path('case-studies/<slug:slug>/', views.CaseStudyDetailView.as_view(), name='case_study_detail'),
+
     # Blog
     path('blog/', views.BlogListView.as_view(), name='blog'),
     path('blog/category/<slug:slug>/', views.BlogCategoryView.as_view(), name='blog_category'),

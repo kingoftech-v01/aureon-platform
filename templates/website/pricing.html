@@ -1,0 +1,430 @@
+{% extends 'website/base.html' %}
+{% load static %}
+
+{% block title %}Pricing Plans{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb area start here -->
+<section class="breadcrumb-area" data-background="{% static 'website/images/banner/breadcrumb-bg.jpg' %}">
+    <div class="container">
+        <div class="breadcrumb__content">
+            <h1 class="title wow fadeInUp" data-wow-delay="00ms" data-wow-duration="1500ms">Pricing Plans</h1>
+            <ul class="breadcrumb-list wow fadeInUp" data-wow-delay="200ms" data-wow-duration="1500ms">
+                <li><a href="{% url 'website:home' %}">Home</a></li>
+                <li><span>Pricing</span></li>
+            </ul>
+        </div>
+    </div>
+</section>
+<!-- Breadcrumb area end here -->
+
+<!-- Pricing area start here -->
+<section class="pricing-area pt-130 pb-130">
+    <div class="container">
+        <div class="section-header text-center mb-60">
+            <span class="subtitle-one">Pricing Plans</span>
+            <h2>Simple, Transparent Pricing</h2>
+            <p class="mt-20">Choose the plan that works best for your business. All plans include a 14-day free trial.</p>
+        </div>
+
+        <!-- Billing toggle -->
+        <div class="pricing-toggle text-center mb-60">
+            <span class="toggle-label">Monthly</span>
+            <label class="switch">
+                <input type="checkbox" id="billing-toggle">
+                <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">Annual <span class="badge bg-success ms-2">Save 20%</span></span>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            {% for plan in plans %}
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="{{ forloop.counter0 }}00ms" data-wow-duration="1500ms">
+                <div class="pricing__item{% if plan.popular %} active{% endif %}">
+                    {% if plan.popular %}
+                    <span class="popular">Most Popular</span>
+                    {% endif %}
+                    <div class="pricing__head">
+                        <h4>{{ plan.name }}</h4>
+                        <p>{{ plan.description }}</p>
+                    </div>
+                    <div class="pricing__price">
+                        <h2 class="monthly-price">${{ plan.price }}</h2>
+                        <h2 class="annual-price d-none">${{ plan.price_annual }}</h2>
+                        <span class="monthly-label">/month</span>
+                        <span class="annual-label d-none">/year</span>
+                    </div>
+                    <ul class="pricing__list">
+                        {% for feature in plan.features %}
+                        <li><i class="fa-solid fa-check"></i> {{ feature }}</li>
+                        {% endfor %}
+                        {% if plan.limitations %}
+                        {% for limitation in plan.limitations %}
+                        <li class="text-muted"><i class="fa-solid fa-times"></i> {{ limitation }}</li>
+                        {% endfor %}
+                        {% endif %}
+                    </ul>
+                    {% if plan.price == 0 %}
+                    <a href="{{ plan.cta_url }}" class="btn-one w-100">{{ plan.cta }}</a>
+                    {% else %}
+                    <button
+                        class="btn-one w-100 subscribe-btn"
+                        data-monthly-price="{{ plan.stripe_price_id_monthly }}"
+                        data-annual-price="{{ plan.stripe_price_id_annual }}">
+                        {{ plan.cta }}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Enterprise CTA -->
+        <div class="enterprise-cta mt-80 text-center">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="cta-box p-5" style="background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%); border-radius: 20px;">
+                        <h3 class="text-white mb-20">Need a Custom Solution?</h3>
+                        <p class="text-white mb-30">For large enterprises with specific requirements, we offer custom pricing and dedicated support.</p>
+                        <a href="{% url 'website:contact' %}" class="btn-one">Contact Sales <i class="fa-regular fa-arrow-right-long"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Pricing area end here -->
+
+<!-- Features comparison area start here -->
+<section class="compare-area pb-130">
+    <div class="container">
+        <div class="section-header text-center mb-60">
+            <span class="subtitle-one">Compare Plans</span>
+            <h2>Feature Comparison</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered compare-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th class="text-center">Free</th>
+                        <th class="text-center">Starter</th>
+                        <th class="text-center highlight">Pro</th>
+                        <th class="text-center">Business</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Contracts</strong></td>
+                        <td class="text-center">3</td>
+                        <td class="text-center">25</td>
+                        <td class="text-center highlight">Unlimited</td>
+                        <td class="text-center">Unlimited</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Invoices per month</strong></td>
+                        <td class="text-center">5</td>
+                        <td class="text-center">Unlimited</td>
+                        <td class="text-center highlight">Unlimited</td>
+                        <td class="text-center">Unlimited</td>
+                    </tr>
+                    <tr>
+                        <td><strong>E-Signatures</strong></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-check text-success"></i></td>
+                        <td class="text-center highlight"><i class="fa-solid fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-check text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Stripe Integration</strong></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-check text-success"></i></td>
+                        <td class="text-center highlight"><i class="fa-solid fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-check text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Team Members</strong></td>
+                        <td class="text-center">1</td>
+                        <td class="text-center">3</td>
+                        <td class="text-center highlight">10</td>
+                        <td class="text-center">Unlimited</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Multi-Currency</strong></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center highlight"><i class="fa-solid fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-check text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Custom Branding</strong></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center highlight"><i class="fa-solid fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-check text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td><strong>API Access</strong></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center highlight"><i class="fa-solid fa-check text-success"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-check text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td><strong>White-Label</strong></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center highlight"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-check text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td><strong>SSO/SAML</strong></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center highlight"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-check text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Dedicated Account Manager</strong></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center highlight"><i class="fa-solid fa-times text-danger"></i></td>
+                        <td class="text-center"><i class="fa-solid fa-check text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Support</strong></td>
+                        <td class="text-center">Email</td>
+                        <td class="text-center">Priority Email</td>
+                        <td class="text-center highlight">Phone & Chat</td>
+                        <td class="text-center">24/7 Priority</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+<!-- Features comparison area end here -->
+
+<!-- FAQ area start here -->
+<section class="faq-area pb-130">
+    <div class="container">
+        <div class="section-header text-center mb-60">
+            <span class="subtitle-one">FAQ</span>
+            <h2>Frequently Asked Questions</h2>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="accordion" id="pricingFAQ">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                Can I switch plans at any time?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#pricingFAQ">
+                            <div class="accordion-body">
+                                Yes, you can upgrade or downgrade your plan at any time. When upgrading, you'll be charged a prorated amount for the remainder of your billing period. When downgrading, the change will take effect at the start of your next billing period.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                Is there a setup fee?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                            <div class="accordion-body">
+                                No, there are no setup fees for any of our plans. You can start using Aureon immediately after signing up. For Business plan customers, we offer complimentary onboarding and data migration assistance.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                What payment methods do you accept?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                            <div class="accordion-body">
+                                We accept all major credit cards (Visa, MasterCard, American Express, Discover) through our secure Stripe integration. For annual Business plans, we also accept bank transfers and invoicing.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                Do you offer refunds?
+                            </button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                            <div class="accordion-body">
+                                Yes, we offer a 30-day money-back guarantee for all paid plans. If you're not satisfied with Aureon within the first 30 days, contact our support team for a full refund.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                                What happens when I exceed my plan limits?
+                            </button>
+                        </h2>
+                        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                            <div class="accordion-body">
+                                We'll notify you before you reach your limits. You can upgrade your plan at any time to increase your limits. We never charge overage fees - you'll simply need to upgrade to continue adding new contracts or invoices.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- FAQ area end here -->
+
+<!-- CTA area start here -->
+<section class="cta-area secondary-bg">
+    <div class="container">
+        <div class="cta__wrp">
+            <div class="row g-4 align-items-center">
+                <div class="col-lg-8">
+                    <div class="cta__content">
+                        <h2 class="text-white mb-10">Ready to Get Started?</h2>
+                        <p class="text-white">Start your 14-day free trial today. No credit card required.</p>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <a href="{% url 'account_signup' %}" class="btn-one">Start Free Trial <i class="fa-regular fa-arrow-right-long"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- CTA area end here -->
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.pricing-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+input:checked + .slider {
+    background-color: #0ea5e9;
+}
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+.slider.round {
+    border-radius: 34px;
+}
+.slider.round:before {
+    border-radius: 50%;
+}
+.compare-table th.highlight,
+.compare-table td.highlight {
+    background-color: rgba(14, 165, 233, 0.1);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggle = document.getElementById('billing-toggle');
+    const monthlyPrices = document.querySelectorAll('.monthly-price');
+    const annualPrices = document.querySelectorAll('.annual-price');
+    const monthlyLabels = document.querySelectorAll('.monthly-label');
+    const annualLabels = document.querySelectorAll('.annual-label');
+
+    toggle.addEventListener('change', function() {
+        if (this.checked) {
+            monthlyPrices.forEach(el => el.classList.add('d-none'));
+            annualPrices.forEach(el => el.classList.remove('d-none'));
+            monthlyLabels.forEach(el => el.classList.add('d-none'));
+            annualLabels.forEach(el => el.classList.remove('d-none'));
+        } else {
+            monthlyPrices.forEach(el => el.classList.remove('d-none'));
+            annualPrices.forEach(el => el.classList.add('d-none'));
+            monthlyLabels.forEach(el => el.classList.remove('d-none'));
+            annualLabels.forEach(el => el.classList.add('d-none'));
+        }
+    });
+
+    // Stripe checkout
+    {% if stripe_publishable_key %}
+    const stripe = Stripe('{{ stripe_publishable_key }}');
+
+    document.querySelectorAll('.subscribe-btn').forEach(button => {
+        button.addEventListener('click', async function() {
+            const isAnnual = toggle.checked;
+            const priceId = isAnnual ? this.dataset.annualPrice : this.dataset.monthlyPrice;
+
+            if (!priceId) {
+                window.location.href = '{% url "account_signup" %}';
+                return;
+            }
+
+            const response = await fetch('{% url "website:create_checkout_session" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ price_id: priceId })
+            });
+
+            const session = await response.json();
+
+            if (session.error) {
+                alert(session.error);
+                return;
+            }
+
+            const result = await stripe.redirectToCheckout({
+                sessionId: session.sessionId
+            });
+
+            if (result.error) {
+                alert(result.error.message);
+            }
+        });
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}

@@ -4,7 +4,8 @@ from django.urls import reverse
 from django.utils import timezone
 from .models import (
     BlogPost, BlogCategory, BlogTag, Product,
-    ContactSubmission, NewsletterSubscriber, SiteSettings
+    ContactSubmission, NewsletterSubscriber, SiteSettings,
+    CaseStudyCategory, CaseStudy, Service, TeamMember, FAQ, Testimonial
 )
 
 
@@ -345,5 +346,204 @@ class SiteSettingsAdmin(admin.ModelAdmin):
         }),
         ('Features', {
             'fields': ('maintenance_mode', 'allow_newsletter_signup', 'show_blog', 'show_store')
+        }),
+    )
+
+
+# ============================================================
+# CASE STUDY ADMIN
+# ============================================================
+
+@admin.register(CaseStudyCategory)
+class CaseStudyCategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'slug', 'case_study_count', 'created_at']
+    search_fields = ['name', 'description']
+    prepopulated_fields = {'slug': ('name',)}
+    readonly_fields = ['created_at']
+
+    def case_study_count(self, obj):
+        count = obj.case_studies.filter(status='published').count()
+        return format_html('<strong>{}</strong>', count)
+    case_study_count.short_description = 'Published Studies'
+
+
+@admin.register(CaseStudy)
+class CaseStudyAdmin(admin.ModelAdmin):
+    list_display = [
+        'title', 'client_name', 'category', 'status',
+        'featured_badge', 'published_at', 'created_at'
+    ]
+    list_filter = ['status', 'is_featured', 'category', 'created_at', 'published_at']
+    search_fields = ['title', 'client_name', 'excerpt', 'challenge', 'solution', 'results']
+    prepopulated_fields = {'slug': ('title',)}
+    readonly_fields = ['created_at', 'updated_at']
+    date_hierarchy = 'published_at'
+
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('title', 'slug', 'client_name', 'client_logo', 'category')
+        }),
+        ('Summary', {
+            'fields': ('excerpt',)
+        }),
+        ('Case Study Content', {
+            'fields': ('challenge', 'solution', 'results', 'testimonial', 'testimonial_author', 'testimonial_role')
+        }),
+        ('Metrics & Results', {
+            'fields': (
+                ('metric_1_value', 'metric_1_label'),
+                ('metric_2_value', 'metric_2_label'),
+                ('metric_3_value', 'metric_3_label'),
+            )
+        }),
+        ('Images', {
+            'fields': ('featured_image', 'featured_image_alt', 'gallery_image_1', 'gallery_image_2', 'gallery_image_3')
+        }),
+        ('SEO', {
+            'fields': ('meta_title', 'meta_description', 'meta_keywords'),
+            'classes': ('collapse',)
+        }),
+        ('Publishing', {
+            'fields': ('status', 'published_at', 'is_featured', 'order')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def featured_badge(self, obj):
+        if obj.is_featured:
+            return format_html('<span style="color: gold;">★ Featured</span>')
+        return '-'
+    featured_badge.short_description = 'Featured'
+
+    actions = ['publish_case_studies', 'unpublish_case_studies', 'feature_case_studies']
+
+    def publish_case_studies(self, request, queryset):
+        updated = queryset.filter(status='draft').update(
+            status='published',
+            published_at=timezone.now()
+        )
+        self.message_user(request, f'{updated} case study(ies) published successfully.')
+    publish_case_studies.short_description = 'Publish selected case studies'
+
+    def unpublish_case_studies(self, request, queryset):
+        updated = queryset.update(status='draft')
+        self.message_user(request, f'{updated} case study(ies) unpublished.')
+    unpublish_case_studies.short_description = 'Unpublish selected case studies'
+
+    def feature_case_studies(self, request, queryset):
+        updated = queryset.update(is_featured=True)
+        self.message_user(request, f'{updated} case study(ies) featured.')
+    feature_case_studies.short_description = 'Feature selected case studies'
+
+
+# ============================================================
+# SERVICE ADMIN
+# ============================================================
+
+@admin.register(Service)
+class ServiceAdmin(admin.ModelAdmin):
+    list_display = ['name', 'slug', 'is_active', 'is_featured', 'order', 'created_at']
+    list_filter = ['is_active', 'is_featured', 'created_at']
+    search_fields = ['name', 'short_description', 'description']
+    prepopulated_fields = {'slug': ('name',)}
+    readonly_fields = ['created_at', 'updated_at']
+    list_editable = ['order', 'is_active', 'is_featured']
+
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'slug', 'icon', 'featured_image')
+        }),
+        ('Description', {
+            'fields': ('short_description', 'description')
+        }),
+        ('Features', {
+            'fields': ('feature_1', 'feature_2', 'feature_3', 'feature_4', 'feature_5')
+        }),
+        ('SEO', {
+            'fields': ('meta_title', 'meta_description'),
+            'classes': ('collapse',)
+        }),
+        ('Status', {
+            'fields': ('order', 'is_active', 'is_featured')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+# ============================================================
+# TEAM MEMBER ADMIN
+# ============================================================
+
+@admin.register(TeamMember)
+class TeamMemberAdmin(admin.ModelAdmin):
+    list_display = ['name', 'role', 'is_leadership', 'is_active', 'order']
+    list_filter = ['is_active', 'is_leadership']
+    search_fields = ['name', 'role', 'bio']
+    prepopulated_fields = {'slug': ('name',)}
+    list_editable = ['order', 'is_active', 'is_leadership']
+
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'slug', 'role', 'photo')
+        }),
+        ('Biography', {
+            'fields': ('bio',)
+        }),
+        ('Social Links', {
+            'fields': ('linkedin_url', 'twitter_url', 'github_url', 'email')
+        }),
+        ('Status', {
+            'fields': ('order', 'is_active', 'is_leadership')
+        }),
+    )
+
+
+# ============================================================
+# FAQ ADMIN
+# ============================================================
+
+@admin.register(FAQ)
+class FAQAdmin(admin.ModelAdmin):
+    list_display = ['question', 'category', 'is_featured', 'is_active', 'order']
+    list_filter = ['category', 'is_active', 'is_featured']
+    search_fields = ['question', 'answer']
+    list_editable = ['order', 'is_active', 'is_featured', 'category']
+
+    fieldsets = (
+        ('Question & Answer', {
+            'fields': ('question', 'answer')
+        }),
+        ('Organization', {
+            'fields': ('category', 'order', 'is_active', 'is_featured')
+        }),
+    )
+
+
+# ============================================================
+# TESTIMONIAL ADMIN
+# ============================================================
+
+@admin.register(Testimonial)
+class TestimonialAdmin(admin.ModelAdmin):
+    list_display = ['client_name', 'client_company', 'rating', 'is_featured', 'is_active', 'order']
+    list_filter = ['rating', 'is_active', 'is_featured']
+    search_fields = ['client_name', 'client_company', 'content']
+    list_editable = ['order', 'is_active', 'is_featured']
+
+    fieldsets = (
+        ('Client Information', {
+            'fields': ('client_name', 'client_role', 'client_company', 'client_photo')
+        }),
+        ('Testimonial', {
+            'fields': ('content', 'rating')
+        }),
+        ('Status', {
+            'fields': ('order', 'is_active', 'is_featured')
         }),
     )
