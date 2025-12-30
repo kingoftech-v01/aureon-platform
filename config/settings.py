@@ -440,10 +440,10 @@ XSS_SKIP_FIELDS = set()  # Fields to skip XSS sanitization (e.g., WYSIWYG editor
 
 # Redis connection settings
 REDIS_PASSWORD = env('REDIS_PASSWORD', default='')
-REDIS_CACHE_HOST = env('REDIS_CACHE_HOST', default='redis-cache')
+REDIS_CACHE_HOST = env('REDIS_CACHE_HOST', default='redis')
 REDIS_CACHE_PORT = env.int('REDIS_CACHE_PORT', default=6379)
-REDIS_QUEUE_HOST = env('REDIS_QUEUE_HOST', default='redis-queue')
-REDIS_RESULT_HOST = env('REDIS_RESULT_HOST', default='redis-result')
+REDIS_QUEUE_HOST = env('REDIS_QUEUE_HOST', default='redis')
+REDIS_RESULT_HOST = env('REDIS_RESULT_HOST', default='redis')
 
 # Base Redis connection options
 _REDIS_BASE_OPTIONS = {

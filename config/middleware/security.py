@@ -417,7 +417,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
     """
 
     def __init__(self, get_response):
-        self.get_response = get_response
+        super().__init__(get_response)
 
         # Permissions Policy (formerly Feature-Policy)
         self.permissions_policy = getattr(
