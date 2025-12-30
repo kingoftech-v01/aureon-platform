@@ -746,9 +746,51 @@ try:
 except (PermissionError, OSError):
     _LOGS_WRITABLE = False
 
+# Build handlers dict conditionally - file handlers only if logs directory is writable
+_BASE_HANDLERS = {
+    'console': {
+        'level': 'INFO',
+        'class': 'logging.StreamHandler',
+        'formatter': 'simple'
+    },
+    'security_console': {
+        'level': 'WARNING',
+        'class': 'logging.StreamHandler',
+        'formatter': 'security',
+    },
+}
+
+# Add file handlers only if logs directory is writable
+if _LOGS_WRITABLE:
+    _BASE_HANDLERS['file'] = {
+        'level': 'INFO',
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': BASE_DIR / 'logs' / 'django.log',
+        'maxBytes': 1024 * 1024 * 15,  # 15MB
+        'backupCount': 10,
+        'formatter': 'verbose',
+    }
+    _BASE_HANDLERS['security_file'] = {
+        'level': 'INFO',
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': BASE_DIR / 'logs' / 'security.log',
+        'maxBytes': 1024 * 1024 * 50,  # 50MB - security logs need more space
+        'backupCount': 20,
+        'formatter': 'security',
+    }
+    _BASE_HANDLERS['security_requests_file'] = {
+        'level': 'INFO',
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': BASE_DIR / 'logs' / 'security_requests.log',
+        'maxBytes': 1024 * 1024 * 100,  # 100MB for request logs
+        'backupCount': 30,
+        'formatter': 'json',
+    }
+
 # Use console-only logging if logs directory is not writable
 _LOG_HANDLERS = ['console', 'file'] if _LOGS_WRITABLE else ['console']
 _SECURITY_HANDLERS = ['security_console', 'security_file'] if _LOGS_WRITABLE else ['security_console']
+_SECURITY_REQUESTS_HANDLERS = ['security_requests_file'] if _LOGS_WRITABLE else ['security_console']
 
 LOGGING = {
     'version': 1,
@@ -779,42 +821,7 @@ LOGGING = {
             '()': 'django.utils.log.RequireDebugFalse',
         },
     },
-    'handlers': {
-        'console': {
-            'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple'
-        },
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
-            'maxBytes': 1024 * 1024 * 15,  # 15MB
-            'backupCount': 10,
-            'formatter': 'verbose',
-        },
-        'security_file': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': BASE_DIR / 'logs' / 'security.log',
-            'maxBytes': 1024 * 1024 * 50,  # 50MB - security logs need more space
-            'backupCount': 20,
-            'formatter': 'security',
-        },
-        'security_console': {
-            'level': 'WARNING',
-            'class': 'logging.StreamHandler',
-            'formatter': 'security',
-        },
-        'security_requests_file': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': BASE_DIR / 'logs' / 'security_requests.log',
-            'maxBytes': 1024 * 1024 * 100,  # 100MB for request logs
-            'backupCount': 30,
-            'formatter': 'json',
-        },
-    },
+    'handlers': _BASE_HANDLERS,
     'root': {
         'handlers': _LOG_HANDLERS,
         'level': 'INFO',
@@ -842,7 +849,7 @@ LOGGING = {
             'propagate': False,
         },
         'security.requests': {
-            'handlers': ['security_requests_file'] if _LOGS_WRITABLE else ['security_console'],
+            'handlers': _SECURITY_REQUESTS_HANDLERS,
             'level': 'INFO',
             'propagate': False,
         },
