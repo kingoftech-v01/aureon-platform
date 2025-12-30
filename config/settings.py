@@ -730,6 +730,26 @@ AXES_RESET_ON_SUCCESS = True
 # LOGGING
 # ====================
 
+# Check if running in Docker/container environment
+import os
+_RUNNING_IN_DOCKER = os.path.exists('/.dockerenv') or env.bool('DOCKER_CONTAINER', default=False)
+
+# Check if logs directory is writable
+_LOGS_DIR = BASE_DIR / 'logs'
+_LOGS_WRITABLE = False
+try:
+    _LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    _test_file = _LOGS_DIR / '.test_write'
+    _test_file.touch()
+    _test_file.unlink()
+    _LOGS_WRITABLE = True
+except (PermissionError, OSError):
+    _LOGS_WRITABLE = False
+
+# Use console-only logging if logs directory is not writable
+_LOG_HANDLERS = ['console', 'file'] if _LOGS_WRITABLE else ['console']
+_SECURITY_HANDLERS = ['security_console', 'security_file'] if _LOGS_WRITABLE else ['security_console']
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -796,44 +816,44 @@ LOGGING = {
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': _LOG_HANDLERS,
         'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': _LOG_HANDLERS,
             'level': env('DJANGO_LOG_LEVEL', default='INFO'),
             'propagate': False,
         },
         'django.security': {
-            'handlers': ['security_console', 'security_file'],
+            'handlers': _SECURITY_HANDLERS,
             'level': 'INFO',
             'propagate': False,
         },
         'celery': {
-            'handlers': ['console', 'file'],
+            'handlers': _LOG_HANDLERS,
             'level': 'INFO',
             'propagate': False,
         },
         # Security loggers
         'security': {
-            'handlers': ['security_console', 'security_file'],
+            'handlers': _SECURITY_HANDLERS,
             'level': 'INFO',
             'propagate': False,
         },
         'security.requests': {
-            'handlers': ['security_requests_file'],
+            'handlers': ['security_requests_file'] if _LOGS_WRITABLE else ['security_console'],
             'level': 'INFO',
             'propagate': False,
         },
         'security.validation': {
-            'handlers': ['security_console', 'security_file'],
+            'handlers': _SECURITY_HANDLERS,
             'level': 'WARNING',
             'propagate': False,
         },
         # Django Axes logging
         'axes': {
-            'handlers': ['security_console', 'security_file'],
+            'handlers': _SECURITY_HANDLERS,
             'level': 'INFO',
             'propagate': False,
         },
