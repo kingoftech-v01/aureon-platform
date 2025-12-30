@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import TemplateView
+from config.views import HomeView
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -19,8 +19,8 @@ urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
-    # Homepage - Serve React frontend
-    path('', TemplateView.as_view(template_name='index.html'), name='home'),
+    # Homepage - Tenant-aware home view
+    path('', HomeView.as_view(), name='home'),
 
     # Health Check Endpoints (Rhematek Production Shield)
     *get_health_urls(),
