@@ -13,12 +13,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=${DB_NAME:-aureon}
-      - POSTGRES_USER=${DB_USER:-aureon_user}
+      - POSTGRES_DB=${DB_NAME:-finance_saas}
+      - POSTGRES_USER=${DB_USER:-finance_user}
       - POSTGRES_PASSWORD=${DB_PASSWORD:-change_me_in_production}
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-aureon_user} -d ${DB_NAME:-aureon}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-finance_user} -d ${DB_NAME:-finance_saas}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,7 +60,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-aureon_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-aureon}
+      - DATABASE_URL=postgresql://${DB_USER:-finance_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-finance_saas}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - COLLECT_STATIC=true
@@ -92,7 +92,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-aureon_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-aureon}
+      - DATABASE_URL=postgresql://${DB_USER:-finance_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-finance_saas}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
     depends_on:
@@ -122,7 +122,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-aureon_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-aureon}
+      - DATABASE_URL=postgresql://${DB_USER:-finance_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-finance_saas}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
     depends_on:
