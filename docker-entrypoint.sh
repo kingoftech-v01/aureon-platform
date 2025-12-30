@@ -14,6 +14,10 @@ echo "=============================================="
 echo "Environment: ${DJANGO_SETTINGS_MODULE:-config.settings}"
 echo "Port: ${PORT:-8000}"
 
+# Ensure logs directory exists and is writable
+mkdir -p /app/logs 2>/dev/null || true
+touch /app/logs/django.log 2>/dev/null || true
+
 # Function to wait for a service
 wait_for_service() {
     local host="$1"
