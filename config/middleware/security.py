@@ -64,7 +64,7 @@ class HoneypotMiddleware(MiddlewareMixin):
     MIN_FORM_SUBMISSION_TIME = 2  # seconds
 
     def __init__(self, get_response):
-        self.get_response = get_response
+        super().__init__(get_response)
         # Get custom honeypot fields from settings
         custom_fields = getattr(settings, 'HONEYPOT_FIELDS', [])
         self.honeypot_fields = self.HONEYPOT_FIELDS.union(set(custom_fields))
@@ -184,7 +184,7 @@ class XSSSanitizationMiddleware(MiddlewareMixin):
     SKIP_FIELDS: Set[str] = set()
 
     def __init__(self, get_response):
-        self.get_response = get_response
+        super().__init__(get_response)
         # Get custom skip fields from settings
         self.skip_fields = getattr(settings, 'XSS_SKIP_FIELDS', self.SKIP_FIELDS)
 
@@ -305,7 +305,7 @@ class RequestLoggingMiddleware(MiddlewareMixin):
     }
 
     def __init__(self, get_response):
-        self.get_response = get_response
+        super().__init__(get_response)
         self.logger = logging.getLogger('security.requests')
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
