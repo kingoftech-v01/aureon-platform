@@ -25,6 +25,9 @@ urlpatterns = [
     # Public Website (for namespace resolution in templates)
     path('', include('apps.website.urls')),
 
+    # Django Allauth (for account_login, account_logout, etc.)
+    path('accounts/', include('allauth.urls')),
+
     # Tenant Authentication
     path('login/', TenantLoginView.as_view(), name='tenant_login'),
     path('logout/', TenantLogoutView.as_view(), name='tenant_logout'),
