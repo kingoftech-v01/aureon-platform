@@ -1,11 +1,13 @@
 """
 Home and authentication views for Aureon SaaS Platform.
 """
+import os
 from django.shortcuts import render, redirect
 from django.views import View
-from django.http import Http404
+from django.http import HttpResponse, Http404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.conf import settings
 
 
 class HomeView(View):
@@ -13,7 +15,7 @@ class HomeView(View):
     Home view that serves different content based on the domain.
 
     - Main domain (aureon.rhematek-solutions.com): Shows landing/vitrine page
-    - Tenant subdomain (demo.aureon.rhematek-solutions.com): Shows tenant dashboard
+    - Tenant subdomain (demo.aureon.rhematek-solutions.com): Shows React dashboard
     """
 
     MAIN_DOMAINS = [
@@ -28,7 +30,7 @@ class HomeView(View):
 
         # Check if this is the main domain
         if host in self.MAIN_DOMAINS:
-            return render(request, 'index.html')
+            return render(request, 'website/home.html')
 
         # Check if this is a tenant subdomain
         if host.endswith('.aureon.rhematek-solutions.com'):
@@ -39,7 +41,7 @@ class HomeView(View):
             return self.handle_tenant_request(request, host)
 
         # Default to landing page
-        return render(request, 'index.html')
+        return render(request, 'website/home.html')
 
     def handle_tenant_request(self, request, host):
         """Handle requests to tenant subdomains."""
@@ -58,11 +60,9 @@ class HomeView(View):
             # Store tenant in request for use in templates
             request.tenant = tenant
 
-            # If user is authenticated, show dashboard
+            # If user is authenticated, serve React dashboard
             if request.user.is_authenticated:
-                return render(request, 'tenant/dashboard.html', {
-                    'tenant': tenant,
-                })
+                return self.serve_react_app(request, tenant)
 
             # Show tenant login/welcome page
             return render(request, 'tenant/welcome.html', {
@@ -74,6 +74,60 @@ class HomeView(View):
             return render(request, 'tenant/not_found.html', {
                 'host': host,
             }, status=404)
+
+    def serve_react_app(self, request, tenant):
+        """Serve the React dashboard application."""
+        # Try to serve the React app's index.html from staticfiles
+        react_index_path = os.path.join(settings.STATIC_ROOT or settings.STATICFILES_DIRS[0], 'dashboard', 'index.html')
+
+        if os.path.exists(react_index_path):
+            with open(react_index_path, 'r') as f:
+                html = f.read()
+            return HttpResponse(html, content_type='text/html')
+
+        # Fallback to Django template if React build not available
+        return render(request, 'tenant/dashboard.html', {
+            'tenant': tenant,
+        })
+
+
+class TenantDashboardView(View):
+    """
+    Serve the React dashboard for all authenticated tenant routes.
+    This catches /dashboard, /clients, /contracts, /invoices, etc.
+    """
+
+    def get_tenant(self, request):
+        """Get the tenant from the request host."""
+        from apps.tenants.models import Domain
+
+        host = request.get_host().split(':')[0]
+        try:
+            domain = Domain.objects.select_related('tenant').get(domain=host)
+            return domain.tenant
+        except Domain.DoesNotExist:
+            return None
+
+    def get(self, request, path=''):
+        tenant = self.get_tenant(request)
+        if not tenant:
+            return redirect('home')
+
+        if not request.user.is_authenticated:
+            return redirect('tenant_login')
+
+        # Serve React app for all dashboard routes
+        react_index_path = os.path.join(settings.STATIC_ROOT or settings.STATICFILES_DIRS[0], 'dashboard', 'index.html')
+
+        if os.path.exists(react_index_path):
+            with open(react_index_path, 'r') as f:
+                html = f.read()
+            return HttpResponse(html, content_type='text/html')
+
+        # Fallback
+        return render(request, 'tenant/dashboard.html', {
+            'tenant': tenant,
+        })
 
 
 class TenantLoginView(View):

@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     'apps.analytics',
     'apps.integrations',
     'apps.webhooks',
+    'apps.website',  # Marketing website
 ]
 
 # Django Tenants Configuration

@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from config.views import HomeView, TenantLoginView, TenantLogoutView
+from config.views import HomeView, TenantLoginView, TenantLogoutView, TenantDashboardView
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -25,6 +25,24 @@ urlpatterns = [
     # Tenant Authentication
     path('login/', TenantLoginView.as_view(), name='tenant_login'),
     path('logout/', TenantLogoutView.as_view(), name='tenant_logout'),
+
+    # React Dashboard Routes (catch-all for SPA)
+    path('dashboard/', TenantDashboardView.as_view(), name='tenant_dashboard'),
+    path('dashboard/<path:path>', TenantDashboardView.as_view(), name='tenant_dashboard_path'),
+    path('clients/', TenantDashboardView.as_view(), name='tenant_clients'),
+    path('clients/<path:path>', TenantDashboardView.as_view(), name='tenant_clients_path'),
+    path('contracts/', TenantDashboardView.as_view(), name='tenant_contracts'),
+    path('contracts/<path:path>', TenantDashboardView.as_view(), name='tenant_contracts_path'),
+    path('invoices/', TenantDashboardView.as_view(), name='tenant_invoices'),
+    path('invoices/<path:path>', TenantDashboardView.as_view(), name='tenant_invoices_path'),
+    path('payments/', TenantDashboardView.as_view(), name='tenant_payments'),
+    path('payments/<path:path>', TenantDashboardView.as_view(), name='tenant_payments_path'),
+    path('analytics/', TenantDashboardView.as_view(), name='tenant_analytics'),
+    path('documents/', TenantDashboardView.as_view(), name='tenant_documents'),
+    path('documents/<path:path>', TenantDashboardView.as_view(), name='tenant_documents_path'),
+    path('settings/', TenantDashboardView.as_view(), name='tenant_settings'),
+    path('settings/<path:path>', TenantDashboardView.as_view(), name='tenant_settings_path'),
+    path('auth/<path:path>', TenantDashboardView.as_view(), name='tenant_auth'),
 
     # Health Check Endpoints (Rhematek Production Shield)
     *get_health_urls(),

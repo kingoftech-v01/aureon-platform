@@ -1,7 +1,24 @@
 # Multi-stage Dockerfile for Aureon SaaS Platform
 # Rhematek Production Shield
 
-# Stage 1: Build stage for Python dependencies
+# Stage 1: Build React Frontend
+FROM node:20-alpine as frontend-build
+
+WORKDIR /frontend
+
+# Copy package files
+COPY frontend/package*.json ./
+
+# Install dependencies
+RUN npm ci --legacy-peer-deps
+
+# Copy frontend source
+COPY frontend/ .
+
+# Build the React app
+RUN npm run build
+
+# Stage 2: Build stage for Python dependencies
 FROM python:3.11-slim as python-build
 
 WORKDIR /app
@@ -20,7 +37,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Stage 2: Runtime stage
+# Stage 3: Runtime stage
 FROM python:3.11-slim
 
 # Set environment variables
@@ -53,6 +70,9 @@ COPY --from=python-build /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY . .
+
+# Copy React build from frontend stage to staticfiles/dashboard
+COPY --from=frontend-build /frontend/dist /app/staticfiles/dashboard
 
 # Create necessary directories
 RUN mkdir -p /app/staticfiles /app/media /app/logs && \
