@@ -8,7 +8,7 @@ version: '3.8'
 services:
   # PostgreSQL Database
   db:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: aureon-db
     volumes:
       - postgres_data:/var/lib/postgresql/data
