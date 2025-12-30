@@ -22,7 +22,7 @@ from .models import (
 from .forms import ContactForm, NewsletterForm, SalesInquiryForm, QuickContactForm
 
 # Configure Stripe
-stripe.api_key = settings.STRIPE_SECRET_KEY
+stripe.api_key = getattr(settings, 'STRIPE_LIVE_SECRET_KEY', '') or getattr(settings, 'STRIPE_TEST_SECRET_KEY', '')
 
 
 # Homepage View
