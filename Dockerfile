@@ -15,8 +15,8 @@ WORKDIR /frontend
 # Install dependencies first (better caching)
 COPY frontend/package*.json ./
 
-# Install dependencies with clean slate
-RUN npm ci --legacy-peer-deps --no-audit --no-fund
+# Install dependencies (npm install for flexibility, generates lock file if missing)
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 
 # Copy frontend source
 COPY frontend/ .
