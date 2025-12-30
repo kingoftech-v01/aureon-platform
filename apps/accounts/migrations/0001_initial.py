@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='CustomUser',
+            name='User',
             fields=[
                 ('password', models.CharField(max_length=128, verbose_name='password')),
                 ('last_login', models.DateTimeField(blank=True, null=True, verbose_name='last login')),
@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
                 ('is_accepted', models.BooleanField(default=False, verbose_name='Accepted')),
                 ('expires_at', models.DateTimeField(verbose_name='Expires At')),
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Created At')),
-                ('invited_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='sent_invitations', to='accounts.customuser', verbose_name='Invited By')),
+                ('invited_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='sent_invitations', to='accounts.user', verbose_name='Invited By')),
             ],
             options={
                 'verbose_name': 'User Invitation',
@@ -67,7 +67,7 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True, verbose_name='Active')),
                 ('last_used_at', models.DateTimeField(blank=True, null=True, verbose_name='Last Used')),
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Created At')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='api_keys', to='accounts.customuser', verbose_name='User')),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='api_keys', to='accounts.user', verbose_name='User')),
             ],
             options={
                 'verbose_name': 'API Key',
