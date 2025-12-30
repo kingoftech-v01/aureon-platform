@@ -7,8 +7,8 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tantml:parameter>
-<parameter name="content">import { invoiceService } from '@/services';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { invoiceService } from '@/services';
 import { useToast } from '@/components/common';
 import Button from '@/components/common/Button';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/common/Card';
