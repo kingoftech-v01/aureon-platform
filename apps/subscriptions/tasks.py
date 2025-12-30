@@ -1,0 +1,111 @@
+"""
+Subscriptions Celery tasks for Aureon SaaS Platform.
+
+These tasks handle subscription processing and renewals.
+"""
+from celery import shared_task
+from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+@shared_task(bind=True, max_retries=5)
+def process_subscription_payment(self, subscription_id):
+    """
+    Process a subscription payment.
+    High priority task for payment processing.
+    """
+    try:
+        from apps.subscriptions.models import Subscription
+
+        logger.info(f"Processing subscription payment for {subscription_id}...")
+
+        try:
+            subscription = Subscription.objects.get(id=subscription_id)
+            # In production, this would integrate with Stripe
+            logger.info(f"Subscription {subscription_id} payment processed for {subscription.user.email}")
+            return {
+                'status': 'success',
+                'subscription_id': subscription_id,
+                'user': subscription.user.email
+            }
+        except Subscription.DoesNotExist:
+            logger.warning(f"Subscription {subscription_id} not found")
+            return {'status': 'error', 'message': 'Subscription not found'}
+
+    except Exception as exc:
+        logger.error(f"Subscription payment processing failed: {exc}")
+        raise self.retry(exc=exc, countdown=60)
+
+
+@shared_task(bind=True, max_retries=3)
+def process_subscription_renewals(self):
+    """
+    Process subscription renewals.
+    Runs daily at 1 AM to renew expiring subscriptions.
+    """
+    try:
+        from apps.subscriptions.models import Subscription
+
+        logger.info("Processing subscription renewals...")
+
+        # Find subscriptions expiring in the next 24 hours
+        tomorrow = timezone.now() + timezone.timedelta(days=1)
+        expiring_subscriptions = Subscription.objects.filter(
+            status='active',
+            cancel_at_period_end=False,
+            current_period_end__lte=tomorrow,
+            current_period_end__gt=timezone.now()
+        )
+
+        renewed_count = 0
+        for subscription in expiring_subscriptions:
+            try:
+                # Queue individual payment processing
+                process_subscription_payment.delay(subscription.id)
+                renewed_count += 1
+            except Exception as e:
+                logger.error(f"Failed to queue renewal for subscription {subscription.id}: {e}")
+
+        logger.info(f"Queued {renewed_count} subscription renewals")
+        return {
+            'status': 'success',
+            'timestamp': timezone.now().isoformat(),
+            'renewals_queued': renewed_count
+        }
+
+    except Exception as exc:
+        logger.error(f"Subscription renewal processing failed: {exc}")
+        raise self.retry(exc=exc, countdown=300)
+
+
+@shared_task(bind=True, max_retries=2)
+def cancel_subscription(self, subscription_id, immediate=False):
+    """
+    Cancel a subscription.
+    """
+    try:
+        from apps.subscriptions.models import Subscription
+
+        logger.info(f"Canceling subscription {subscription_id}...")
+
+        subscription = Subscription.objects.get(id=subscription_id)
+
+        if immediate:
+            subscription.status = 'canceled'
+            subscription.canceled_at = timezone.now()
+        else:
+            subscription.cancel_at_period_end = True
+
+        subscription.save()
+
+        return {
+            'status': 'success',
+            'subscription_id': subscription_id,
+            'immediate': immediate
+        }
+
+    except Exception as exc:
+        logger.error(f"Subscription cancellation failed: {exc}")
+        raise self.retry(exc=exc, countdown=60)
