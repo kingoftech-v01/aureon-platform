@@ -5,8 +5,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Assets are served from /static/marketing/ after collectstatic
   basePath: '',
-  assetPrefix: '',
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/static/marketing' : '',
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://aureon.rhematek-solutions.com/api/v1',
   },

@@ -5,9 +5,9 @@
 # ============================================================
 
 # ============================================================
-# Stage 1: Frontend Build (React/Vite)
+# Stage 1a: Dashboard Frontend Build (React/Vite)
 # ============================================================
-FROM node:20-alpine AS frontend-build
+FROM node:20-alpine AS dashboard-build
 
 # Set working directory
 WORKDIR /frontend
@@ -22,6 +22,26 @@ RUN npm install --legacy-peer-deps --no-audit --no-fund
 COPY frontend/ .
 
 # Build the React app for production
+RUN npm run build
+
+# ============================================================
+# Stage 1b: Marketing Frontend Build (Next.js)
+# ============================================================
+FROM node:20-alpine AS marketing-build
+
+# Set working directory
+WORKDIR /marketing
+
+# Install dependencies first (better caching)
+COPY frontend-marketing/package*.json ./
+
+# Install dependencies
+RUN npm install --legacy-peer-deps --no-audit --no-fund
+
+# Copy marketing frontend source
+COPY frontend-marketing/ .
+
+# Build the Next.js app for static export
 RUN npm run build
 
 # ============================================================
@@ -101,9 +121,13 @@ COPY --from=python-builder /opt/venv /opt/venv
 # Copy application code
 COPY --chown=aureon:aureon . .
 
-# Copy React build from frontend stage to static/dashboard
+# Copy React dashboard build from frontend stage to static/dashboard
 # This matches the Django STATICFILES_DIRS setting
-COPY --from=frontend-build --chown=aureon:aureon /frontend/dist /app/static/dashboard
+COPY --from=dashboard-build --chown=aureon:aureon /frontend/dist /app/static/dashboard
+
+# Copy Next.js marketing build to static/marketing
+# Next.js with output: 'export' creates an 'out' folder
+COPY --from=marketing-build --chown=aureon:aureon /marketing/out /app/static/marketing
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/staticfiles /app/media /app/logs && \

@@ -1,8 +1,8 @@
 """
 Website views for Aureon SaaS Platform.
 
-All frontend rendering is now handled by React/Next.js.
-These views now serve the React SPA or provide API endpoints.
+All frontend rendering is now handled by Next.js (marketing) or React (dashboard).
+Marketing pages are served from Next.js static export.
 """
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import View
@@ -24,123 +24,140 @@ from .models import (
 )
 from .forms import ContactForm, NewsletterForm
 
-from config.views import serve_react_app
+from config.views import serve_marketing_site
 
 # Configure Stripe
 stripe.api_key = getattr(settings, 'STRIPE_LIVE_SECRET_KEY', '') or getattr(settings, 'STRIPE_TEST_SECRET_KEY', '')
 
 
-class ReactPageView(View):
-    """Base view that serves React SPA for all page routes."""
+class MarketingPageView(View):
+    """Base view that serves Next.js marketing site for all public pages."""
+    page_path = ''  # Override in subclasses for specific routes
 
     def get(self, request, *args, **kwargs):
-        return serve_react_app(request)
+        # Get the path from the URL or use the class-defined path
+        path = kwargs.get('slug', '') or kwargs.get('path', '') or self.page_path
+        return serve_marketing_site(request, path)
 
 
-# All page views now serve React SPA
-class HomeView(ReactPageView):
-    """Homepage - served by React/Next.js"""
-    pass
+# All marketing page views now serve Next.js static export
+class HomeView(MarketingPageView):
+    """Homepage - served by Next.js"""
+    page_path = ''
 
 
-class AboutView(ReactPageView):
-    """About page - served by React/Next.js"""
-    pass
+class AboutView(MarketingPageView):
+    """About page - served by Next.js"""
+    page_path = 'about'
 
 
-class TeamView(ReactPageView):
-    """Team page - served by React/Next.js"""
-    pass
+class TeamView(MarketingPageView):
+    """Team page - served by Next.js"""
+    page_path = 'team'
 
 
-class ServicesView(ReactPageView):
-    """Services page - served by React/Next.js"""
-    pass
+class ServicesView(MarketingPageView):
+    """Services page - served by Next.js"""
+    page_path = 'services'
 
 
-class ServiceDetailView(ReactPageView):
-    """Service detail page - served by React/Next.js"""
-    pass
+class ServiceDetailView(MarketingPageView):
+    """Service detail page - served by Next.js"""
+
+    def get(self, request, slug=''):
+        return serve_marketing_site(request, f'services/{slug}')
 
 
-class PricingView(ReactPageView):
-    """Pricing page - served by React/Next.js"""
-    pass
+class PricingView(MarketingPageView):
+    """Pricing page - served by Next.js"""
+    page_path = 'pricing'
 
 
-class ContactView(ReactPageView):
-    """Contact page - served by React/Next.js"""
-    pass
+class ContactView(MarketingPageView):
+    """Contact page - served by Next.js"""
+    page_path = 'contact'
 
 
-class ContactSuccessView(ReactPageView):
-    """Contact success page - served by React/Next.js"""
-    pass
+class ContactSuccessView(MarketingPageView):
+    """Contact success page - served by Next.js"""
+    page_path = 'contact/success'
 
 
-class BlogListView(ReactPageView):
-    """Blog listing - served by React/Next.js"""
-    pass
+class BlogListView(MarketingPageView):
+    """Blog listing - served by Next.js"""
+    page_path = 'blog'
 
 
-class BlogDetailView(ReactPageView):
-    """Blog post detail - served by React/Next.js"""
-    pass
+class BlogDetailView(MarketingPageView):
+    """Blog post detail - served by Next.js"""
+
+    def get(self, request, slug=''):
+        return serve_marketing_site(request, f'blog/{slug}')
 
 
-class BlogCategoryView(ReactPageView):
-    """Blog category - served by React/Next.js"""
-    pass
+class BlogCategoryView(MarketingPageView):
+    """Blog category - served by Next.js"""
+
+    def get(self, request, slug=''):
+        return serve_marketing_site(request, f'blog/category/{slug}')
 
 
-class BlogTagView(ReactPageView):
-    """Blog tag - served by React/Next.js"""
-    pass
+class BlogTagView(MarketingPageView):
+    """Blog tag - served by Next.js"""
+
+    def get(self, request, slug=''):
+        return serve_marketing_site(request, f'blog/tag/{slug}')
 
 
-class ProductListView(ReactPageView):
-    """Products listing - served by React/Next.js"""
-    pass
+class ProductListView(MarketingPageView):
+    """Products listing - served by Next.js"""
+    page_path = 'products'
 
 
-class ProductDetailView(ReactPageView):
-    """Product detail - served by React/Next.js"""
-    pass
+class ProductDetailView(MarketingPageView):
+    """Product detail - served by Next.js"""
+
+    def get(self, request, slug=''):
+        return serve_marketing_site(request, f'products/{slug}')
 
 
-class FAQView(ReactPageView):
-    """FAQ page - served by React/Next.js"""
-    pass
+class FAQView(MarketingPageView):
+    """FAQ page - served by Next.js"""
+    page_path = 'faq'
 
 
-class PrivacyPolicyView(ReactPageView):
-    """Privacy policy - served by React/Next.js"""
-    pass
+class PrivacyPolicyView(MarketingPageView):
+    """Privacy policy - served by Next.js"""
+    page_path = 'privacy-policy'
 
 
-class TermsOfServiceView(ReactPageView):
-    """Terms of service - served by React/Next.js"""
-    pass
+class TermsOfServiceView(MarketingPageView):
+    """Terms of service - served by Next.js"""
+    page_path = 'terms-of-service'
 
 
-class CaseStudyListView(ReactPageView):
-    """Case studies listing - served by React/Next.js"""
-    pass
+class CaseStudyListView(MarketingPageView):
+    """Case studies listing - served by Next.js"""
+    page_path = 'case-studies'
 
 
-class CaseStudyDetailView(ReactPageView):
-    """Case study detail - served by React/Next.js"""
-    pass
+class CaseStudyDetailView(MarketingPageView):
+    """Case study detail - served by Next.js"""
+
+    def get(self, request, slug=''):
+        return serve_marketing_site(request, f'case-studies/{slug}')
 
 
-class CaseStudyCategoryView(ReactPageView):
-    """Case study category - served by React/Next.js"""
-    pass
+class CaseStudyCategoryView(MarketingPageView):
+    """Case study category - served by Next.js"""
+
+    def get(self, request, slug=''):
+        return serve_marketing_site(request, f'case-studies/category/{slug}')
 
 
-class PaymentSuccessView(ReactPageView):
-    """Payment success - served by React/Next.js"""
-    pass
+class PaymentSuccessView(MarketingPageView):
+    """Payment success - served by Next.js"""
+    page_path = 'payment/success'
 
 
 # ============================================================
