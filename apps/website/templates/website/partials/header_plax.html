@@ -13,7 +13,7 @@
                     <a href="{% url 'website:about' %}">About</a>
                 </li>
                 <li class="mil-has-children {% if 'service' in request.resolver_match.url_name %}mil-active{% endif %}">
-                    <a href="#">Services</a>
+                    <a href="{% url 'website:services' %}">Services</a>
                     <ul>
                         <li><a href="{% url 'website:services' %}">All Services</a></li>
                         <li><a href="{% url 'website:services' %}#contracts">Contract Management</a></li>
@@ -24,8 +24,8 @@
                 <li class="{% if 'pricing' in request.resolver_match.url_name %}mil-active{% endif %}">
                     <a href="{% url 'website:pricing' %}">Pricing</a>
                 </li>
-                <li class="mil-has-children {% if 'blog' in request.resolver_match.url_name %}mil-active{% endif %}">
-                    <a href="#">Resources</a>
+                <li class="mil-has-children {% if 'blog' in request.resolver_match.url_name or 'faq' in request.resolver_match.url_name or 'case' in request.resolver_match.url_name %}mil-active{% endif %}">
+                    <a href="{% url 'website:blog' %}">Resources</a>
                     <ul>
                         <li><a href="{% url 'website:blog' %}">Blog</a></li>
                         <li><a href="{% url 'website:case_studies' %}">Case Studies</a></li>
