@@ -50,3 +50,15 @@ export {
 export { default as SkipLink, SkipLinks, useSkipLinkTarget } from './SkipLink';
 
 export { default as FocusTrap, useFocusReturn, useFocusOnMount } from './FocusTrap';
+
+export {
+  RevenueAreaChart,
+  RevenueBarChart,
+  DonutChart,
+  MultiLineChart,
+  StackedBarChart,
+  Sparkline,
+  ProgressRing,
+  COLORS,
+  CHART_COLORS,
+} from './Charts';

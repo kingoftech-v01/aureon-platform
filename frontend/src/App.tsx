@@ -23,7 +23,10 @@ import {
   VerifyEmail,
 } from '@/pages/auth';
 
-// Dashboard pages (placeholders for now)
+// Public pages
+const Landing = React.lazy(() => import('@/pages/Landing'));
+
+// Dashboard pages
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
 const Clients = React.lazy(() => import('@/pages/clients/ClientList'));
 const Contracts = React.lazy(() => import('@/pages/contracts/ContractList'));
@@ -189,8 +192,15 @@ const App: React.FC = () => {
                       }
                     />
 
-                    {/* Root redirect */}
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    {/* Public Landing Page */}
+                    <Route
+                      path="/"
+                      element={
+                        <PublicRoute>
+                          <Landing />
+                        </PublicRoute>
+                      }
+                    />
 
                     {/* 404 Not Found */}
                     <Route path="*" element={<NotFound />} />

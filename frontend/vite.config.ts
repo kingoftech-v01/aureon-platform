@@ -51,8 +51,12 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
+    // Build to Django static folder
+    outDir: '../static/dashboard',
+    emptyOutDir: true,
     sourcemap: false,
+    // Base path for Django static files
+    assetsDir: 'assets',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -64,4 +68,6 @@ export default defineConfig({
       },
     },
   },
+  // Base URL for production (Django static URL)
+  base: '/static/dashboard/',
 })

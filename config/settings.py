@@ -310,58 +310,38 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True  # Legacy browser support
 
 # ------------------------------------------------
-# PROTECTION 7: Content Security Policy (Strict Mode)
+# PROTECTION 7: Content Security Policy (Local Files Only)
 # ------------------------------------------------
-# Note: 'unsafe-inline' needed for some third-party integrations
-# Consider using nonces for inline scripts in production
+# All assets served locally to avoid CSP issues
 CSP_DEFAULT_SRC = ("'self'",)
 CSP_SCRIPT_SRC = (
     "'self'",
-    "'unsafe-inline'",  # Required for Stripe and some UI frameworks
-    "'unsafe-eval'",    # Required for some JS frameworks
-    "https://js.stripe.com",
-    "https://cdn.jsdelivr.net",
-    "https://cdnjs.cloudflare.com",
-    "https://www.googletagmanager.com",
-    "https://www.google-analytics.com",
-    "https://connect.facebook.net",
-    "https://www.facebook.com",
+    "'unsafe-inline'",  # Required for React and inline scripts
+    "'unsafe-eval'",    # Required for React development
+    "https://js.stripe.com",  # Stripe payment scripts only
 )
 CSP_STYLE_SRC = (
     "'self'",
-    "'unsafe-inline'",  # Required for inline styles
-    "https://fonts.googleapis.com",
-    "https://cdn.jsdelivr.net",
-    "https://cdnjs.cloudflare.com",
+    "'unsafe-inline'",  # Required for Tailwind and inline styles
 )
 CSP_FONT_SRC = (
     "'self'",
-    "https://fonts.gstatic.com",
-    "data:",
-    "https://cdn.jsdelivr.net",
-    "https://cdnjs.cloudflare.com",
+    "data:",  # For embedded fonts
 )
 CSP_IMG_SRC = (
     "'self'",
-    "data:",
-    "https:",
-    "blob:",
-    "https://www.facebook.com",
-    "https://www.google-analytics.com",
+    "data:",   # For base64 images
+    "blob:",   # For blob URLs (file uploads)
 )
 CSP_CONNECT_SRC = (
     "'self'",
-    "https://api.stripe.com",
-    "wss:",
-    "https:",
-    "https://www.google-analytics.com",
-    "https://www.facebook.com",
+    "https://api.stripe.com",  # Stripe API
+    "wss:",  # WebSocket connections
 )
 CSP_FRAME_SRC = (
     "'self'",
-    "https://js.stripe.com",
-    "https://hooks.stripe.com",
-    "https://www.googletagmanager.com",
+    "https://js.stripe.com",   # Stripe iframe
+    "https://hooks.stripe.com",  # Stripe webhooks
 )
 CSP_OBJECT_SRC = ("'none'",)
 CSP_BASE_URI = ("'self'",)
@@ -369,8 +349,11 @@ CSP_FORM_ACTION = ("'self'",)
 CSP_FRAME_ANCESTORS = ("'none'",)  # Equivalent to X-Frame-Options DENY
 CSP_UPGRADE_INSECURE_REQUESTS = not DEBUG
 CSP_BLOCK_ALL_MIXED_CONTENT = True
-CSP_REPORT_URI = env('CSP_REPORT_URI', default=None)  # Optional CSP violation reporting
+CSP_REPORT_URI = env('CSP_REPORT_URI', default=None)
 CSP_REPORT_ONLY = env.bool('CSP_REPORT_ONLY', default=False)
+CSP_MEDIA_SRC = ("'self'",)
+CSP_WORKER_SRC = ("'self'", "blob:",)
+CSP_MANIFEST_SRC = ("'self'",)
 
 # ------------------------------------------------
 # PROTECTION 8: Session Security
