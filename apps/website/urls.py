@@ -91,6 +91,10 @@ urlpatterns = [
     path('privacy-policy/', views.PrivacyPolicyView.as_view(), name='privacy_policy'),
     path('terms-of-service/', views.TermsOfServiceView.as_view(), name='terms_of_service'),
 
+    # Auth pages (served by Next.js, form submits to allauth)
+    path('login/', views.LoginView.as_view(), name='login'),
+    path('signup/', views.SignupView.as_view(), name='signup'),
+
     # SEO Files
     path('sitemap.xml', sitemap_xml, name='sitemap'),
     path('robots.txt', robots_txt, name='robots'),

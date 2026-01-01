@@ -160,6 +160,16 @@ class PaymentSuccessView(MarketingPageView):
     page_path = 'payment/success'
 
 
+class LoginView(MarketingPageView):
+    """Login page - served by Next.js"""
+    page_path = 'login'
+
+
+class SignupView(MarketingPageView):
+    """Signup page - served by Next.js"""
+    page_path = 'signup'
+
+
 # ============================================================
 # API/FORM HANDLING VIEWS (These still work server-side)
 # ============================================================

@@ -35,8 +35,8 @@ const Header = ({ dark }) => {
             <li className={`${activeMenuFuntion(["services"])}`}>
               <Link href="/services">Services</Link>
             </li>
-            <li className={`${activeMenuFuntion(["price"])}`}>
-              <Link href="/price">Pricing</Link>
+            <li className={`${activeMenuFuntion(["pricing", "price"])}`}>
+              <Link href="/pricing/">Pricing</Link>
             </li>
             <li className={`mil-has-children ${activeMenuFuntion(["blog", "publication"])}`}>
               <a href="#.">Resources</a>
@@ -52,19 +52,19 @@ const Header = ({ dark }) => {
           </ul>
         </nav>
         <div className="mil-menu-buttons">
-          <a
-            href="https://aureon.rhematek-solutions.com/accounts/login/"
+          <Link
+            href="/login/"
             className="mil-btn mil-sm"
           >
             Log in
-          </a>
-          <a
-            href="https://aureon.rhematek-solutions.com/accounts/signup/"
+          </Link>
+          <Link
+            href="/signup/"
             className="mil-btn mil-sm mil-accent"
             style={{ marginLeft: 10 }}
           >
             Get Started
-          </a>
+          </Link>
           <div
             className={`mil-menu-btn ${toggle ? "mil-active" : ""}`}
             onClick={() => setToggle(!toggle)}
