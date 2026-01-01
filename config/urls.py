@@ -56,6 +56,9 @@ urlpatterns = [
     # Authentication API
     path('api/auth/', include('apps.accounts.urls')),
 
+    # Website Marketing API (for React frontend)
+    path('api/v1/website/', include('apps.website.api_urls')),
+
     # Core Business Apps API
     path('api/', include('apps.clients.urls')),
     path('api/', include('apps.contracts.urls')),
