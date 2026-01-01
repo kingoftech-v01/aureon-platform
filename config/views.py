@@ -43,24 +43,27 @@ def serve_react_app(request, context=None):
                 html = f.read()
             return HttpResponse(html, content_type='text/html')
 
-    # Fallback: Return a CSP-compliant loading page (no inline styles)
-    # Uses only external stylesheets or meta refresh for redirect
+    # Fallback: React build not found - show setup page
+    # Note: Inline styles used here as fallback when React isn't built yet
     return HttpResponse('''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="2;url=/">
-    <title>Loading Aureon...</title>
-    <link rel="stylesheet" href="/static/dashboard/assets/index.css">
+    <title>Aureon - Setup Required</title>
 </head>
-<body class="min-h-screen flex items-center justify-center bg-gray-50">
-    <div class="text-center">
-        <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p class="text-gray-600">Loading Aureon...</p>
-        <noscript>
-            <p class="mt-4 text-sm text-gray-500">JavaScript is required. Redirecting...</p>
-        </noscript>
+<body style="font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; padding: 20px;">
+    <div style="background: white; border-radius: 16px; padding: 48px; max-width: 520px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+        <div style="width: 72px; height: 72px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+            <span style="color: white; font-size: 28px; font-weight: bold;">A</span>
+        </div>
+        <h1 style="color: #111827; margin: 0 0 12px; font-size: 28px; font-weight: 700;">Aureon Platform</h1>
+        <p style="color: #6b7280; margin: 0 0 32px; line-height: 1.6; font-size: 16px;">The frontend application needs to be built before the site can be accessed.</p>
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; text-align: left; margin-bottom: 32px;">
+            <p style="color: #374151; font-size: 14px; font-weight: 600; margin: 0 0 12px;">Build Commands:</p>
+            <code style="display: block; background: #1f2937; color: #10b981; padding: 16px; border-radius: 8px; font-size: 13px; line-height: 1.8; overflow-x: auto;">cd frontend<br>npm install<br>npm run build<br>python manage.py collectstatic --noinput</code>
+        </div>
+        <p style="color: #9ca3af; font-size: 13px; margin: 0;">Powered by <strong>Rhematek Solutions</strong></p>
     </div>
 </body>
 </html>''', content_type='text/html')
