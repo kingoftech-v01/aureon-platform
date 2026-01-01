@@ -77,13 +77,27 @@ class HomeView(View):
 
     def serve_react_app(self, request, tenant):
         """Serve the React dashboard application."""
-        # Try to serve the React app's index.html from staticfiles
-        react_index_path = os.path.join(settings.STATIC_ROOT or settings.STATICFILES_DIRS[0], 'dashboard', 'index.html')
+        # Try multiple locations for the React app's index.html
+        possible_paths = []
 
-        if os.path.exists(react_index_path):
-            with open(react_index_path, 'r') as f:
-                html = f.read()
-            return HttpResponse(html, content_type='text/html')
+        # 1. Check STATIC_ROOT (after collectstatic)
+        if settings.STATIC_ROOT:
+            possible_paths.append(os.path.join(settings.STATIC_ROOT, 'dashboard', 'index.html'))
+
+        # 2. Check STATICFILES_DIRS (development)
+        if hasattr(settings, 'STATICFILES_DIRS'):
+            for static_dir in settings.STATICFILES_DIRS:
+                possible_paths.append(os.path.join(static_dir, 'dashboard', 'index.html'))
+
+        # 3. Check relative to BASE_DIR
+        possible_paths.append(os.path.join(settings.BASE_DIR, 'static', 'dashboard', 'index.html'))
+        possible_paths.append(os.path.join(settings.BASE_DIR, 'staticfiles', 'dashboard', 'index.html'))
+
+        for react_index_path in possible_paths:
+            if os.path.exists(react_index_path):
+                with open(react_index_path, 'r', encoding='utf-8') as f:
+                    html = f.read()
+                return HttpResponse(html, content_type='text/html')
 
         # Fallback to Django template if React build not available
         return render(request, 'tenant/dashboard.html', {
@@ -116,15 +130,29 @@ class TenantDashboardView(View):
         if not request.user.is_authenticated:
             return redirect('tenant_login')
 
-        # Serve React app for all dashboard routes
-        react_index_path = os.path.join(settings.STATIC_ROOT or settings.STATICFILES_DIRS[0], 'dashboard', 'index.html')
+        # Try multiple locations for the React app's index.html
+        possible_paths = []
 
-        if os.path.exists(react_index_path):
-            with open(react_index_path, 'r') as f:
-                html = f.read()
-            return HttpResponse(html, content_type='text/html')
+        # 1. Check STATIC_ROOT (after collectstatic)
+        if settings.STATIC_ROOT:
+            possible_paths.append(os.path.join(settings.STATIC_ROOT, 'dashboard', 'index.html'))
 
-        # Fallback
+        # 2. Check STATICFILES_DIRS (development)
+        if hasattr(settings, 'STATICFILES_DIRS'):
+            for static_dir in settings.STATICFILES_DIRS:
+                possible_paths.append(os.path.join(static_dir, 'dashboard', 'index.html'))
+
+        # 3. Check relative to BASE_DIR
+        possible_paths.append(os.path.join(settings.BASE_DIR, 'static', 'dashboard', 'index.html'))
+        possible_paths.append(os.path.join(settings.BASE_DIR, 'staticfiles', 'dashboard', 'index.html'))
+
+        for react_index_path in possible_paths:
+            if os.path.exists(react_index_path):
+                with open(react_index_path, 'r', encoding='utf-8') as f:
+                    html = f.read()
+                return HttpResponse(html, content_type='text/html')
+
+        # Fallback to Django template if React build not available
         return render(request, 'tenant/dashboard.html', {
             'tenant': tenant,
         })

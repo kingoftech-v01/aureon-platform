@@ -51,11 +51,10 @@ export default defineConfig({
     },
   },
   build: {
-    // Build to Django static folder
-    outDir: '../static/dashboard',
+    // Build to dist folder (Docker copies this to Django static)
+    outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false,
-    // Base path for Django static files
     assetsDir: 'assets',
     rollupOptions: {
       output: {
@@ -68,6 +67,6 @@ export default defineConfig({
       },
     },
   },
-  // Base URL for production (Django static URL)
+  // Base URL for production (Django serves from /static/dashboard/)
   base: '/static/dashboard/',
 })

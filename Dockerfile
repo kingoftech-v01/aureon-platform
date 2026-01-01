@@ -101,8 +101,9 @@ COPY --from=python-builder /opt/venv /opt/venv
 # Copy application code
 COPY --chown=aureon:aureon . .
 
-# Copy React build from frontend stage
-COPY --from=frontend-build --chown=aureon:aureon /frontend/dist /app/staticfiles/dashboard
+# Copy React build from frontend stage to static/dashboard
+# This matches the Django STATICFILES_DIRS setting
+COPY --from=frontend-build --chown=aureon:aureon /frontend/dist /app/static/dashboard
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/staticfiles /app/media /app/logs && \
