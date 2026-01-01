@@ -404,6 +404,26 @@
     animation: pulse-subtle 2s ease-in-out infinite;
   }
 
+  /* Float animations for decorative elements */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+  }
+
+  @keyframes float-delayed {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-float-delayed {
+    animation: float-delayed 8s ease-in-out infinite;
+    animation-delay: 2s;
+  }
+
   /* Text truncation utilities */
   .truncate-2 {
     display: -webkit-box;
@@ -559,7 +579,9 @@
   .animate-spin-slow,
   .animate-pulse,
   .animate-pulse-subtle,
-  .animate-bounce {
+  .animate-bounce,
+  .animate-float,
+  .animate-float-delayed {
     animation: none !important;
   }
 

@@ -1,21 +1,77 @@
 """
 Home and authentication views for Aureon SaaS Platform.
+
+All frontend rendering is handled by React SPA.
+Django only serves the React app's index.html for all routes.
 """
 import os
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django.views import View
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, JsonResponse
 from django.contrib.auth import authenticate, login, logout
-from django.contrib import messages
 from django.conf import settings
+
+
+def serve_react_app(request, context=None):
+    """
+    Serve the React SPA index.html.
+
+    Looks for the React build in multiple locations for
+    both development and production environments.
+    """
+    possible_paths = []
+
+    # 1. Check STATIC_ROOT (after collectstatic)
+    if settings.STATIC_ROOT:
+        possible_paths.append(os.path.join(settings.STATIC_ROOT, 'dashboard', 'index.html'))
+
+    # 2. Check STATICFILES_DIRS (development)
+    if hasattr(settings, 'STATICFILES_DIRS'):
+        for static_dir in settings.STATICFILES_DIRS:
+            possible_paths.append(os.path.join(static_dir, 'dashboard', 'index.html'))
+
+    # 3. Check relative to BASE_DIR
+    possible_paths.append(os.path.join(settings.BASE_DIR, 'static', 'dashboard', 'index.html'))
+    possible_paths.append(os.path.join(settings.BASE_DIR, 'staticfiles', 'dashboard', 'index.html'))
+
+    # 4. Check frontend/dist for development
+    possible_paths.append(os.path.join(settings.BASE_DIR, 'frontend', 'dist', 'index.html'))
+
+    for react_index_path in possible_paths:
+        if os.path.exists(react_index_path):
+            with open(react_index_path, 'r', encoding='utf-8') as f:
+                html = f.read()
+            return HttpResponse(html, content_type='text/html')
+
+    # Fallback: Return a CSP-compliant loading page (no inline styles)
+    # Uses only external stylesheets or meta refresh for redirect
+    return HttpResponse('''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="2;url=/">
+    <title>Loading Aureon...</title>
+    <link rel="stylesheet" href="/static/dashboard/assets/index.css">
+</head>
+<body class="min-h-screen flex items-center justify-center bg-gray-50">
+    <div class="text-center">
+        <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-gray-600">Loading Aureon...</p>
+        <noscript>
+            <p class="mt-4 text-sm text-gray-500">JavaScript is required. Redirecting...</p>
+        </noscript>
+    </div>
+</body>
+</html>''', content_type='text/html')
 
 
 class HomeView(View):
     """
-    Home view that serves different content based on the domain.
+    Home view that serves React SPA for all requests.
 
-    - Main domain (aureon.rhematek-solutions.com): Shows landing/vitrine page
-    - Tenant subdomain (demo.aureon.rhematek-solutions.com): Shows React dashboard
+    - Main domain: Serves React landing page
+    - Tenant subdomain: Serves React dashboard/tenant pages
     """
 
     MAIN_DOMAINS = [
@@ -26,83 +82,8 @@ class HomeView(View):
     ]
 
     def get(self, request):
-        host = request.get_host().split(':')[0]  # Remove port if present
-
-        # Check if this is the main domain
-        if host in self.MAIN_DOMAINS:
-            return render(request, 'website/home_plax.html')
-
-        # Check if this is a tenant subdomain
-        if host.endswith('.aureon.rhematek-solutions.com'):
-            return self.handle_tenant_request(request, host)
-
-        # Check if this is a tenant subdomain on localhost
-        if host.endswith('.localhost'):
-            return self.handle_tenant_request(request, host)
-
-        # Default to landing page
-        return render(request, 'website/home_plax.html')
-
-    def handle_tenant_request(self, request, host):
-        """Handle requests to tenant subdomains."""
-        from apps.tenants.models import Domain, Tenant
-
-        try:
-            # Look up the domain
-            domain = Domain.objects.select_related('tenant').get(domain=host)
-            tenant = domain.tenant
-
-            if not tenant.is_active:
-                return render(request, 'tenant/inactive.html', {
-                    'tenant': tenant,
-                }, status=403)
-
-            # Store tenant in request for use in templates
-            request.tenant = tenant
-
-            # If user is authenticated, serve React dashboard
-            if request.user.is_authenticated:
-                return self.serve_react_app(request, tenant)
-
-            # Show tenant login/welcome page
-            return render(request, 'tenant/welcome.html', {
-                'tenant': tenant,
-            })
-
-        except Domain.DoesNotExist:
-            # Domain not found - show error page
-            return render(request, 'tenant/not_found.html', {
-                'host': host,
-            }, status=404)
-
-    def serve_react_app(self, request, tenant):
-        """Serve the React dashboard application."""
-        # Try multiple locations for the React app's index.html
-        possible_paths = []
-
-        # 1. Check STATIC_ROOT (after collectstatic)
-        if settings.STATIC_ROOT:
-            possible_paths.append(os.path.join(settings.STATIC_ROOT, 'dashboard', 'index.html'))
-
-        # 2. Check STATICFILES_DIRS (development)
-        if hasattr(settings, 'STATICFILES_DIRS'):
-            for static_dir in settings.STATICFILES_DIRS:
-                possible_paths.append(os.path.join(static_dir, 'dashboard', 'index.html'))
-
-        # 3. Check relative to BASE_DIR
-        possible_paths.append(os.path.join(settings.BASE_DIR, 'static', 'dashboard', 'index.html'))
-        possible_paths.append(os.path.join(settings.BASE_DIR, 'staticfiles', 'dashboard', 'index.html'))
-
-        for react_index_path in possible_paths:
-            if os.path.exists(react_index_path):
-                with open(react_index_path, 'r', encoding='utf-8') as f:
-                    html = f.read()
-                return HttpResponse(html, content_type='text/html')
-
-        # Fallback to Django template if React build not available
-        return render(request, 'tenant/dashboard.html', {
-            'tenant': tenant,
-        })
+        # All requests are handled by React SPA
+        return serve_react_app(request)
 
 
 class TenantDashboardView(View):
@@ -111,56 +92,15 @@ class TenantDashboardView(View):
     This catches /dashboard, /clients, /contracts, /invoices, etc.
     """
 
-    def get_tenant(self, request):
-        """Get the tenant from the request host."""
-        from apps.tenants.models import Domain
-
-        host = request.get_host().split(':')[0]
-        try:
-            domain = Domain.objects.select_related('tenant').get(domain=host)
-            return domain.tenant
-        except Domain.DoesNotExist:
-            return None
-
     def get(self, request, path=''):
-        tenant = self.get_tenant(request)
-        if not tenant:
-            return redirect('home')
-
-        if not request.user.is_authenticated:
-            return redirect('tenant_login')
-
-        # Try multiple locations for the React app's index.html
-        possible_paths = []
-
-        # 1. Check STATIC_ROOT (after collectstatic)
-        if settings.STATIC_ROOT:
-            possible_paths.append(os.path.join(settings.STATIC_ROOT, 'dashboard', 'index.html'))
-
-        # 2. Check STATICFILES_DIRS (development)
-        if hasattr(settings, 'STATICFILES_DIRS'):
-            for static_dir in settings.STATICFILES_DIRS:
-                possible_paths.append(os.path.join(static_dir, 'dashboard', 'index.html'))
-
-        # 3. Check relative to BASE_DIR
-        possible_paths.append(os.path.join(settings.BASE_DIR, 'static', 'dashboard', 'index.html'))
-        possible_paths.append(os.path.join(settings.BASE_DIR, 'staticfiles', 'dashboard', 'index.html'))
-
-        for react_index_path in possible_paths:
-            if os.path.exists(react_index_path):
-                with open(react_index_path, 'r', encoding='utf-8') as f:
-                    html = f.read()
-                return HttpResponse(html, content_type='text/html')
-
-        # Fallback to Django template if React build not available
-        return render(request, 'tenant/dashboard.html', {
-            'tenant': tenant,
-        })
+        # React handles authentication state and routing
+        return serve_react_app(request)
 
 
 class TenantLoginView(View):
     """
     Login view for tenant subdomains.
+    Redirects to React login page, handles POST for API compatibility.
     """
 
     def get_tenant(self, request):
@@ -175,58 +115,44 @@ class TenantLoginView(View):
             return None
 
     def get(self, request):
-        tenant = self.get_tenant(request)
-        if not tenant:
-            return redirect('home')
-
-        # Already logged in? Go to dashboard
-        if request.user.is_authenticated:
-            return redirect('home')
-
-        return render(request, 'tenant/login.html', {
-            'tenant': tenant,
-            'next': request.GET.get('next', '/'),
-        })
+        # Serve React SPA which will handle routing to login page
+        return serve_react_app(request)
 
     def post(self, request):
+        """Handle login POST request for API compatibility."""
         tenant = self.get_tenant(request)
-        if not tenant:
-            return redirect('home')
 
         email = request.POST.get('email', '').strip()
         password = request.POST.get('password', '')
-        next_url = request.POST.get('next', '/')
+        next_url = request.POST.get('next', '/dashboard')
 
         if not email or not password:
-            return render(request, 'tenant/login.html', {
-                'tenant': tenant,
-                'error': 'Please enter both email and password.',
-                'email': email,
-                'next': next_url,
-            })
+            return JsonResponse({
+                'success': False,
+                'error': 'Please enter both email and password.'
+            }, status=400)
 
         # Authenticate user
         user = authenticate(request, username=email, password=password)
 
         if user is not None:
             # Check if user belongs to this tenant (or is superuser)
-            if user.is_superuser or (user.tenant and user.tenant.id == tenant.id):
+            if tenant is None or user.is_superuser or (user.tenant and user.tenant.id == tenant.id):
                 login(request, user)
-                return redirect(next_url if next_url else '/')
-            else:
-                return render(request, 'tenant/login.html', {
-                    'tenant': tenant,
-                    'error': 'You do not have access to this workspace.',
-                    'email': email,
-                    'next': next_url,
+                return JsonResponse({
+                    'success': True,
+                    'redirect': next_url
                 })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'You do not have access to this workspace.'
+                }, status=403)
         else:
-            return render(request, 'tenant/login.html', {
-                'tenant': tenant,
-                'error': 'Invalid email or password.',
-                'email': email,
-                'next': next_url,
-            })
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid email or password.'
+            }, status=401)
 
 
 class TenantLogoutView(View):
@@ -236,8 +162,18 @@ class TenantLogoutView(View):
 
     def get(self, request):
         logout(request)
-        return redirect('home')
+        return redirect('/auth/login')
 
     def post(self, request):
         logout(request)
-        return redirect('home')
+        return JsonResponse({'success': True})
+
+
+class ReactCatchAllView(View):
+    """
+    Catch-all view that serves React SPA for all frontend routes.
+    This ensures React Router handles all client-side routing.
+    """
+
+    def get(self, request, path=''):
+        return serve_react_app(request)
