@@ -30,7 +30,7 @@ class HomeView(View):
 
         # Check if this is the main domain
         if host in self.MAIN_DOMAINS:
-            return render(request, 'website/home.html')
+            return render(request, 'website/home_plax.html')
 
         # Check if this is a tenant subdomain
         if host.endswith('.aureon.rhematek-solutions.com'):
@@ -41,7 +41,7 @@ class HomeView(View):
             return self.handle_tenant_request(request, host)
 
         # Default to landing page
-        return render(request, 'website/home.html')
+        return render(request, 'website/home_plax.html')
 
     def handle_tenant_request(self, request, host):
         """Handle requests to tenant subdomains."""
