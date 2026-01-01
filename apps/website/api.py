@@ -18,7 +18,8 @@ from .models import (
 
 def api_response(data, status=200):
     """Helper to create consistent API responses"""
-    response = JsonResponse(data, safe=False)
+    wrapped = {'data': data, 'status': 'success'} if status == 200 else {'error': data, 'status': 'error'}
+    response = JsonResponse(wrapped, safe=False, status=status)
     response['Access-Control-Allow-Origin'] = '*'
     response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     response['Access-Control-Allow-Headers'] = 'Content-Type'

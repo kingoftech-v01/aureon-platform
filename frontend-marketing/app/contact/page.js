@@ -1,7 +1,83 @@
+"use client";
 import { PageBanner } from "@/components/Banner";
 import { CallToAction2 } from "@/components/CallToAction";
 import PlaxLayout from "@/layouts/PlaxLayout";
-const page = () => {
+import { useState, useEffect } from "react";
+import { marketingApi } from "@/lib/api";
+
+const ContactPage = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: '',
+    consent: false,
+  });
+  const [status, setStatus] = useState({ type: '', message: '' });
+  const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState({
+    address: 'Montreal, Quebec, Canada',
+    phone: '+1 (514) 555-0123',
+    email: 'hello@aureon.io',
+  });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await marketingApi.getSiteSettings();
+        if (response && response.data) {
+          setSettings(prev => ({
+            ...prev,
+            ...response.data,
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch settings:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.consent) {
+      setStatus({ type: 'error', message: 'Please agree to the data collection policy.' });
+      return;
+    }
+
+    setLoading(true);
+    setStatus({ type: '', message: '' });
+
+    try {
+      const response = await marketingApi.submitContact({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        message: formData.message,
+      });
+
+      if (response && !response.error) {
+        setStatus({ type: 'success', message: 'Thanks, your message is sent successfully!' });
+        setFormData({ name: '', email: '', phone: '', message: '', consent: false });
+      } else {
+        setStatus({ type: 'error', message: response?.error || 'Failed to send message. Please try again.' });
+      }
+    } catch (error) {
+      setStatus({ type: 'error', message: 'Failed to send message. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <PlaxLayout bg={false}>
       <PageBanner
@@ -14,7 +90,7 @@ const page = () => {
         <div className="container">
           <div className="row justify-content-center">
             <div className="col-xl-9">
-              <form>
+              <form onSubmit={handleSubmit}>
                 <div className="row">
                   <div className="col-md-6 mil-mb-30">
                     <input
@@ -22,6 +98,9 @@ const page = () => {
                       type="text"
                       placeholder="Name"
                       name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
                     />
                   </div>
                   <div className="col-md-6 mil-mb-30">
@@ -30,6 +109,9 @@ const page = () => {
                       type="email"
                       placeholder="Email"
                       name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
                     />
                   </div>
                   <div className="col-xl-12 mil-mb-30">
@@ -37,7 +119,9 @@ const page = () => {
                       className="mil-input mil-up"
                       type="tel"
                       placeholder="Telephone number"
-                      name="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
                     />
                   </div>
                   <div className="col-xl-12 mil-mb-30 ">
@@ -47,7 +131,9 @@ const page = () => {
                       className="mil-up"
                       placeholder="Message"
                       name="message"
-                      defaultValue={""}
+                      value={formData.message}
+                      onChange={handleChange}
+                      required
                     />
                   </div>
                 </div>
@@ -56,8 +142,9 @@ const page = () => {
                     <input
                       type="checkbox"
                       id="checkbox"
-                      name="checkmark"
-                      defaultChecked=""
+                      name="consent"
+                      checked={formData.consent}
+                      onChange={handleChange}
                     />
                     <label htmlFor="checkbox" />
                   </div>
@@ -66,29 +153,40 @@ const page = () => {
                   </p>
                 </div>
                 <div className="mil-up">
-                  <button type="submit" className="mil-btn mil-m">
-                    Send Message
+                  <button
+                    type="submit"
+                    className="mil-btn mil-m"
+                    disabled={loading}
+                  >
+                    {loading ? 'Sending...' : 'Send Message'}
                   </button>
                 </div>
               </form>
-              <div className="alert-success" style={{ display: "none" }}>
-                <h5>Thanks, your message is sent successfully.</h5>
-              </div>
+
+              {status.type === 'success' && (
+                <div className="alert-success" style={{ display: "block", marginTop: 20, padding: 15, background: '#d4edda', borderRadius: 8 }}>
+                  <h5 style={{ color: '#155724', margin: 0 }}>{status.message}</h5>
+                </div>
+              )}
+
+              {status.type === 'error' && (
+                <div className="alert-danger" style={{ display: "block", marginTop: 20, padding: 15, background: '#f8d7da', borderRadius: 8 }}>
+                  <h5 style={{ color: '#721c24', margin: 0 }}>{status.message}</h5>
+                </div>
+              )}
+
               <div className="mil-p-160-0">
                 <h5 className="mil-mb-30 mil-up">
                   We are available on the following channels:
                 </h5>
                 <p className="mil-text-m mil-soft mil-mb-10 mil-up">
-                  Address: 999 Rue du Cherche-Midi, 7755500666 Paris, France
+                  Address: {settings.address}
                 </p>
                 <p className="mil-text-m mil-soft mil-mb-10 mil-up">
-                  Telephone: +001 (808) 555-0111
-                </p>
-                <p className="mil-text-m mil-soft mil-mb-10 mil-up">
-                  Fax: +001 (808) 555-0112
+                  Telephone: {settings.phone}
                 </p>
                 <p className="mil-text-m mil-soft mil-up">
-                  Email: support@plax.network
+                  Email: {settings.email}
                 </p>
               </div>
             </div>
@@ -102,4 +200,4 @@ const page = () => {
     </PlaxLayout>
   );
 };
-export default page;
+export default ContactPage;

@@ -1,7 +1,7 @@
 import Link from "next/link";
 const Banner = ({
-  title = "Your Ally for Financial Control",
-  subTitle = "Send money globally with Plax",
+  title = "Automate Your Financial Workflows",
+  subTitle = "From Contracts to Payments",
   img = "img/home-2/1.png",
   style = { maxWidth: "135%", transform: "translateX(5%)" },
   dark = false,
@@ -17,21 +17,24 @@ const Banner = ({
                 {title}
               </h1>
               <div className="mil-buttons-frame">
-                <Link href="register" className="mil-btn mil-md mil-add-arrow">
-                  Try demo
-                </Link>
                 <a
-                  href="https://www.youtube.com/watch?v=gRhoYxy9Oss"
-                  className="mil-btn mil-md mil-light mil-add-play has-popup-video"
+                  href="https://aureon.rhematek-solutions.com/accounts/signup/"
+                  className="mil-btn mil-md mil-add-arrow"
                 >
-                  Watch tutorial
+                  Start Free Trial
                 </a>
+                <Link
+                  href="/contact"
+                  className="mil-btn mil-md mil-light"
+                >
+                  Request Demo
+                </Link>
               </div>
             </div>
           </div>
           <div className="col-xl-6">
             <div className="mil-banner-img">
-              <img src={img} alt="banner" style={style} />
+              <img src={img} alt="Aureon Platform" style={style} />
             </div>
           </div>
         </div>
