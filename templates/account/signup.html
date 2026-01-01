@@ -4,20 +4,9 @@
 {% block title %}{% trans "Sign Up" %} - Aureon{% endblock %}
 {% block meta_description %}Create your free Aureon account to automate your business financial workflows, contracts, invoices, and payments.{% endblock %}
 
-{% block page_title %}{% trans "Sign Up" %}{% endblock %}
-{% block breadcrumb_title %}{% trans "Sign Up" %}{% endblock %}
-
 {% block auth_content %}
 <h2 class="auth-title">{% trans "Create Your Account" %}</h2>
 <p class="auth-subtitle">{% trans "Start automating your business workflows today" %}</p>
-
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}" role="alert">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
 
 {% if form.non_field_errors %}
     <div class="alert alert-danger" role="alert">
@@ -27,7 +16,7 @@
     </div>
 {% endif %}
 
-<form method="post" action="{% url 'account_signup' %}" class="auth-form">
+<form method="post" action="{% url 'account_signup' %}">
     {% csrf_token %}
 
     {% if form.username %}

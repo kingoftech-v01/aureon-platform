@@ -1,0 +1,74 @@
+{% extends "mfa/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Two-Factor Authentication" %} - Aureon{% endblock %}
+
+{% block auth_content %}
+<h2 class="auth-title">{% trans "Two-Factor Authentication" %}</h2>
+<p class="auth-subtitle">{% trans "Add an extra layer of security to your account" %}</p>
+
+<div class="info-box">
+    <p>
+        <i class="fa fa-shield" style="margin-right: 8px;"></i>
+        {% trans "Two-factor authentication adds an additional layer of security to your account by requiring more than just a password to sign in." %}
+    </p>
+</div>
+
+<ul class="security-methods">
+    <!-- Authenticator App -->
+    <li>
+        <div class="method-info">
+            <div class="method-icon">
+                <i class="fa fa-mobile"></i>
+            </div>
+            <div>
+                <div class="method-name">{% trans "Authenticator App" %}</div>
+                <div class="method-status">
+                    {% if authenticators.totp %}
+                        <span class="badge badge-success">{% trans "Enabled" %}</span>
+                    {% else %}
+                        {% trans "Not configured" %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div>
+            {% if authenticators.totp %}
+                <a href="{% url 'mfa_deactivate_totp' %}" class="btn btn-sm btn-secondary">{% trans "Remove" %}</a>
+            {% else %}
+                <a href="{% url 'mfa_activate_totp' %}" class="btn btn-sm btn-primary">{% trans "Set up" %}</a>
+            {% endif %}
+        </div>
+    </li>
+
+    <!-- Recovery Codes -->
+    <li>
+        <div class="method-info">
+            <div class="method-icon">
+                <i class="fa fa-key"></i>
+            </div>
+            <div>
+                <div class="method-name">{% trans "Recovery Codes" %}</div>
+                <div class="method-status">
+                    {% if authenticators.recovery_codes %}
+                        <span class="badge badge-success">{{ authenticators.recovery_codes.unused_count }} {% trans "codes remaining" %}</span>
+                    {% else %}
+                        {% trans "Not generated" %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div>
+            {% if authenticators.recovery_codes %}
+                <a href="{% url 'mfa_view_recovery_codes' %}" class="btn btn-sm btn-secondary">{% trans "View" %}</a>
+            {% else %}
+                <a href="{% url 'mfa_generate_recovery_codes' %}" class="btn btn-sm btn-primary">{% trans "Generate" %}</a>
+            {% endif %}
+        </div>
+    </li>
+</ul>
+
+<div class="text-center mt-4">
+    <a href="{% url 'account_login' %}" class="auth-link">{% trans "Back to Account Settings" %}</a>
+</div>
+{% endblock %}

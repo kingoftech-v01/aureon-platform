@@ -4,20 +4,9 @@
 {% block title %}{% trans "Sign In" %} - Aureon{% endblock %}
 {% block meta_description %}Sign in to your Aureon account to access your dashboard, contracts, invoices, and more.{% endblock %}
 
-{% block page_title %}{% trans "Sign In" %}{% endblock %}
-{% block breadcrumb_title %}{% trans "Sign In" %}{% endblock %}
-
 {% block auth_content %}
 <h2 class="auth-title">{% trans "Welcome Back" %}</h2>
 <p class="auth-subtitle">{% trans "Sign in to access your account" %}</p>
-
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}" role="alert">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
 
 {% if form.non_field_errors %}
     <div class="alert alert-danger" role="alert">
@@ -27,7 +16,7 @@
     </div>
 {% endif %}
 
-<form method="post" action="{% url 'account_login' %}" class="auth-form">
+<form method="post" action="{% url 'account_login' %}">
     {% csrf_token %}
 
     <div class="mb-3">

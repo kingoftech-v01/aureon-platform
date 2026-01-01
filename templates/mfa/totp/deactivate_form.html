@@ -1,0 +1,35 @@
+{% extends "mfa/totp/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Remove Authenticator App" %} - Aureon{% endblock %}
+
+{% block auth_content %}
+<h2 class="auth-title">{% trans "Remove Authenticator App" %}</h2>
+<p class="auth-subtitle">{% trans "Are you sure you want to disable two-factor authentication?" %}</p>
+
+<div class="alert alert-warning">
+    <i class="fa fa-exclamation-triangle" style="margin-right: 8px;"></i>
+    {% trans "Warning: This will make your account less secure. You will only need your password to sign in." %}
+</div>
+
+{% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">
+        {% for error in form.non_field_errors %}
+            {{ error }}
+        {% endfor %}
+    </div>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="btn-group">
+        <button type="submit" class="btn btn-danger">
+            {% trans "Yes, Remove" %}
+        </button>
+        <a href="{% url 'mfa_index' %}" class="btn btn-secondary">
+            {% trans "Cancel" %}
+        </a>
+    </div>
+</form>
+{% endblock %}

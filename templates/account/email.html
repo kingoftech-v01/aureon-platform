@@ -4,57 +4,49 @@
 {% block title %}{% trans "Email Addresses" %} - Aureon{% endblock %}
 {% block meta_description %}Manage your email addresses associated with your Aureon account.{% endblock %}
 
-{% block page_title %}{% trans "Email Addresses" %}{% endblock %}
-{% block breadcrumb_title %}{% trans "Email Addresses" %}{% endblock %}
-
+{% block container_class %}auth-container-wide{% endblock %}
 {% block auth_card_class %}auth-card-wide{% endblock %}
 
 {% block auth_content %}
 <h2 class="auth-title">{% trans "Manage Email Addresses" %}</h2>
 <p class="auth-subtitle">{% trans "Add or remove email addresses associated with your account" %}</p>
 
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}" role="alert">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
-
 {% if emailaddresses %}
     <p class="text-muted mb-3">{% trans "The following email addresses are associated with your account:" %}</p>
 
-    <form method="post" action="{% url 'account_email' %}" id="email-management-form">
+    <form method="post" action="{% url 'account_email' %}">
         {% csrf_token %}
 
-        <div class="email-list mb-4">
+        <ul class="email-list mb-4">
             {% for emailaddress in emailaddresses %}
-                <div class="email-item d-flex align-items-center p-3 border rounded mb-2 {% if emailaddress.primary %}bg-light{% endif %}">
-                    <input type="radio" name="email" value="{{ emailaddress.email }}" id="email_{{ forloop.counter }}"
-                           class="form-check-input me-3" {% if emailaddress.primary %}checked{% endif %}>
-                    <label for="email_{{ forloop.counter }}" class="flex-grow-1 mb-0">
-                        <span class="fw-medium">{{ emailaddress.email }}</span>
-                        {% if emailaddress.verified %}
-                            <span class="badge badge-success ms-2">{% trans "Verified" %}</span>
-                        {% else %}
-                            <span class="badge badge-warning ms-2">{% trans "Unverified" %}</span>
-                        {% endif %}
-                        {% if emailaddress.primary %}
-                            <span class="badge badge-primary ms-2">{% trans "Primary" %}</span>
-                        {% endif %}
-                    </label>
-                </div>
+                <li>
+                    <div class="d-flex align-items-center" style="gap: 12px;">
+                        <input type="radio" name="email" value="{{ emailaddress.email }}" id="email_{{ forloop.counter }}"
+                               {% if emailaddress.primary %}checked{% endif %}>
+                        <label for="email_{{ forloop.counter }}" style="margin: 0; cursor: pointer;">
+                            <span style="font-weight: 500;">{{ emailaddress.email }}</span>
+                            {% if emailaddress.verified %}
+                                <span class="badge badge-success">{% trans "Verified" %}</span>
+                            {% else %}
+                                <span class="badge badge-warning">{% trans "Unverified" %}</span>
+                            {% endif %}
+                            {% if emailaddress.primary %}
+                                <span class="badge badge-primary">{% trans "Primary" %}</span>
+                            {% endif %}
+                        </label>
+                    </div>
+                </li>
             {% endfor %}
-        </div>
+        </ul>
 
-        <div class="d-flex flex-wrap gap-2 mb-4">
-            <button type="submit" name="action_primary" class="btn btn-primary btn-sm">
+        <div class="btn-group mb-4">
+            <button type="submit" name="action_primary" class="btn btn-sm btn-primary">
                 {% trans "Make Primary" %}
             </button>
-            <button type="submit" name="action_send" class="btn btn-outline-primary btn-sm">
+            <button type="submit" name="action_send" class="btn btn-sm btn-outline">
                 {% trans "Re-send Verification" %}
             </button>
-            <button type="submit" name="action_remove" class="btn btn-danger btn-sm" onclick="return confirm('{% trans "Do you really want to remove the selected email address?" %}')">
+            <button type="submit" name="action_remove" class="btn btn-sm btn-danger">
                 {% trans "Remove" %}
             </button>
         </div>
@@ -66,9 +58,9 @@
 {% endif %}
 
 {% if can_add_email %}
-    <hr class="my-4">
+    <hr style="margin: 24px 0; border: 0; border-top: 1px solid #e5e7eb;">
 
-    <h3 class="h5 mb-3">{% trans "Add Email Address" %}</h3>
+    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">{% trans "Add Email Address" %}</h3>
 
     {% if form.non_field_errors %}
         <div class="alert alert-danger" role="alert">
@@ -78,7 +70,7 @@
         </div>
     {% endif %}
 
-    <form method="post" action="{% url 'account_email' %}" class="auth-form">
+    <form method="post" action="{% url 'account_email' %}">
         {% csrf_token %}
 
         <div class="mb-3">
@@ -100,15 +92,4 @@
         </button>
     </form>
 {% endif %}
-{% endblock %}
-
-{% block auth_extra_js %}
-<script>
-    // Confirmation for email removal
-    document.querySelector('button[name="action_remove"]')?.addEventListener('click', function(e) {
-        if (!confirm('{% trans "Do you really want to remove the selected email address?" %}')) {
-            e.preventDefault();
-        }
-    });
-</script>
 {% endblock %}
