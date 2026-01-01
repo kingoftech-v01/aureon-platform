@@ -1,8 +1,50 @@
 from django.urls import path
-from django.views.generic import TemplateView
+from django.http import HttpResponse
 from . import views
 
 app_name = 'website'
+
+# Simple robots.txt and sitemap responses
+def robots_txt(request):
+    content = """User-agent: *
+Allow: /
+
+Sitemap: https://aureon.rhematek-solutions.com/sitemap.xml
+"""
+    return HttpResponse(content, content_type='text/plain')
+
+
+def sitemap_xml(request):
+    content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://aureon.rhematek-solutions.com/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://aureon.rhematek-solutions.com/about/</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureon.rhematek-solutions.com/services/</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureon.rhematek-solutions.com/pricing/</loc>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aureon.rhematek-solutions.com/contact/</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://aureon.rhematek-solutions.com/blog/</loc>
+    <priority>0.7</priority>
+  </url>
+</urlset>
+"""
+    return HttpResponse(content, content_type='application/xml')
+
 
 urlpatterns = [
     # Homepage
@@ -14,6 +56,7 @@ urlpatterns = [
     path('pricing/', views.PricingView.as_view(), name='pricing'),
     path('contact/', views.ContactView.as_view(), name='contact'),
     path('contact/success/', views.ContactSuccessView.as_view(), name='contact_success'),
+    path('contact/submit/', views.contact_submit, name='contact_submit'),
 
     # Services
     path('services/', views.ServicesView.as_view(), name='services'),
@@ -48,7 +91,7 @@ urlpatterns = [
     path('privacy-policy/', views.PrivacyPolicyView.as_view(), name='privacy_policy'),
     path('terms-of-service/', views.TermsOfServiceView.as_view(), name='terms_of_service'),
 
-    # SEO Files (will be handled by Django views)
-    path('sitemap.xml', TemplateView.as_view(template_name='website/sitemap.xml', content_type='text/xml'), name='sitemap'),
-    path('robots.txt', TemplateView.as_view(template_name='website/robots.txt', content_type='text/plain'), name='robots'),
+    # SEO Files
+    path('sitemap.xml', sitemap_xml, name='sitemap'),
+    path('robots.txt', robots_txt, name='robots'),
 ]
