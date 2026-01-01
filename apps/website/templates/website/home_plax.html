@@ -1,0 +1,393 @@
+{% extends 'website/base_plax.html' %}
+{% load static %}
+
+{% block title %}Aureon - Automated Financial Management Platform{% endblock %}
+{% block meta_description %}Automate your entire financial workflow from contracts to payments. E-signatures, invoicing, Stripe payments, and real-time analytics - all in one platform.{% endblock %}
+
+{% block content %}
+<!-- Banner Section -->
+<div class="mil-banner mil-dissolve">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-xl-6">
+                <div class="mil-banner-text">
+                    <h6 class="mil-text-gradient-2 mil-mb-20">From Signature to Cash, Automatically</h6>
+                    <h1 class="mil-display mil-text-gradient-3 mil-mb-30">
+                        Your Complete Financial Automation Platform
+                    </h1>
+                    <p class="mil-text-m mil-soft mil-mb-40">
+                        Aureon automates contracts, invoicing, and payments in one seamless workflow.
+                        Reduce manual work, get paid faster, and scale your business effortlessly.
+                    </p>
+                    <div class="mil-buttons-frame">
+                        <a href="{% url 'account_signup' %}" class="mil-btn mil-md mil-add-arrow">
+                            Start Free Trial
+                        </a>
+                        <a href="{% url 'website:contact' %}" class="mil-btn mil-md mil-light">
+                            Book a Demo
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="mil-banner-img">
+                    <img src="{% static 'plax/img/home-2/1.png' %}" alt="Aureon Dashboard" style="max-width: 135%; transform: translateX(5%);">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trusted By Section -->
+<div class="mil-brands mil-p-160-160">
+    <div class="container">
+        <h5 class="mil-text-center mil-soft mil-mb-60 mil-up">
+            Trusted by over 5,000+ businesses worldwide
+        </h5>
+        <div class="row justify-content-center">
+            <div class="col-3 col-md-2 mil-text-center">
+                <div class="mil-brand">
+                    <img src="{% static 'plax/img/brands/1.svg' %}" alt="brand" class="mil-up">
+                </div>
+            </div>
+            <div class="col-3 col-md-2 mil-text-center">
+                <div class="mil-brand">
+                    <img src="{% static 'plax/img/brands/2.svg' %}" alt="brand" class="mil-up">
+                </div>
+            </div>
+            <div class="col-3 col-md-2 mil-text-center">
+                <div class="mil-brand">
+                    <img src="{% static 'plax/img/brands/3.svg' %}" alt="brand" class="mil-up">
+                </div>
+            </div>
+            <div class="col-3 col-md-2 mil-text-center">
+                <div class="mil-brand">
+                    <img src="{% static 'plax/img/brands/4.svg' %}" alt="brand" class="mil-up">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section 1 -->
+<div class="mil-features mil-p-0-80">
+    <div class="container">
+        <div class="row flex-sm-row-reverse justify-content-between align-items-center">
+            <div class="col-xl-6 mil-mb-80">
+                <h2 class="mil-mb-30 mil-up">End-to-End Contract Management</h2>
+                <p class="mil-text-m mil-soft mil-mb-60 mil-up">
+                    Create professional contracts with dynamic templates, collect e-signatures,
+                    and track milestones - all in one seamless workflow.
+                </p>
+                <ul class="mil-list-2 mil-type-2">
+                    <li>
+                        <div class="mil-up">
+                            <h5 class="mil-mb-15">Smart Contract Templates</h5>
+                            <p class="mil-text-m mil-soft">
+                                Pre-built templates with dynamic fields that auto-fill
+                                with client information, pricing, and custom clauses.
+                            </p>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="mil-up">
+                            <h5 class="mil-mb-15">Legal E-Signatures</h5>
+                            <p class="mil-text-m mil-soft">
+                                Compliant digital signatures with audit trails.
+                                Get contracts signed in minutes, not days.
+                            </p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-xl-6 mil-mb-80">
+                <div class="mil-image-frame">
+                    <img src="{% static 'plax/img/home-2/2.png' %}" alt="Contract Management" class="mil-up">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Call to Action Section -->
+<div class="mil-cta mil-up">
+    <div class="container">
+        <div class="mil-out-frame mil-visible mil-illustration-fix mil-p-160-0">
+            <div class="row align-items-end">
+                <div class="mil-text-center">
+                    <h2 class="mil-mb-30 mil-up">
+                        Automated Invoicing That<br>
+                        Gets You Paid Faster
+                    </h2>
+                    <p class="mil-text-m mil-soft mil-mb-60 mil-up">
+                        Generate invoices automatically when milestones are hit or contracts are signed.<br>
+                        Recurring billing, payment reminders, and late fee automation included.
+                    </p>
+                </div>
+            </div>
+            <div class="mil-illustration-absolute mil-up">
+                <img src="{% static 'plax/img/home-2/3.png' %}" alt="Automated Invoicing">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Icon Boxes Section -->
+<div class="icon-boxes mil-p-160-130">
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-4 mil-mb-30">
+                <div class="mil-icon-box mil-with-bg mil-center mil-up">
+                    <img src="{% static 'plax/img/home-2/icons/1.svg' %}" alt="icon" class="mil-mb-30 mil-up">
+                    <h5 class="mil-mb-20 mil-up">Smart Contracts</h5>
+                    <p class="mil-text-s mil-soft mil-up">
+                        Create, customize, and send professional contracts
+                        with e-signature capabilities in minutes.
+                    </p>
+                </div>
+            </div>
+            <div class="col-xl-4 mil-mb-30">
+                <div class="mil-icon-box mil-with-bg mil-center mil-up">
+                    <img src="{% static 'plax/img/home-2/icons/2.svg' %}" alt="icon" class="mil-mb-30 mil-up">
+                    <h5 class="mil-mb-20 mil-up">Auto Invoicing</h5>
+                    <p class="mil-text-s mil-soft mil-up">
+                        Automatic invoice generation tied to contract
+                        milestones, events, or recurring schedules.
+                    </p>
+                </div>
+            </div>
+            <div class="col-xl-4 mil-mb-30">
+                <div class="mil-icon-box mil-with-bg mil-center mil-up">
+                    <img src="{% static 'plax/img/home-2/icons/3.svg' %}" alt="icon" class="mil-mb-30 mil-up">
+                    <h5 class="mil-mb-20 mil-up">Stripe Payments</h5>
+                    <p class="mil-text-s mil-soft mil-up">
+                        Accept payments via Stripe with automatic
+                        reconciliation and real-time status updates.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section 2 -->
+<div class="mil-features mil-p-160-80">
+    <div class="container">
+        <div class="row justify-content-between align-items-center">
+            <div class="col-xl-6 mil-mb-80">
+                <h2 class="mil-mb-30 mil-up">
+                    Payment Collection on Autopilot
+                </h2>
+                <p class="mil-text-m mil-soft mil-mb-60 mil-up">
+                    Connect Stripe and let Aureon handle the rest.
+                    Automatic payment collection, retry logic, and reconciliation.
+                </p>
+                <ul class="mil-list-2 mil-type-2 mil-mb-60">
+                    <li>
+                        <div class="mil-up">
+                            <h5 class="mil-mb-15">Multiple Payment Methods</h5>
+                            <p class="mil-text-m mil-soft">
+                                Credit cards, ACH transfers, and international
+                                payments - all through one integration.
+                            </p>
+                        </div>
+                    </li>
+                </ul>
+                <div class="mil-up">
+                    <a href="{% url 'website:services' %}" class="mil-btn mil-button-transform mil-m mil-add-arrow">
+                        Learn More
+                    </a>
+                </div>
+            </div>
+            <div class="col-xl-6 mil-mb-80">
+                <img src="{% static 'plax/img/home-2/4.png' %}" alt="Payment Collection" class="mil-up" style="width: 115%;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section 3 -->
+<div class="mil-features mil-p-0-80">
+    <div class="container">
+        <div class="row flex-sm-row-reverse justify-content-between align-items-center">
+            <div class="col-xl-6 mil-mb-80">
+                <h2 class="mil-mb-30 mil-up">
+                    Real-Time Analytics &amp; Insights
+                </h2>
+                <p class="mil-text-m mil-soft mil-mb-60 mil-up">
+                    Track revenue, outstanding invoices, and payment trends
+                    with beautiful dashboards and exportable reports.
+                </p>
+                <ul class="mil-list-2 mil-type-2">
+                    <li>
+                        <div class="mil-up">
+                            <h5 class="mil-mb-15">Cash Flow Visibility</h5>
+                            <p class="mil-text-m mil-soft">
+                                See exactly when payments are coming in and
+                                identify bottlenecks in your billing cycle.
+                            </p>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="mil-up">
+                            <h5 class="mil-mb-15">Exportable Reports</h5>
+                            <p class="mil-text-m mil-soft">
+                                Generate reports for accounting, taxes, or client
+                                presentations with one-click exports.
+                            </p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-xl-5 mil-mb-80">
+                <img src="{% static 'plax/img/home-2/5.png' %}" alt="Analytics Dashboard" class="mil-up" style="width: 100%;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pricing Preview Section -->
+<div class="mil-cta mil-up">
+    <div class="container">
+        <div class="mil-out-frame mil-p-160-100">
+            <div class="row align-items-end">
+                <div class="col-xl-8 mil-mb-80-adaptive-30">
+                    <h2 class="mil-up">
+                        Simple, Transparent Pricing
+                    </h2>
+                    <p class="mil-text-m mil-soft mil-mt-30 mil-up">
+                        Start free, scale as you grow. No hidden fees, no surprises.
+                    </p>
+                </div>
+                <div class="col-xl-4 mil-mb-80 mil-up">
+                    <a href="{% url 'website:pricing' %}" class="mil-btn mil-m mil-add-arrow mil-adaptive-right">
+                        View Pricing
+                    </a>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xl-4 mil-mb-60">
+                    <div class="mil-icon-box">
+                        <img src="{% static 'plax/img/home-1/icons/1.svg' %}" alt="icon" class="mil-mb-30 mil-up">
+                        <h5 class="mil-mb-30 mil-up">Free Forever Plan</h5>
+                        <p class="mil-text-m mil-soft mil-up">
+                            Get started with up to 5 clients and<br>
+                            basic invoicing features at no cost.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-xl-4 mil-mb-60">
+                    <div class="mil-icon-box">
+                        <img src="{% static 'plax/img/home-1/icons/2.svg' %}" alt="icon" class="mil-mb-30 mil-up">
+                        <h5 class="mil-mb-30 mil-up">Professional Plan</h5>
+                        <p class="mil-text-m mil-soft mil-up">
+                            Unlimited clients, contracts, and<br>
+                            advanced automation for $49/mo.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-xl-4 mil-mb-60">
+                    <div class="mil-icon-box">
+                        <img src="{% static 'plax/img/home-1/icons/3.svg' %}" alt="icon" class="mil-mb-30 mil-up">
+                        <h5 class="mil-mb-30 mil-up">Enterprise Plan</h5>
+                        <p class="mil-text-m mil-soft mil-up">
+                            Custom integrations, dedicated support,<br>
+                            and white-label options.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Testimonials Section -->
+<div class="mil-testimonials mil-p-160-160">
+    <div class="container">
+        <div class="mil-text-center mil-mb-80">
+            <h2 class="mil-mb-30 mil-up">What Our Customers Say</h2>
+            <p class="mil-text-m mil-soft mil-up">
+                Thousands of businesses trust Aureon to manage their financial workflows.
+            </p>
+        </div>
+        <div class="row">
+            <div class="col-xl-4 mil-mb-30">
+                <div class="mil-testimonial-card mil-up">
+                    <div class="mil-quote mil-mb-30">
+                        <i class="fas fa-quote-left"></i>
+                    </div>
+                    <p class="mil-text-m mil-mb-30">
+                        "Aureon cut our invoice-to-payment time from 45 days to just 12.
+                        The automation is incredible."
+                    </p>
+                    <div class="mil-testimonial-author">
+                        <img src="{% static 'plax/img/faces/1.jpg' %}" alt="Sarah M." class="mil-avatar">
+                        <div>
+                            <h6>Sarah Mitchell</h6>
+                            <p class="mil-text-s mil-soft">CEO, Creative Agency</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4 mil-mb-30">
+                <div class="mil-testimonial-card mil-up">
+                    <div class="mil-quote mil-mb-30">
+                        <i class="fas fa-quote-left"></i>
+                    </div>
+                    <p class="mil-text-m mil-mb-30">
+                        "The contract templates alone saved us 10+ hours per week.
+                        Best investment we've made."
+                    </p>
+                    <div class="mil-testimonial-author">
+                        <img src="{% static 'plax/img/faces/2.jpg' %}" alt="James K." class="mil-avatar">
+                        <div>
+                            <h6>James Kim</h6>
+                            <p class="mil-text-s mil-soft">Founder, Tech Consultancy</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4 mil-mb-30">
+                <div class="mil-testimonial-card mil-up">
+                    <div class="mil-quote mil-mb-30">
+                        <i class="fas fa-quote-left"></i>
+                    </div>
+                    <p class="mil-text-m mil-mb-30">
+                        "Finally, a platform that handles everything from proposal to payment.
+                        Game changer."
+                    </p>
+                    <div class="mil-testimonial-author">
+                        <img src="{% static 'plax/img/faces/3.jpg' %}" alt="Lisa R." class="mil-avatar">
+                        <div>
+                            <h6>Lisa Rodriguez</h6>
+                            <p class="mil-text-s mil-soft">Director, Marketing Firm</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Final CTA Section -->
+<div class="mil-cta mil-p-160-160" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="container">
+        <div class="mil-text-center">
+            <h2 class="mil-mb-30 mil-up" style="color: white;">
+                Ready to Automate Your Finances?
+            </h2>
+            <p class="mil-text-m mil-mb-60 mil-up" style="color: rgba(255,255,255,0.9);">
+                Join thousands of businesses saving time and getting paid faster with Aureon.
+            </p>
+            <div class="mil-buttons-frame mil-up" style="justify-content: center;">
+                <a href="{% url 'account_signup' %}" class="mil-btn mil-md" style="background: white; color: #667eea;">
+                    Start Free Trial
+                </a>
+                <a href="{% url 'website:contact' %}" class="mil-btn mil-md mil-light" style="border-color: white; color: white;">
+                    Talk to Sales
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% load static %}
+<footer class="mil-footer-with-bg mil-p-160-0">
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-3">
+                <a href="{% url 'website:home' %}" class="mil-footer-logo mil-mb-60">
+                    <img src="{% static 'plax/img/logo.png' %}" alt="Aureon" width="120" height="40">
+                </a>
+                <p class="mil-text-s mil-soft mil-mb-30">
+                    Aureon automates your entire financial workflow from contracts to payments.
+                    Transform how you manage client finances.
+                </p>
+            </div>
+            <div class="col-xl-3 mil-mb-60">
+                <h6 class="mil-mb-60">Product</h6>
+                <ul class="mil-footer-list">
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <a href="{% url 'website:services' %}">Features</a>
+                    </li>
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <a href="{% url 'website:pricing' %}">Pricing</a>
+                    </li>
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <a href="{% url 'website:case_studies' %}">Case Studies</a>
+                    </li>
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <a href="{% url 'account_signup' %}">Get Started</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-xl-3 mil-mb-60">
+                <h6 class="mil-mb-60">Company</h6>
+                <ul class="mil-footer-list">
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <a href="{% url 'website:about' %}">About Us</a>
+                    </li>
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <a href="{% url 'website:contact' %}">Contact</a>
+                    </li>
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <a href="{% url 'website:blog' %}">Blog</a>
+                    </li>
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <a href="{% url 'website:privacy_policy' %}">Privacy Policy</a>
+                    </li>
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <a href="{% url 'website:terms_of_service' %}">Terms of Service</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-xl-3 mil-mb-80">
+                <h6 class="mil-mb-60">Contact</h6>
+                <ul class="mil-footer-list">
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <i class="fas fa-map-marker-alt" style="margin-right: 10px;"></i>
+                        Rhematek Solutions<br>
+                        123 Innovation Drive<br>
+                        Tech City, TC 12345
+                    </li>
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <i class="fas fa-envelope" style="margin-right: 10px;"></i>
+                        support@aureon.io
+                    </li>
+                    <li class="mil-text-m mil-soft mil-mb-15">
+                        <i class="fas fa-phone" style="margin-right: 10px;"></i>
+                        +1 (555) 123-4567
+                    </li>
+                </ul>
+                <div class="mil-social-icons mil-mt-30">
+                    <a href="#" class="mil-social-icon" aria-label="Twitter">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="mil-social-icon" aria-label="LinkedIn">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a href="#" class="mil-social-icon" aria-label="GitHub">
+                        <i class="fab fa-github"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="mil-footer-bottom">
+            <div class="row">
+                <div class="col-xl-6">
+                    <p class="mil-text-s mil-soft">
+                        &copy; {% now "Y" %} Aureon by Rhematek Solutions. All rights reserved.
+                    </p>
+                </div>
+                <div class="col-xl-6">
+                    <p class="mil-text-s mil-text-right mil-sm-text-left mil-soft">
+                        Powering financial automation worldwide
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>

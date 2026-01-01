@@ -27,8 +27,8 @@ stripe.api_key = getattr(settings, 'STRIPE_LIVE_SECRET_KEY', '') or getattr(sett
 
 # Homepage View
 class HomeView(TemplateView):
-    """Homepage with hero, features, testimonials, and CTA sections"""
-    template_name = 'website/home.html'
+    """Homepage with hero, features, testimonials, and CTA sections - Plax Design"""
+    template_name = 'website/home_plax.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

@@ -1,0 +1,52 @@
+{% load static %}
+<div class="mil-top-panel">
+    <div class="container">
+        <a href="{% url 'website:home' %}" class="mil-logo">
+            <img src="{% static 'plax/img/logo.png' %}" alt="Aureon" width="120" height="40">
+        </a>
+        <nav class="mil-top-menu">
+            <ul>
+                <li class="{% if request.resolver_match.url_name == 'home' %}mil-active{% endif %}">
+                    <a href="{% url 'website:home' %}">Home</a>
+                </li>
+                <li class="{% if 'about' in request.resolver_match.url_name %}mil-active{% endif %}">
+                    <a href="{% url 'website:about' %}">About</a>
+                </li>
+                <li class="mil-has-children {% if 'service' in request.resolver_match.url_name %}mil-active{% endif %}">
+                    <a href="#">Services</a>
+                    <ul>
+                        <li><a href="{% url 'website:services' %}">All Services</a></li>
+                        <li><a href="{% url 'website:services' %}#contracts">Contract Management</a></li>
+                        <li><a href="{% url 'website:services' %}#invoicing">Automated Invoicing</a></li>
+                        <li><a href="{% url 'website:services' %}#payments">Payment Processing</a></li>
+                    </ul>
+                </li>
+                <li class="{% if 'pricing' in request.resolver_match.url_name %}mil-active{% endif %}">
+                    <a href="{% url 'website:pricing' %}">Pricing</a>
+                </li>
+                <li class="mil-has-children {% if 'blog' in request.resolver_match.url_name %}mil-active{% endif %}">
+                    <a href="#">Resources</a>
+                    <ul>
+                        <li><a href="{% url 'website:blog' %}">Blog</a></li>
+                        <li><a href="{% url 'website:case_studies' %}">Case Studies</a></li>
+                        <li><a href="{% url 'website:faq' %}">FAQ</a></li>
+                    </ul>
+                </li>
+                <li class="{% if 'contact' in request.resolver_match.url_name %}mil-active{% endif %}">
+                    <a href="{% url 'website:contact' %}">Contact</a>
+                </li>
+            </ul>
+        </nav>
+        <div class="mil-menu-buttons">
+            <a href="{% url 'account_login' %}" class="mil-btn mil-sm">
+                Log in
+            </a>
+            <a href="{% url 'account_signup' %}" class="mil-btn mil-sm mil-accent" style="margin-left: 10px;">
+                Get Started
+            </a>
+            <div class="mil-menu-btn">
+                <span></span>
+            </div>
+        </div>
+    </div>
+</div>
