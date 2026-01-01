@@ -1,205 +1,101 @@
-{% extends 'website/base.html' %}
+{% extends 'website/base_plax.html' %}
 {% load static %}
 
-{% block title %}Pricing Plans - Affordable Business Automation | Aureon{% endblock %}
-
-{% block meta_description %}Choose the perfect Aureon pricing plan for your business. Start free with our Starter plan or upgrade to Pro and Enterprise for advanced features. 14-day free trial on all plans.{% endblock %}
-
-{% block meta_keywords %}aureon pricing, business automation pricing, SaaS pricing plans, contract management pricing, invoice software cost, subscription plans{% endblock %}
-
-{% block extra_head %}
-<!-- Structured Data - Product/Pricing -->
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "Product",
-    "name": "Aureon Business Automation Platform",
-    "description": "Comprehensive SaaS platform for financial workflow automation",
-    "brand": {
-        "@type": "Brand",
-        "name": "Aureon"
-    },
-    "offers": {
-        "@type": "AggregateOffer",
-        "priceCurrency": "USD",
-        "lowPrice": "0",
-        "highPrice": "299",
-        "offerCount": "4"
-    }
-}
-</script>
-<!-- Structured Data - BreadcrumbList -->
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-        {
-            "@type": "ListItem",
-            "position": 1,
-            "name": "Home",
-            "item": "{% url 'website:home' %}"
-        },
-        {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Pricing",
-            "item": "{{ request.build_absolute_uri }}"
-        }
-    ]
-}
-</script>
-<!-- Structured Data - FAQPage -->
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-        {
-            "@type": "Question",
-            "name": "Can I cancel my subscription anytime?",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes, you can cancel your subscription at any time. If you cancel, you'll continue to have access until the end of your current billing period."
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "What payment methods do you accept?",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "We accept all major credit cards (Visa, MasterCard, American Express) and some debit cards. All payments are processed securely through Stripe."
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "Is there a free trial?",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes! All paid plans come with a 14-day free trial. No credit card required to start."
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "Can I upgrade or downgrade my plan?",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Absolutely! You can upgrade or downgrade your plan at any time. When upgrading, you'll be prorated for the remainder of your billing cycle."
-            }
-        }
-    ]
-}
-</script>
-{% endblock %}
+{% block title %}Pricing Plans - Aureon{% endblock %}
+{% block meta_description %}Choose the perfect Aureon pricing plan for your business. Start free or upgrade to Pro and Business for advanced features. 14-day free trial on all plans.{% endblock %}
 
 {% block content %}
-<!-- Banner area start -->
-<section class="banner__inner-page bg-image pt-160 pb-160" data-background="{% static 'website/images/banner/banner-inner-page.jpg' %}">
+<!-- Page Banner -->
+<div class="mil-banner-inner mil-dissolve">
     <div class="container">
-        <div class="row">
-            <div class="col-xl-12">
-                <div class="banner__inner-page-item">
-                    <h1 class="title split-text right">Pricing Plans</h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{% url 'website:home' %}">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Pricing</li>
-                        </ol>
-                    </nav>
+        <div class="mil-banner-content mil-up">
+            <div class="row justify-content-center">
+                <div class="col-xl-8 mil-text-center">
+                    <span class="mil-text-gradient-2 mil-mb-20">Simple Pricing</span>
+                    <h1 class="mil-display mil-text-gradient-3 mil-mb-30">
+                        Choose the Perfect Plan for Your Business
+                    </h1>
+                    <p class="mil-text-m mil-soft">
+                        Start free, upgrade when you're ready. No hidden fees, no surprises.
+                        All plans include a 14-day free trial.
+                    </p>
                 </div>
             </div>
         </div>
     </div>
-</section>
-<!-- Banner area end -->
+</div>
 
-<!-- Pricing intro section start -->
-<section class="pricing__intro pt-120 pb-60">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-xl-8 text-center">
-                <span class="section-subtitle">Simple Pricing</span>
-                <h2 class="section-title">Choose the Perfect Plan for Your Business</h2>
-                <p class="lead text-muted">
-                    Start free, upgrade when you're ready. No hidden fees, no surprises.
-                    All plans include a 14-day free trial.
-                </p>
-            </div>
-        </div>
-    </div>
-</section>
-<!-- Pricing intro section end -->
-
-<!-- Pricing toggle -->
-<section class="pricing__toggle pb-30">
+<!-- Billing Toggle -->
+<div class="mil-pricing-toggle mil-p-80-40">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-auto">
-                <div class="d-flex align-items-center" role="group" aria-label="Billing period toggle">
-                    <span class="me-3" id="monthly-label">Monthly</span>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="billingToggle" style="width: 50px; height: 26px;" role="switch" aria-label="Toggle annual billing">
-                    </div>
-                    <span class="ms-3" id="annual-label">Annual <span class="badge bg-success">Save 17%</span></span>
+                <div class="mil-toggle-wrapper mil-up">
+                    <span class="mil-toggle-label" id="monthly-label">Monthly</span>
+                    <label class="mil-switch">
+                        <input type="checkbox" id="billingToggle">
+                        <span class="mil-slider"></span>
+                    </label>
+                    <span class="mil-toggle-label" id="annual-label">
+                        Annual <span class="mil-badge mil-success">Save 17%</span>
+                    </span>
                 </div>
             </div>
         </div>
     </div>
-</section>
+</div>
 
-<!-- Pricing cards section start -->
-<section class="pricing__cards pb-120">
+<!-- Pricing Cards -->
+<div class="mil-pricing mil-p-0-160">
     <div class="container">
         <div class="row justify-content-center">
             {% for plan in plans %}
-            <div class="col-xl-3 col-lg-6 mb-4">
-                <div class="pricing__card bg-white rounded shadow-sm h-100 {% if plan.popular %}border border-primary border-2{% endif %} position-relative" itemscope itemtype="https://schema.org/Offer">
+            <div class="col-xl-3 col-lg-6 mil-mb-40">
+                <div class="mil-pricing-card {% if plan.popular %}mil-popular{% endif %} mil-up">
                     {% if plan.popular %}
-                    <div class="popular-badge position-absolute top-0 start-50 translate-middle">
-                        <span class="badge bg-primary px-3 py-2">Most Popular</span>
-                    </div>
+                    <div class="mil-popular-badge">Most Popular</div>
                     {% endif %}
-                    <div class="pricing__header p-4 text-center border-bottom">
-                        <h3 class="pricing__name mb-2 h4" itemprop="name">{{ plan.name }}</h3>
-                        <p class="text-muted small mb-3" itemprop="description">{{ plan.description }}</p>
-                        <div class="pricing__price" itemprop="price" content="{{ plan.price }}">
-                            <meta itemprop="priceCurrency" content="USD">
-                            <span class="price-monthly" style="{% if plan.price_annual %}display: block;{% endif %}">
-                                <span class="display-4 fw-bold">${{ plan.price }}</span>
-                                <span class="text-muted">/month</span>
+                    <div class="mil-pricing-header">
+                        <h3 class="mil-mb-10">{{ plan.name }}</h3>
+                        <p class="mil-text-s mil-soft mil-mb-20">{{ plan.description }}</p>
+                        <div class="mil-price">
+                            <span class="mil-price-monthly">
+                                <span class="mil-amount">${{ plan.price }}</span>
+                                <span class="mil-period">/month</span>
                             </span>
-                            <span class="price-annual" style="display: none;">
-                                <span class="display-4 fw-bold">${{ plan.price_annual|floatformat:0 }}</span>
-                                <span class="text-muted">/year</span>
+                            <span class="mil-price-annual" style="display: none;">
+                                <span class="mil-amount">${{ plan.price_annual }}</span>
+                                <span class="mil-period">/year</span>
                             </span>
                         </div>
                     </div>
-                    <div class="pricing__body p-4">
-                        <ul class="list-unstyled mb-4" role="list">
+                    <div class="mil-pricing-body">
+                        <ul class="mil-pricing-features">
                             {% for feature in plan.features %}
-                            <li class="mb-2">
-                                <i class="fas fa-check text-success me-2" aria-hidden="true"></i>
+                            <li class="mil-included">
+                                <i class="fas fa-check"></i>
                                 {{ feature }}
                             </li>
                             {% endfor %}
                             {% if plan.limitations %}
                             {% for limitation in plan.limitations %}
-                            <li class="mb-2 text-muted">
-                                <i class="fas fa-times text-danger me-2" aria-hidden="true"></i>
+                            <li class="mil-excluded">
+                                <i class="fas fa-times"></i>
                                 {{ limitation }}
                             </li>
                             {% endfor %}
                             {% endif %}
                         </ul>
                     </div>
-                    <div class="pricing__footer p-4 pt-0">
+                    <div class="mil-pricing-footer">
                         {% if plan.price == 0 %}
-                        <a href="{{ plan.cta_url }}" class="btn btn-outline-primary w-100">{{ plan.cta }}</a>
+                        <a href="{{ plan.cta_url }}" class="mil-btn mil-md {% if plan.popular %}mil-accent{% else %}mil-light{% endif %} mil-full-width">
+                            {{ plan.cta }}
+                        </a>
                         {% else %}
-                        <button type="button" class="btn {% if plan.popular %}btn-primary{% else %}btn-outline-primary{% endif %} w-100 checkout-btn"
+                        <button type="button" class="mil-btn mil-md {% if plan.popular %}mil-accent{% else %}mil-light{% endif %} mil-full-width checkout-btn"
                                 data-price-monthly="{{ plan.stripe_price_id_monthly }}"
-                                data-price-annual="{{ plan.stripe_price_id_annual }}"
-                                aria-label="Subscribe to {{ plan.name }} plan">
+                                data-price-annual="{{ plan.stripe_price_id_annual }}">
                             {{ plan.cta }}
                         </button>
                         {% endif %}
@@ -209,91 +105,86 @@
             {% endfor %}
         </div>
     </div>
-</section>
-<!-- Pricing cards section end -->
+</div>
 
-<!-- FAQ section start -->
-<section class="pricing__faq pt-80 pb-120 bg-light">
+<!-- FAQ Section -->
+<div class="mil-faq mil-p-160-160" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
     <div class="container">
-        <div class="row justify-content-center mb-5">
-            <div class="col-xl-8 text-center">
-                <span class="section-subtitle">FAQ</span>
-                <h2 class="section-title">Frequently Asked Questions</h2>
+        <div class="row justify-content-center mil-mb-80">
+            <div class="col-xl-8 mil-text-center">
+                <span class="mil-text-gradient-2 mil-mb-20 mil-up">FAQ</span>
+                <h2 class="mil-up">Frequently Asked Questions</h2>
             </div>
         </div>
         <div class="row justify-content-center">
             <div class="col-xl-8">
-                <div class="accordion" id="pricingFAQ">
-                    <div class="accordion-item">
-                        <h3 class="accordion-header">
-                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="true" aria-controls="faq1">
-                                Can I cancel my subscription anytime?
-                            </button>
-                        </h3>
-                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#pricingFAQ">
-                            <div class="accordion-body">
-                                Yes, you can cancel your subscription at any time. If you cancel, you'll continue to have access until the end of your current billing period.
-                            </div>
+                <div class="mil-accordion">
+                    <div class="mil-accordion-item mil-up mil-active">
+                        <div class="mil-accordion-header">
+                            <h5>Can I cancel my subscription anytime?</h5>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="mil-accordion-body">
+                            <p class="mil-text-m mil-soft">
+                                Yes, you can cancel your subscription at any time. If you cancel,
+                                you'll continue to have access until the end of your current billing period.
+                            </p>
                         </div>
                     </div>
-                    <div class="accordion-item">
-                        <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" aria-expanded="false" aria-controls="faq2">
-                                What payment methods do you accept?
-                            </button>
-                        </h3>
-                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
-                            <div class="accordion-body">
-                                We accept all major credit cards (Visa, MasterCard, American Express) and some debit cards. All payments are processed securely through Stripe.
-                            </div>
+                    <div class="mil-accordion-item mil-up">
+                        <div class="mil-accordion-header">
+                            <h5>What payment methods do you accept?</h5>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="mil-accordion-body">
+                            <p class="mil-text-m mil-soft">
+                                We accept all major credit cards (Visa, MasterCard, American Express)
+                                and some debit cards. All payments are processed securely through Stripe.
+                            </p>
                         </div>
                     </div>
-                    <div class="accordion-item">
-                        <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">
-                                Is there a free trial?
-                            </button>
-                        </h3>
-                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
-                            <div class="accordion-body">
-                                Yes! All paid plans come with a 14-day free trial. No credit card required to start. You can explore all features before deciding.
-                            </div>
+                    <div class="mil-accordion-item mil-up">
+                        <div class="mil-accordion-header">
+                            <h5>Is there a free trial?</h5>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="mil-accordion-body">
+                            <p class="mil-text-m mil-soft">
+                                Yes! All paid plans come with a 14-day free trial. No credit card required to start.
+                                You can explore all features before deciding.
+                            </p>
                         </div>
                     </div>
-                    <div class="accordion-item">
-                        <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4" aria-expanded="false" aria-controls="faq4">
-                                Can I upgrade or downgrade my plan?
-                            </button>
-                        </h3>
-                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
-                            <div class="accordion-body">
-                                Absolutely! You can upgrade or downgrade your plan at any time. When upgrading, you'll be prorated for the remainder of your billing cycle.
-                            </div>
+                    <div class="mil-accordion-item mil-up">
+                        <div class="mil-accordion-header">
+                            <h5>Can I upgrade or downgrade my plan?</h5>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="mil-accordion-body">
+                            <p class="mil-text-m mil-soft">
+                                Absolutely! You can upgrade or downgrade your plan at any time.
+                                When upgrading, you'll be prorated for the remainder of your billing cycle.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</section>
-<!-- FAQ section end -->
+</div>
 
-<!-- CTA section start -->
-<section class="cta__section pt-80 pb-80 bg-primary">
+<!-- CTA Section -->
+<div class="mil-cta mil-p-160-160">
     <div class="container">
-        <div class="row align-items-center justify-content-between">
-            <div class="col-lg-8">
-                <h2 class="text-white mb-3">Need a Custom Enterprise Solution?</h2>
-                <p class="text-white opacity-75 mb-0">Contact our sales team for custom pricing and dedicated support.</p>
-            </div>
-            <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
-                <a href="{% url 'website:contact' %}" class="btn btn-light btn-lg">Contact Sales</a>
-            </div>
+        <div class="mil-cta-content mil-text-center mil-up">
+            <h2 class="mil-mb-30">Need a Custom Enterprise Solution?</h2>
+            <p class="mil-text-m mil-soft mil-mb-40">Contact our sales team for custom pricing and dedicated support.</p>
+            <a href="{% url 'website:contact' %}" class="mil-btn mil-md mil-add-arrow">
+                Contact Sales
+            </a>
         </div>
     </div>
-</section>
-<!-- CTA section end -->
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -301,17 +192,35 @@
 <script>
     // Billing toggle
     const billingToggle = document.getElementById('billingToggle');
-    const monthlyPrices = document.querySelectorAll('.price-monthly');
-    const annualPrices = document.querySelectorAll('.price-annual');
+    const monthlyPrices = document.querySelectorAll('.mil-price-monthly');
+    const annualPrices = document.querySelectorAll('.mil-price-annual');
 
-    billingToggle.addEventListener('change', function() {
-        if (this.checked) {
-            monthlyPrices.forEach(el => el.style.display = 'none');
-            annualPrices.forEach(el => el.style.display = 'block');
-        } else {
-            monthlyPrices.forEach(el => el.style.display = 'block');
-            annualPrices.forEach(el => el.style.display = 'none');
-        }
+    if (billingToggle) {
+        billingToggle.addEventListener('change', function() {
+            if (this.checked) {
+                monthlyPrices.forEach(el => el.style.display = 'none');
+                annualPrices.forEach(el => el.style.display = 'block');
+            } else {
+                monthlyPrices.forEach(el => el.style.display = 'block');
+                annualPrices.forEach(el => el.style.display = 'none');
+            }
+        });
+    }
+
+    // Accordion
+    document.querySelectorAll('.mil-accordion-header').forEach(header => {
+        header.addEventListener('click', function() {
+            const item = this.parentElement;
+            const isActive = item.classList.contains('mil-active');
+
+            // Close all items
+            document.querySelectorAll('.mil-accordion-item').forEach(i => i.classList.remove('mil-active'));
+
+            // Toggle current item
+            if (!isActive) {
+                item.classList.add('mil-active');
+            }
+        });
     });
 
     // Stripe checkout
@@ -320,7 +229,7 @@
 
     document.querySelectorAll('.checkout-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            const isAnnual = billingToggle.checked;
+            const isAnnual = billingToggle && billingToggle.checked;
             const priceId = isAnnual ? this.dataset.priceAnnual : this.dataset.priceMonthly;
 
             if (!priceId) {

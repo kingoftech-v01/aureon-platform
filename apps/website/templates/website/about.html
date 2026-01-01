@@ -1,153 +1,84 @@
-{% extends 'website/base.html' %}
+{% extends 'website/base_plax.html' %}
 {% load static %}
 
-{% block title %}About Us - Financial Automation Platform | Aureon{% endblock %}
-
+{% block title %}About Us - Aureon by Rhematek Solutions{% endblock %}
 {% block meta_description %}Learn about Aureon, the leading SaaS platform automating financial workflows. From contracts to payments, we help businesses reduce manual effort and accelerate growth.{% endblock %}
 
-{% block meta_keywords %}about aureon, financial automation, business automation platform, contract management, invoice automation, payment processing{% endblock %}
-
-{% block extra_head %}
-<!-- Structured Data - Organization -->
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "Aureon",
-    "description": "Comprehensive SaaS platform that automates end-to-end client financial workflows",
-    "url": "{{ request.build_absolute_uri }}",
-    "logo": "{% static 'website/images/logo/logo.svg' %}",
-    "sameAs": [
-        "{{ site_settings.twitter_url|default:'' }}",
-        "{{ site_settings.linkedin_url|default:'' }}",
-        "{{ site_settings.facebook_url|default:'' }}"
-    ],
-    "contactPoint": {
-        "@type": "ContactPoint",
-        "telephone": "{{ site_settings.contact_phone|default:'' }}",
-        "contactType": "customer service",
-        "email": "{{ site_settings.contact_email|default:'' }}"
-    }
-}
-</script>
-<!-- Structured Data - BreadcrumbList -->
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-        {
-            "@type": "ListItem",
-            "position": 1,
-            "name": "Home",
-            "item": "{% url 'website:home' %}"
-        },
-        {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "About Us",
-            "item": "{{ request.build_absolute_uri }}"
-        }
-    ]
-}
-</script>
-{% endblock %}
-
 {% block content %}
-<!-- Banner area start -->
-<section class="banner__inner-page bg-image pt-160 pb-160 bg-image" data-background="{% static 'website/images/banner/banner-inner-page.jpg' %}">
+<!-- Page Banner -->
+<div class="mil-banner-inner mil-dissolve">
     <div class="container">
-        <div class="row">
-            <div class="col-xl-12">
-                <div class="banner__inner-page-item">
-                    <h1 class="title split-text right">About Aureon</h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{% url 'website:home' %}">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">About Us</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-<!-- Banner area end -->
-
-<!-- About section start -->
-<section class="about__section pt-120 pb-120">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-xl-6 col-lg-6">
-                <div class="about__left-item">
-                    <div class="image">
-                        <img src="{% static 'website/images/about/about-image1.jpg' %}" alt="About Aureon - Financial Automation Platform" loading="lazy" width="570" height="400">
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-6 col-lg-6">
-                <div class="about__right-item">
-                    <span class="section-subtitle">About Aureon</span>
-                    <h2 class="section-title">Automating Financial Workflows for Modern Businesses</h2>
-                    <p class="mb-4">
+        <div class="mil-banner-content mil-up">
+            <div class="row align-items-center">
+                <div class="col-xl-6">
+                    <span class="mil-text-gradient-2 mil-mb-20">About Us</span>
+                    <h1 class="mil-display mil-text-gradient-3 mil-mb-30">
+                        Automating Financial Workflows for Modern Businesses
+                    </h1>
+                    <p class="mil-text-m mil-soft">
                         Aureon is a comprehensive SaaS platform developed by Rhematek Solutions that automates
-                        end-to-end client financial workflows. From lead-to-contract, contract generation and
-                        e-signature, auto-invoicing, payment collection via Stripe, receipt delivery, to
-                        real-time dashboards - we handle it all.
+                        end-to-end client financial workflows - from contracts to payments.
                     </p>
-                    <p class="mb-4">
-                        Our mission is to reduce manual effort, shorten sales cycles, improve cash flow,
-                        and provide airtight audit trails for both freelancers and growing businesses.
-                    </p>
-                    <div class="about__feature-list">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <ul class="list-unstyled">
-                                    <li><i class="fas fa-check-circle text-primary me-2"></i> End-to-end Automation</li>
-                                    <li><i class="fas fa-check-circle text-primary me-2"></i> Faster Cash Flow</li>
-                                    <li><i class="fas fa-check-circle text-primary me-2"></i> E-Signatures</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <ul class="list-unstyled">
-                                    <li><i class="fas fa-check-circle text-primary me-2"></i> Stripe Integration</li>
-                                    <li><i class="fas fa-check-circle text-primary me-2"></i> Real-time Analytics</li>
-                                    <li><i class="fas fa-check-circle text-primary me-2"></i> Compliance Ready</li>
-                                </ul>
-                            </div>
-                        </div>
+                </div>
+                <div class="col-xl-6">
+                    <div class="mil-banner-img">
+                        <img src="{% static 'plax/img/about/1.png' %}" alt="About Aureon">
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</section>
-<!-- About section end -->
+</div>
 
-<!-- Mission & Vision section start -->
-<section class="mission__section pt-80 pb-80 bg-light">
+<!-- About Story Section -->
+<div class="mil-about mil-p-160-160">
+    <div class="container">
+        <div class="row justify-content-between align-items-center">
+            <div class="col-xl-5 mil-mb-60">
+                <span class="mil-text-gradient-2 mil-mb-20 mil-up">Our Story</span>
+                <h2 class="mil-mb-30 mil-up">Built for Businesses That Value Time</h2>
+                <p class="mil-text-m mil-soft mil-mb-30 mil-up">
+                    We understand that managing contracts, invoices, and payments can be overwhelming.
+                    That's why we built Aureon - to automate the tedious work so you can focus on growth.
+                </p>
+                <p class="mil-text-m mil-soft mil-up">
+                    Our mission is to reduce manual effort, shorten sales cycles, improve cash flow,
+                    and provide airtight audit trails for both freelancers and growing businesses.
+                </p>
+            </div>
+            <div class="col-xl-6">
+                <div class="mil-about-img mil-up">
+                    <img src="{% static 'plax/img/about/2.png' %}" alt="Aureon Platform">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mission & Vision Section -->
+<div class="mil-features mil-p-0-160">
     <div class="container">
         <div class="row">
-            <div class="col-lg-6 mb-4 mb-lg-0">
-                <div class="mission__item bg-white p-5 rounded shadow-sm h-100">
-                    <div class="icon mb-4">
-                        <i class="fas fa-bullseye fa-3x text-primary" aria-hidden="true"></i>
+            <div class="col-xl-6 mil-mb-60">
+                <div class="mil-feature-card mil-up">
+                    <div class="mil-feature-icon mil-mb-30">
+                        <i class="fas fa-bullseye fa-2x"></i>
                     </div>
-                    <h3 class="mb-3">Our Mission</h3>
-                    <p>
+                    <h3 class="mil-mb-20">Our Mission</h3>
+                    <p class="mil-text-m mil-soft">
                         To empower businesses of all sizes with automated financial workflows that save time,
                         reduce errors, and accelerate growth. We believe that managing contracts, invoices,
                         and payments should be effortless.
                     </p>
                 </div>
             </div>
-            <div class="col-lg-6">
-                <div class="vision__item bg-white p-5 rounded shadow-sm h-100">
-                    <div class="icon mb-4">
-                        <i class="fas fa-eye fa-3x text-primary" aria-hidden="true"></i>
+            <div class="col-xl-6 mil-mb-60">
+                <div class="mil-feature-card mil-up">
+                    <div class="mil-feature-icon mil-mb-30">
+                        <i class="fas fa-eye fa-2x"></i>
                     </div>
-                    <h3 class="mb-3">Our Vision</h3>
-                    <p>
+                    <h3 class="mil-mb-20">Our Vision</h3>
+                    <p class="mil-text-m mil-soft">
                         To become the leading platform for business automation, enabling every company -
                         from freelancers to enterprises - to operate with the efficiency and professionalism
                         of Fortune 500 companies.
@@ -156,41 +87,90 @@
             </div>
         </div>
     </div>
-</section>
-<!-- Mission & Vision section end -->
+</div>
 
-<!-- Team section start -->
-{% if team_members %}
-<section class="team__section pt-120 pb-120">
+<!-- Values Section -->
+<div class="mil-values mil-p-160-160" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-xl-8 text-center">
-                <span class="section-subtitle">Our Team</span>
-                <h2 class="section-title mb-60">Meet the People Behind Aureon</h2>
+        <div class="row justify-content-center mil-mb-80">
+            <div class="col-xl-8 mil-text-center">
+                <span class="mil-text-gradient-2 mil-mb-20 mil-up">Our Values</span>
+                <h2 class="mil-up">What Drives Us Forward</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xl-3 col-md-6 mil-mb-40">
+                <div class="mil-value-item mil-text-center mil-up">
+                    <div class="mil-icon-box mil-mb-30">
+                        <i class="fas fa-rocket fa-2x"></i>
+                    </div>
+                    <h5 class="mil-mb-15">Innovation</h5>
+                    <p class="mil-text-s mil-soft">Continuously improving our platform with cutting-edge technology</p>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mil-mb-40">
+                <div class="mil-value-item mil-text-center mil-up">
+                    <div class="mil-icon-box mil-mb-30">
+                        <i class="fas fa-shield-alt fa-2x"></i>
+                    </div>
+                    <h5 class="mil-mb-15">Security</h5>
+                    <p class="mil-text-s mil-soft">Bank-level encryption and compliance with global standards</p>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mil-mb-40">
+                <div class="mil-value-item mil-text-center mil-up">
+                    <div class="mil-icon-box mil-mb-30">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                    <h5 class="mil-mb-15">Customer First</h5>
+                    <p class="mil-text-s mil-soft">Your success is our success - we're here to help you grow</p>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mil-mb-40">
+                <div class="mil-value-item mil-text-center mil-up">
+                    <div class="mil-icon-box mil-mb-30">
+                        <i class="fas fa-handshake fa-2x"></i>
+                    </div>
+                    <h5 class="mil-mb-15">Integrity</h5>
+                    <p class="mil-text-s mil-soft">Transparent pricing, honest communication, always</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Team Section -->
+{% if team_members %}
+<div class="mil-team mil-p-160-160">
+    <div class="container">
+        <div class="row justify-content-center mil-mb-80">
+            <div class="col-xl-8 mil-text-center">
+                <span class="mil-text-gradient-2 mil-mb-20 mil-up">Our Team</span>
+                <h2 class="mil-up">Meet the People Behind Aureon</h2>
             </div>
         </div>
         <div class="row">
             {% for member in team_members %}
-            <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
-                <div class="team__item text-center" itemscope itemtype="https://schema.org/Person">
-                    <div class="team__image mb-3">
+            <div class="col-xl-3 col-lg-4 col-md-6 mil-mb-40">
+                <div class="mil-team-card mil-up">
+                    <div class="mil-team-img mil-mb-20">
                         {% if member.photo %}
-                        <img src="{{ member.photo.url }}" alt="{{ member.name }} - {{ member.position }}" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;" loading="lazy" itemprop="image">
+                        <img src="{{ member.photo.url }}" alt="{{ member.name }}">
                         {% else %}
-                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto" style="width: 150px; height: 150px;">
-                            <span class="text-white display-4">{{ member.name|slice:":1" }}</span>
+                        <div class="mil-team-placeholder">
+                            <span>{{ member.name|slice:":1" }}</span>
                         </div>
                         {% endif %}
                     </div>
-                    <h4 class="team__name" itemprop="name">{{ member.name }}</h4>
-                    <p class="team__position text-muted" itemprop="jobTitle">{{ member.position }}</p>
+                    <h5 class="mil-mb-5">{{ member.name }}</h5>
+                    <p class="mil-text-s mil-soft mil-mb-15">{{ member.position }}</p>
                     {% if member.linkedin or member.twitter %}
-                    <div class="team__social mt-3">
+                    <div class="mil-team-social">
                         {% if member.linkedin %}
-                        <a href="{{ member.linkedin }}" target="_blank" rel="noopener noreferrer" class="me-2" aria-label="{{ member.name }}'s LinkedIn"><i class="fab fa-linkedin" aria-hidden="true"></i></a>
+                        <a href="{{ member.linkedin }}" target="_blank" rel="noopener"><i class="fab fa-linkedin-in"></i></a>
                         {% endif %}
                         {% if member.twitter %}
-                        <a href="{{ member.twitter }}" target="_blank" rel="noopener noreferrer" aria-label="{{ member.name }}'s Twitter"><i class="fab fa-twitter" aria-hidden="true"></i></a>
+                        <a href="{{ member.twitter }}" target="_blank" rel="noopener"><i class="fab fa-twitter"></i></a>
                         {% endif %}
                     </div>
                     {% endif %}
@@ -199,48 +179,42 @@
             {% endfor %}
         </div>
     </div>
-</section>
+</div>
 {% endif %}
-<!-- Team section end -->
 
-<!-- Testimonials section start -->
+<!-- Testimonials Section -->
 {% if testimonials %}
-<section class="testimonial__section pt-80 pb-120 bg-light">
+<div class="mil-testimonials mil-p-160-160" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-xl-8 text-center">
-                <span class="section-subtitle">Testimonials</span>
-                <h2 class="section-title mb-60">What Our Clients Say</h2>
+        <div class="row justify-content-center mil-mb-80">
+            <div class="col-xl-8 mil-text-center">
+                <span class="mil-text-gradient-2 mil-mb-20 mil-up">Testimonials</span>
+                <h2 class="mil-up">What Our Clients Say</h2>
             </div>
         </div>
         <div class="row">
             {% for testimonial in testimonials %}
-            <div class="col-lg-4 mb-4">
-                <div class="testimonial__item bg-white p-4 rounded shadow-sm h-100" itemscope itemtype="https://schema.org/Review">
-                    <div class="rating mb-3" itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating">
-                        <meta itemprop="ratingValue" content="{{ testimonial.rating }}">
-                        <meta itemprop="bestRating" content="5">
+            <div class="col-xl-4 col-lg-6 mil-mb-40">
+                <div class="mil-testimonial-card mil-up">
+                    <div class="mil-stars mil-mb-20">
                         {% for i in "12345" %}
                         {% if forloop.counter <= testimonial.rating %}
-                        <i class="fas fa-star text-warning" aria-hidden="true"></i>
+                        <i class="fas fa-star"></i>
                         {% else %}
-                        <i class="far fa-star text-warning" aria-hidden="true"></i>
+                        <i class="far fa-star"></i>
                         {% endif %}
                         {% endfor %}
-                        <span class="visually-hidden">{{ testimonial.rating }} out of 5 stars</span>
                     </div>
-                    <p class="testimonial__content mb-4" itemprop="reviewBody">"{{ testimonial.content }}"</p>
-                    <div class="testimonial__author d-flex align-items-center" itemprop="author" itemscope itemtype="https://schema.org/Person">
+                    <p class="mil-text-m mil-soft mil-mb-30">"{{ testimonial.content }}"</p>
+                    <div class="mil-testimonial-author">
                         {% if testimonial.client_photo %}
-                        <img src="{{ testimonial.client_photo.url }}" alt="{{ testimonial.client_name }}" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;" loading="lazy" itemprop="image">
+                        <img src="{{ testimonial.client_photo.url }}" alt="{{ testimonial.client_name }}">
                         {% else %}
-                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
-                            <span class="text-white">{{ testimonial.client_name|slice:":1" }}</span>
-                        </div>
+                        <div class="mil-author-placeholder">{{ testimonial.client_name|slice:":1" }}</div>
                         {% endif %}
                         <div>
-                            <h6 class="mb-0" itemprop="name">{{ testimonial.client_name }}</h6>
-                            <small class="text-muted"><span itemprop="jobTitle">{{ testimonial.client_role }}</span>{% if testimonial.client_company %}, <span itemprop="worksFor">{{ testimonial.client_company }}</span>{% endif %}</small>
+                            <h6>{{ testimonial.client_name }}</h6>
+                            <p class="mil-text-s mil-soft">{{ testimonial.client_role }}{% if testimonial.client_company %}, {{ testimonial.client_company }}{% endif %}</p>
                         </div>
                     </div>
                 </div>
@@ -248,23 +222,24 @@
             {% endfor %}
         </div>
     </div>
-</section>
+</div>
 {% endif %}
-<!-- Testimonials section end -->
 
-<!-- CTA section start -->
-<section class="cta__section pt-80 pb-80 bg-primary">
+<!-- CTA Section -->
+<div class="mil-cta mil-p-160-160">
     <div class="container">
-        <div class="row align-items-center justify-content-between">
-            <div class="col-lg-8">
-                <h2 class="text-white mb-3">Ready to Transform Your Business?</h2>
-                <p class="text-white opacity-75 mb-0">Start your free trial today and experience the power of automation.</p>
-            </div>
-            <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
-                <a href="{% url 'website:pricing' %}" class="btn btn-light btn-lg">Get Started Free</a>
+        <div class="mil-cta-content mil-text-center mil-up">
+            <h2 class="mil-mb-30">Ready to Transform Your Business?</h2>
+            <p class="mil-text-m mil-soft mil-mb-40">Start your free trial today and experience the power of automation.</p>
+            <div class="mil-buttons-frame justify-content-center">
+                <a href="{% url 'account_signup' %}" class="mil-btn mil-md mil-add-arrow">
+                    Start Free Trial
+                </a>
+                <a href="{% url 'website:contact' %}" class="mil-btn mil-md mil-light">
+                    Contact Us
+                </a>
             </div>
         </div>
     </div>
-</section>
-<!-- CTA section end -->
+</div>
 {% endblock %}

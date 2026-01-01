@@ -1,222 +1,206 @@
-{% extends 'website/base.html' %}
+{% extends 'website/base_plax.html' %}
 {% load static %}
 
-{% block title %}Contact Us - Get in Touch with Aureon | Business Automation Support{% endblock %}
-
-{% block meta_description %}Contact Aureon for business automation inquiries, demos, or support. Our team is ready to help you streamline your financial workflows with our comprehensive SaaS platform.{% endblock %}
-
-{% block meta_keywords %}contact aureon, business automation support, SaaS demo, financial workflow help, customer support, sales inquiry{% endblock %}
-
-{% block extra_head %}
-<!-- Structured Data - ContactPage -->
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "ContactPage",
-    "name": "Contact Aureon",
-    "description": "Contact page for Aureon business automation platform",
-    "url": "{{ request.build_absolute_uri }}",
-    "mainEntity": {
-        "@type": "Organization",
-        "name": "Aureon",
-        "telephone": "{{ site_settings.contact_phone|default:'+33 1 23 45 67 89' }}",
-        "email": "{{ site_settings.contact_email|default:'contact@rhematek-solutions.com' }}",
-        "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "{{ site_settings.address|default:'Paris, France' }}"
-        }
-    }
-}
-</script>
-<!-- Structured Data - BreadcrumbList -->
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-        {
-            "@type": "ListItem",
-            "position": 1,
-            "name": "Home",
-            "item": "{% url 'website:home' %}"
-        },
-        {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Contact",
-            "item": "{{ request.build_absolute_uri }}"
-        }
-    ]
-}
-</script>
-{% endblock %}
+{% block title %}Contact Us - Aureon{% endblock %}
+{% block meta_description %}Get in touch with Aureon. We're here to help with any questions about our platform, pricing, or custom solutions.{% endblock %}
 
 {% block content %}
-<!-- Banner area start -->
-<section class="banner__inner-page bg-image pt-160 pb-160" data-background="{% static 'website/images/banner/banner-inner-page.jpg' %}">
+<!-- Page Banner -->
+<div class="mil-banner-inner mil-dissolve">
     <div class="container">
-        <div class="row">
-            <div class="col-xl-12">
-                <div class="banner__inner-page-item">
-                    <h1 class="title split-text right">Contact Us</h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{% url 'website:home' %}">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Contact</li>
-                        </ol>
-                    </nav>
+        <div class="mil-banner-content mil-up">
+            <div class="row justify-content-center">
+                <div class="col-xl-8 mil-text-center">
+                    <span class="mil-text-gradient-2 mil-mb-20">Get In Touch</span>
+                    <h1 class="mil-display mil-text-gradient-3 mil-mb-30">
+                        Contact Us
+                    </h1>
+                    <p class="mil-text-m mil-soft">
+                        Have questions? We're here to help. Send us a message and we'll respond within 24 hours.
+                    </p>
                 </div>
             </div>
         </div>
     </div>
-</section>
-<!-- Banner area end -->
+</div>
 
-<!-- Contact section start -->
-<section class="contact__section pt-120 pb-120">
+<!-- Contact Section -->
+<div class="mil-contact mil-p-160-160">
     <div class="container">
         <div class="row">
-            <div class="col-lg-4 mb-5 mb-lg-0">
-                <div class="contact__info" itemscope itemtype="https://schema.org/Organization">
-                    <h2 class="mb-4 h3">Get in Touch</h2>
-                    <p class="text-muted mb-5">
-                        Have a question or need help? We'd love to hear from you.
-                        Fill out the form and we'll get back to you as soon as possible.
-                    </p>
+            <!-- Contact Info -->
+            <div class="col-xl-4 mil-mb-60">
+                <div class="mil-contact-info mil-up">
+                    <h3 class="mil-mb-40">Let's Talk</h3>
 
-                    <div class="contact__info-item d-flex mb-4">
-                        <div class="icon me-3">
-                            <div class="bg-primary rounded p-3">
-                                <i class="fas fa-envelope text-white" aria-hidden="true"></i>
-                            </div>
+                    <div class="mil-contact-item mil-mb-30">
+                        <div class="mil-contact-icon">
+                            <i class="fas fa-map-marker-alt"></i>
                         </div>
-                        <div class="content">
-                            <h3 class="mb-1 h6">Email</h3>
-                            <p class="text-muted mb-0" itemprop="email">
-                                <a href="mailto:{{ site_settings.contact_email|default:'contact@rhematek-solutions.com' }}">
-                                    {{ site_settings.contact_email|default:"contact@rhematek-solutions.com" }}
-                                </a>
+                        <div>
+                            <h5 class="mil-mb-10">Address</h5>
+                            <p class="mil-text-m mil-soft">
+                                Rhematek Solutions<br>
+                                123 Innovation Drive<br>
+                                Tech City, TC 12345
                             </p>
                         </div>
                     </div>
 
-                    <div class="contact__info-item d-flex mb-4">
-                        <div class="icon me-3">
-                            <div class="bg-primary rounded p-3">
-                                <i class="fas fa-phone text-white" aria-hidden="true"></i>
-                            </div>
+                    <div class="mil-contact-item mil-mb-30">
+                        <div class="mil-contact-icon">
+                            <i class="fas fa-envelope"></i>
                         </div>
-                        <div class="content">
-                            <h3 class="mb-1 h6">Phone</h3>
-                            <p class="text-muted mb-0" itemprop="telephone">
-                                <a href="tel:{{ site_settings.phone|default:'+33123456789' }}">
-                                    {{ site_settings.phone|default:"+33 1 23 45 67 89" }}
-                                </a>
+                        <div>
+                            <h5 class="mil-mb-10">Email</h5>
+                            <p class="mil-text-m mil-soft">
+                                <a href="mailto:support@aureon.io">support@aureon.io</a>
                             </p>
                         </div>
                     </div>
 
-                    <div class="contact__info-item d-flex mb-4">
-                        <div class="icon me-3">
-                            <div class="bg-primary rounded p-3">
-                                <i class="fas fa-map-marker-alt text-white" aria-hidden="true"></i>
-                            </div>
+                    <div class="mil-contact-item mil-mb-30">
+                        <div class="mil-contact-icon">
+                            <i class="fas fa-phone"></i>
                         </div>
-                        <div class="content">
-                            <h3 class="mb-1 h6">Address</h3>
-                            <p class="text-muted mb-0" itemprop="address">{{ site_settings.address|default:"Paris, France" }}</p>
+                        <div>
+                            <h5 class="mil-mb-10">Phone</h5>
+                            <p class="mil-text-m mil-soft">
+                                <a href="tel:+15551234567">+1 (555) 123-4567</a>
+                            </p>
                         </div>
                     </div>
 
-                    <div class="social__links mt-5">
-                        <h3 class="mb-3 h6">Follow Us</h3>
-                        <a href="{{ site_settings.facebook_url|default:'#' }}" class="me-2" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Facebook"><i class="fab fa-facebook-f fa-lg" aria-hidden="true"></i></a>
-                        <a href="{{ site_settings.twitter_url|default:'#' }}" class="me-2" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Twitter"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a>
-                        <a href="{{ site_settings.linkedin_url|default:'#' }}" class="me-2" target="_blank" rel="noopener noreferrer" aria-label="Follow us on LinkedIn"><i class="fab fa-linkedin-in fa-lg" aria-hidden="true"></i></a>
-                        <a href="{{ site_settings.instagram_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Instagram"><i class="fab fa-instagram fa-lg" aria-hidden="true"></i></a>
+                    <div class="mil-contact-social mil-mt-40">
+                        <h5 class="mil-mb-20">Follow Us</h5>
+                        <div class="mil-social-icons">
+                            <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                            <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                            <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-lg-8">
-                <div class="contact__form bg-light p-5 rounded">
-                    <h2 class="mb-4 h3">Send us a Message</h2>
-                    <form method="post" action="{% url 'website:contact' %}" novalidate>
+            <!-- Contact Form -->
+            <div class="col-xl-8">
+                <div class="mil-contact-form mil-up">
+                    <h3 class="mil-mb-40">Send a Message</h3>
+
+                    <form method="post" action="{% url 'website:contact' %}">
                         {% csrf_token %}
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="id_first_name" class="form-label">First Name <span class="text-danger">*</span></label>
-                                {{ form.first_name }}
-                                {% if form.first_name.errors %}
-                                <div class="text-danger small" role="alert">{{ form.first_name.errors.0 }}</div>
-                                {% endif %}
+                            <div class="col-md-6 mil-mb-30">
+                                <label class="mil-label mil-mb-10" for="id_name">Your Name *</label>
+                                <input type="text" id="id_name" name="name" class="mil-input" required>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="id_last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
-                                {{ form.last_name }}
-                                {% if form.last_name.errors %}
-                                <div class="text-danger small" role="alert">{{ form.last_name.errors.0 }}</div>
-                                {% endif %}
+                            <div class="col-md-6 mil-mb-30">
+                                <label class="mil-label mil-mb-10" for="id_email">Email Address *</label>
+                                <input type="email" id="id_email" name="email" class="mil-input" required>
+                            </div>
+                            <div class="col-md-6 mil-mb-30">
+                                <label class="mil-label mil-mb-10" for="id_company">Company</label>
+                                <input type="text" id="id_company" name="company" class="mil-input">
+                            </div>
+                            <div class="col-md-6 mil-mb-30">
+                                <label class="mil-label mil-mb-10" for="id_phone">Phone Number</label>
+                                <input type="tel" id="id_phone" name="phone" class="mil-input">
+                            </div>
+                            <div class="col-12 mil-mb-30">
+                                <label class="mil-label mil-mb-10" for="id_subject">Subject *</label>
+                                <select id="id_subject" name="subject" class="mil-input" required>
+                                    <option value="">Select a subject</option>
+                                    <option value="general">General Inquiry</option>
+                                    <option value="sales">Sales Question</option>
+                                    <option value="support">Technical Support</option>
+                                    <option value="partnership">Partnership</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-12 mil-mb-30">
+                                <label class="mil-label mil-mb-10" for="id_message">Your Message *</label>
+                                <textarea id="id_message" name="message" class="mil-input" rows="5" required></textarea>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="mil-btn mil-md mil-add-arrow">
+                                    Send Message
+                                </button>
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="id_email" class="form-label">Email <span class="text-danger">*</span></label>
-                                {{ form.email }}
-                                {% if form.email.errors %}
-                                <div class="text-danger small" role="alert">{{ form.email.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="id_phone" class="form-label">Phone</label>
-                                {{ form.phone }}
-                                {% if form.phone.errors %}
-                                <div class="text-danger small" role="alert">{{ form.phone.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="id_company" class="form-label">Company</label>
-                            {{ form.company }}
-                        </div>
-                        <div class="mb-3">
-                            <label for="id_subject" class="form-label">Subject <span class="text-danger">*</span></label>
-                            {{ form.subject }}
-                            {% if form.subject.errors %}
-                            <div class="text-danger small" role="alert">{{ form.subject.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="mb-4">
-                            <label for="id_message" class="form-label">Message <span class="text-danger">*</span></label>
-                            {{ form.message }}
-                            {% if form.message.errors %}
-                            <div class="text-danger small" role="alert">{{ form.message.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-lg">Send Message</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
-</section>
-<!-- Contact section end -->
+</div>
+
+<!-- FAQ Section -->
+<div class="mil-faq mil-p-160-160" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+    <div class="container">
+        <div class="row justify-content-center mil-mb-80">
+            <div class="col-xl-8 mil-text-center">
+                <span class="mil-text-gradient-2 mil-mb-20 mil-up">FAQ</span>
+                <h2 class="mil-up">Common Questions</h2>
+            </div>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-xl-8">
+                <div class="mil-accordion">
+                    <div class="mil-accordion-item mil-up mil-active">
+                        <div class="mil-accordion-header">
+                            <h5>What is your typical response time?</h5>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="mil-accordion-body">
+                            <p class="mil-text-m mil-soft">
+                                We aim to respond to all inquiries within 24 hours during business days.
+                                For urgent matters, please indicate it in your subject line.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="mil-accordion-item mil-up">
+                        <div class="mil-accordion-header">
+                            <h5>Do you offer demos?</h5>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="mil-accordion-body">
+                            <p class="mil-text-m mil-soft">
+                                Yes! We offer personalized demos for businesses interested in Aureon.
+                                Just select "Sales Question" in the form above and mention you'd like a demo.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="mil-accordion-item mil-up">
+                        <div class="mil-accordion-header">
+                            <h5>Where are you located?</h5>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="mil-accordion-body">
+                            <p class="mil-text-m mil-soft">
+                                Our headquarters is in Tech City, but we serve clients worldwide.
+                                All our services are cloud-based, so location is never a barrier.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    .contact__form input.form-control,
-    .contact__form textarea.form-control,
-    .contact__form select.form-control {
-        border: 1px solid #dee2e6;
-        padding: 12px 16px;
-        border-radius: 8px;
-    }
-    .contact__form input.form-control:focus,
-    .contact__form textarea.form-control:focus,
-    .contact__form select.form-control:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.15);
-    }
-</style>
+{% block extra_js %}
+<script>
+    // Accordion
+    document.querySelectorAll('.mil-accordion-header').forEach(header => {
+        header.addEventListener('click', function() {
+            const item = this.parentElement;
+            const isActive = item.classList.contains('mil-active');
+            document.querySelectorAll('.mil-accordion-item').forEach(i => i.classList.remove('mil-active'));
+            if (!isActive) {
+                item.classList.add('mil-active');
+            }
+        });
+    });
+</script>
 {% endblock %}
