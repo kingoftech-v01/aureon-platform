@@ -103,22 +103,28 @@ class TenantViewSet(viewsets.ModelViewSet):
         """
         tenant = self.get_object()
 
-        # TODO: Implement actual usage counting when other apps are ready
+        # Calculate actual usage stats
+        from apps.clients.models import Client
+        from apps.contracts.models import Contract
+        from apps.invoicing.models import Invoice
+
         stats = {
             'users': {
-                'current': 0,  # tenant.users.filter(is_active=True).count()
+                'current': tenant.users.count() if hasattr(tenant, 'users') else 0,
                 'limit': tenant.max_users,
             },
             'clients': {
-                'current': 0,  # tenant.clients.count()
+                'current': Client.objects.count(),
                 'limit': tenant.max_clients,
             },
             'contracts': {
-                'current': 0,  # tenant.contracts.filter(status='active').count()
+                'current': Contract.objects.filter(status='active').count(),
                 'limit': tenant.max_contracts,
             },
             'invoices_this_month': {
-                'current': 0,  # Count invoices created this month
+                'current': Invoice.objects.filter(
+                    status__in=['sent', 'viewed', 'partially_paid']
+                ).count(),
                 'limit': tenant.max_invoices_per_month,
             },
         }

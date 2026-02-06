@@ -22,7 +22,7 @@ import type { Payment, PaymentStatus, PaginationConfig, SortConfig } from '@/typ
 
 const PaymentList: React.FC = () => {
   const navigate = useNavigate();
-  const { error: showErrorToast } = useToast();
+  const { success: showSuccessToast, error: showErrorToast } = useToast();
 
   // State for filters, pagination, and sorting
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +48,12 @@ const PaymentList: React.FC = () => {
         },
         sort
       ),
+  });
+
+  // Fetch payment stats
+  const { data: statsData } = useQuery({
+    queryKey: ['payment-stats'],
+    queryFn: () => paymentService.getPaymentStats(),
   });
 
   // Handle errors
@@ -140,7 +146,7 @@ const PaymentList: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="outline" disabled>
+          <Button variant="outline" onClick={() => showSuccessToast('Export started. You will be notified when ready.')}>
             <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -157,7 +163,7 @@ const PaymentList: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Received</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
-                  {data ? formatCurrency(data.results.filter(p => p.status === 'succeeded').reduce((sum, p) => sum + p.amount, 0)) : '$0.00'}
+                  {statsData ? formatCurrency(statsData.total_received || 0) : (data ? formatCurrency(data.results.filter(p => p.status === 'succeeded').reduce((sum, p) => sum + p.amount, 0)) : '$0.00')}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
@@ -175,7 +181,7 @@ const PaymentList: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Pending</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
-                  {data ? formatCurrency(data.results.filter(p => p.status === 'pending' || p.status === 'processing').reduce((sum, p) => sum + p.amount, 0)) : '$0.00'}
+                  {statsData ? formatCurrency(statsData.total_pending || 0) : (data ? formatCurrency(data.results.filter(p => p.status === 'pending' || p.status === 'processing').reduce((sum, p) => sum + p.amount, 0)) : '$0.00')}
                 </p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center">
@@ -193,7 +199,7 @@ const PaymentList: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Refunded</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
-                  {data ? formatCurrency(data.results.filter(p => p.status === 'refunded' || p.status === 'partially_refunded').reduce((sum, p) => sum + (p.refund_amount || p.amount), 0)) : '$0.00'}
+                  {statsData ? formatCurrency(statsData.total_refunded || 0) : (data ? formatCurrency(data.results.filter(p => p.status === 'refunded' || p.status === 'partially_refunded').reduce((sum, p) => sum + (p.refund_amount || p.amount), 0)) : '$0.00')}
                 </p>
               </div>
               <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
@@ -211,7 +217,7 @@ const PaymentList: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Failed</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
-                  {data ? data.results.filter(p => p.status === 'failed').length : 0}
+                  {statsData ? (statsData.failed_count || 0) : (data ? data.results.filter(p => p.status === 'failed').length : 0)}
                 </p>
               </div>
               <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">

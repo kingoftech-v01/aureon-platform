@@ -12,7 +12,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '@/services';
-import { tokenService } from '@/services/api';
+import api, { tokenService } from '@/services/api';
 import type { User, LoginCredentials, RegisterData } from '@/types';
 
 interface AuthContextType {
@@ -25,6 +25,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
   clearError: () => void;
+  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,7 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(currentUser);
       setError(null);
     } catch (err: any) {
-      console.error('Failed to load user:', err);
+      if (import.meta.env.DEV) console.error('Failed to load user:', err);
       // Token might be invalid, clear it
       tokenService.clearTokens();
       setUser(null);
@@ -123,7 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await authService.logout();
     } catch (err) {
-      console.error('Logout error:', err);
+      if (import.meta.env.DEV) console.error('Logout error:', err);
       // Continue with local logout even if API call fails
     } finally {
       setUser(null);
@@ -157,6 +158,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [user]);
 
   /**
+   * Check auth status
+   */
+  const checkAuth = useCallback(async () => {
+    try {
+      const response = await api.get('/api/accounts/me/');
+      setUser(response.data);
+    } catch {
+      setUser(null);
+    }
+  }, []);
+
+  /**
    * Clear error message
    */
   const clearError = useCallback(() => {
@@ -173,6 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     updateUser,
     clearError,
+    checkAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

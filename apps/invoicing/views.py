@@ -2,6 +2,7 @@
 Views and ViewSets for the invoicing app API.
 """
 
+import logging
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -17,6 +18,8 @@ from .serializers import (
     InvoiceStatsSerializer,
 )
 from .filters import InvoiceFilter
+
+logger = logging.getLogger(__name__)
 
 
 class InvoiceViewSet(viewsets.ModelViewSet):
@@ -100,8 +103,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         try:
             invoice.mark_as_sent()
 
-            # TODO: Send email to client with invoice PDF
-            # send_invoice_email(invoice)
+            # Send email to client with invoice PDF
+            try:
+                from apps.invoicing.tasks import send_invoice_email
+                send_invoice_email.delay(str(invoice.id))
+            except Exception as e:
+                logger.warning(f"Could not queue invoice email: {e}")
 
             serializer = self.get_serializer(invoice)
             return Response(serializer.data)

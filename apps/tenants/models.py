@@ -292,9 +292,13 @@ class Tenant(TenantMixin):
         return current_users < self.max_users
 
     def can_add_client(self):
-        """Check if tenant can add more clients."""
-        # This will be checked when clients app is implemented
-        return True  # Placeholder
+        """Check if tenant can add more clients based on plan limits."""
+        from apps.clients.models import Client
+        current_count = Client.objects.count()
+        max_clients = getattr(self, 'max_clients', None)
+        if max_clients is None:
+            return True
+        return current_count < max_clients
 
     def upgrade_plan(self, new_plan):
         """Upgrade tenant to a new plan with appropriate limits."""

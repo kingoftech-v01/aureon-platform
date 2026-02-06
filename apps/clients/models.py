@@ -298,8 +298,25 @@ class Client(models.Model):
 
     def update_financial_summary(self):
         """Update financial summary from related invoices and contracts."""
-        # TODO: Implement when invoicing app is ready
-        pass
+        from apps.invoicing.models import Invoice
+        from apps.contracts.models import Contract
+        from django.db.models import Sum
+
+        # Calculate total revenue from paid invoices
+        paid_total = Invoice.objects.filter(
+            client=self,
+            status=Invoice.PAID
+        ).aggregate(total=Sum('total'))['total'] or 0
+
+        # Calculate outstanding balance
+        outstanding = Invoice.objects.filter(
+            client=self,
+            status__in=[Invoice.SENT, Invoice.VIEWED, Invoice.PARTIALLY_PAID]
+        ).aggregate(total=Sum('total'))['total'] or 0
+
+        self.total_revenue = paid_total
+        self.outstanding_balance = outstanding
+        self.save(update_fields=['total_revenue', 'outstanding_balance', 'updated_at'])
 
     def create_portal_access(self):
         """Create portal user account for client."""
@@ -325,7 +342,12 @@ class Client(models.Model):
         self.portal_user = user
         self.save()
 
-        # TODO: Send welcome email with portal access details
+        try:
+            from apps.notifications.services import NotificationService
+            NotificationService.send_client_welcome(self)
+        except Exception:
+            pass
+
         return user
 
 

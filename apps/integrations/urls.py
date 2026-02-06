@@ -1,15 +1,14 @@
-"""
-URL configuration for integrations app.
-"""
+"""Integration URL configuration."""
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views import IntegrationViewSet
+
+router = DefaultRouter()
+router.register(r'', IntegrationViewSet, basename='integration')
 
 app_name = 'integrations'
 
-router = DefaultRouter()
-# TODO: Add viewsets when implemented
-
 urlpatterns = [
-    path('api/', include(router.urls)),
+    path('', include(router.urls)),
 ]

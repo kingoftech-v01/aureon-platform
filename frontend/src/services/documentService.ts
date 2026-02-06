@@ -3,7 +3,7 @@
  * Aureon by Rhematek Solutions
  */
 
-import apiClient, { uploadFile, downloadFile } from './api';
+import apiClient, { uploadFile, downloadFile, buildQueryParams } from './api';
 import type {
   Document,
   DocumentCategory,
@@ -12,18 +12,6 @@ import type {
   FilterConfig,
   SortConfig,
 } from '@/types';
-
-/**
- * Build query string from params
- */
-const buildQueryParams = (params: Record<string, any>): string => {
-  const filteredParams = Object.entries(params)
-    .filter(([_, value]) => value !== undefined && value !== null && value !== '')
-    .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
-
-  const queryString = new URLSearchParams(filteredParams).toString();
-  return queryString ? `?${queryString}` : '';
-};
 
 export const documentService = {
   /**

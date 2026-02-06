@@ -11,11 +11,12 @@ import { useToast } from '@/components/common';
 import Button from '@/components/common/Button';
 import Input from '@/components/common/Input';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/common/Card';
+import api from '../../services/api';
 
 const Settings: React.FC = () => {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
-  const { success: showSuccessToast } = useToast();
+  const { success: showSuccessToast, error: showErrorToast } = useToast();
   const [selectedTab, setSelectedTab] = useState<'profile' | 'company' | 'preferences' | 'billing'>('profile');
 
   const [profileData, setProfileData] = useState({
@@ -36,14 +37,59 @@ const Settings: React.FC = () => {
     tax_id: '',
   });
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(true);
+  const [smsNotifications, setSmsNotifications] = useState(false);
+
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    showSuccessToast('Profile updated successfully');
+    try {
+      await api.put('/api/accounts/profile/', {
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
+        email: profileData.email,
+        phone: profileData.phone,
+      });
+      showSuccessToast('Profile updated successfully');
+    } catch (error) {
+      showErrorToast('Failed to update profile');
+    }
   };
 
-  const handleCompanySave = (e: React.FormEvent) => {
+  const handleCompanySave = async (e: React.FormEvent) => {
     e.preventDefault();
-    showSuccessToast('Company settings updated successfully');
+    try {
+      await api.put('/api/tenants/settings/', {
+        company_name: companyData.name,
+      });
+      showSuccessToast('Company settings updated');
+    } catch (error) {
+      showErrorToast('Failed to update company settings');
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      showErrorToast('Passwords do not match');
+      return;
+    }
+    try {
+      await api.post('/api/accounts/change-password/', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      showSuccessToast('Password changed successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      showErrorToast('Failed to change password');
+    }
   };
 
   return (
@@ -151,6 +197,14 @@ const Settings: React.FC = () => {
             </CardContent>
           </Card>
 
+          <div className="flex justify-end">
+            <Button type="submit" variant="primary">
+              Save Changes
+            </Button>
+          </div>
+        </form>
+
+        <form onSubmit={handlePasswordChange} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Change Password</CardTitle>
@@ -159,16 +213,22 @@ const Settings: React.FC = () => {
               <Input
                 label="Current Password"
                 type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
                 fullWidth
               />
               <Input
                 label="New Password"
                 type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
                 fullWidth
               />
               <Input
                 label="Confirm New Password"
                 type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 fullWidth
               />
             </CardContent>
@@ -176,7 +236,7 @@ const Settings: React.FC = () => {
 
           <div className="flex justify-end">
             <Button type="submit" variant="primary">
-              Save Changes
+              Change Password
             </Button>
           </div>
         </form>
@@ -321,21 +381,21 @@ const Settings: React.FC = () => {
                   <p className="font-medium text-gray-900 dark:text-white">Email Notifications</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Receive email updates about your account</p>
                 </div>
-                <input type="checkbox" className="w-4 h-4" defaultChecked />
+                <input type="checkbox" className="w-4 h-4" checked={emailNotifications} onChange={(e) => setEmailNotifications(e.target.checked)} />
               </div>
               <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white">Payment Reminders</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Get notified about upcoming payments</p>
                 </div>
-                <input type="checkbox" className="w-4 h-4" defaultChecked />
+                <input type="checkbox" className="w-4 h-4" checked={pushNotifications} onChange={(e) => setPushNotifications(e.target.checked)} />
               </div>
               <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white">Invoice Updates</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Notifications when invoices are paid</p>
                 </div>
-                <input type="checkbox" className="w-4 h-4" defaultChecked />
+                <input type="checkbox" className="w-4 h-4" checked={smsNotifications} onChange={(e) => setSmsNotifications(e.target.checked)} />
               </div>
             </CardContent>
           </Card>

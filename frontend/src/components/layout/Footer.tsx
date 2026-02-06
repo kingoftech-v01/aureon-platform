@@ -72,7 +72,7 @@ const Footer: React.FC = () => {
 
             {/* Version info */}
             <div className="mt-2 text-xs text-gray-500 dark:text-gray-500">
-              Version 1.0.0
+              Version {import.meta.env.VITE_APP_VERSION || '1.0.0'}
             </div>
           </div>
         </div>

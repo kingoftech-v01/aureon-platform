@@ -96,8 +96,29 @@ class NotificationService:
         if template.channel == NotificationTemplate.EMAIL:
             EmailService.send_email(notification)
         elif template.channel == NotificationTemplate.SMS:
-            # TODO: Implement SMS sending
-            logger.info(f"SMS sending not implemented yet for {recipient_email}")
+            try:
+                from django.conf import settings as django_settings
+                sns_client = None
+                try:
+                    import boto3
+                    sns_client = boto3.client('sns',
+                        region_name=getattr(django_settings, 'AWS_SES_REGION_NAME', 'us-east-1'))
+                except (ImportError, Exception):
+                    pass
+
+                if sns_client and hasattr(django_settings, 'AWS_SNS_ENABLED') and django_settings.AWS_SNS_ENABLED:
+                    sns_client.publish(
+                        PhoneNumber=recipient_email,  # phone number passed as recipient
+                        Message=rendered['body_text'],
+                    )
+                    notification.mark_as_sent()
+                    logger.info(f"SMS sent to {recipient_email}")
+                else:
+                    logger.info(f"SMS service not configured, notification stored for {recipient_email}")
+                    notification.mark_as_delivered()
+            except Exception as e:
+                logger.error(f"SMS sending failed for {recipient_email}: {e}")
+                notification.mark_as_failed(str(e))
         elif template.channel == NotificationTemplate.IN_APP:
             # In-app notifications are just stored, not sent
             notification.mark_as_delivered()

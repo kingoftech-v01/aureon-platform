@@ -38,23 +38,47 @@ def cleanup_expired_sessions(self):
 @shared_task(bind=True, max_retries=1)
 def backup_critical_data(self):
     """
-    Backup critical data (placeholder for actual backup logic).
-    In production, this would:
-    - Export database snapshots
-    - Upload to S3/GCS
-    - Verify backup integrity
+    Backup critical data by exporting key models to JSON.
     """
     try:
+        import json
+        from django.core import serializers
+        from django.conf import settings
+        import os
+
         logger.info("Starting critical data backup...")
+        backup_timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        backup_dir = os.path.join(settings.BASE_DIR, 'backups')
+        os.makedirs(backup_dir, exist_ok=True)
 
-        # Placeholder - in production, implement actual backup logic
-        backup_timestamp = timezone.now().isoformat()
+        models_to_backup = [
+            'contracts.Contract',
+            'invoicing.Invoice',
+            'payments.Payment',
+            'clients.Client',
+        ]
 
-        logger.info(f"Backup completed at {backup_timestamp}")
+        backup_files = []
+        for model_label in models_to_backup:
+            try:
+                app_label, model_name = model_label.split('.')
+                from django.apps import apps
+                Model = apps.get_model(app_label, model_name)
+                data = serializers.serialize('json', Model.objects.all())
+                filename = f"{model_name.lower()}_{backup_timestamp}.json"
+                filepath = os.path.join(backup_dir, filename)
+                with open(filepath, 'w') as f:
+                    f.write(data)
+                backup_files.append(filename)
+                logger.info(f"Backed up {model_name}: {Model.objects.count()} records")
+            except Exception as e:
+                logger.warning(f"Could not backup {model_label}: {e}")
+
+        logger.info(f"Backup completed at {backup_timestamp}: {len(backup_files)} models")
         return {
             'status': 'success',
             'timestamp': backup_timestamp,
-            'message': 'Backup task completed (placeholder)'
+            'files': backup_files
         }
     except Exception as exc:
         logger.error(f"Backup failed: {exc}")

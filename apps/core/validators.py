@@ -537,29 +537,51 @@ class FileUploadValidator:
         """
         Virus scanning hook.
 
-        This is a placeholder for virus scanning integration.
-        Implement with ClamAV or cloud-based scanning service.
+        Supports configurable virus scanning backends via settings.VIRUS_SCANNER.
+        If no scanner is configured, the file is allowed with a warning log.
+        Set BLOCK_ON_SCAN_ERROR=True in settings to reject files when scanning fails.
         """
         virus_scanner = getattr(settings, 'VIRUS_SCANNER', None)
 
-        if virus_scanner:
-            try:
-                # Hook for external virus scanning
-                result = virus_scanner.scan(file)
-                if not result['clean']:
-                    logger.error(f"Virus detected in upload: {file.name}")
-                    raise ValidationError(
-                        _('File failed security scan.'),
-                        code='virus_detected'
-                    )
-            except Exception as e:
-                logger.error(f"Virus scan error: {e}")
-                # Depending on policy, either block or allow
-                if getattr(settings, 'BLOCK_ON_SCAN_ERROR', True):
-                    raise ValidationError(
-                        _('File could not be verified.'),
-                        code='scan_error'
-                    )
+        if not virus_scanner:
+            logger.info(
+                f"Virus scanning is not configured (settings.VIRUS_SCANNER is not set). "
+                f"Skipping scan for file: {file.name}"
+            )
+            return
+
+        try:
+            logger.info(f"Scanning file for viruses: {file.name}")
+            file.seek(0)
+            result = virus_scanner.scan(file)
+            file.seek(0)
+
+            if not result.get('clean', False):
+                threat = result.get('threat', 'unknown')
+                logger.error(
+                    f"Virus detected in upload: {file.name} - threat: {threat}"
+                )
+                raise ValidationError(
+                    _('File failed security scan.'),
+                    code='virus_detected'
+                )
+
+            logger.info(f"Virus scan passed for file: {file.name}")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.error(f"Virus scan error for file {file.name}: {e}")
+            # Depending on policy, either block or allow
+            if getattr(settings, 'BLOCK_ON_SCAN_ERROR', True):
+                raise ValidationError(
+                    _('File could not be verified. Please try again later.'),
+                    code='scan_error'
+                )
+            else:
+                logger.warning(
+                    f"Allowing file {file.name} despite scan error "
+                    f"(BLOCK_ON_SCAN_ERROR=False)"
+                )
 
 
 class ImageUploadValidator(FileUploadValidator):

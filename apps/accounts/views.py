@@ -2,6 +2,7 @@
 Views and viewsets for user account management.
 """
 
+import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -19,6 +20,8 @@ from .serializers import (
     UserInvitationSerializer,
     ApiKeySerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -110,8 +113,19 @@ class UserInvitationViewSet(viewsets.ModelViewSet):
             expires_at=timezone.now() + timedelta(days=7),
         )
 
-        # TODO: Send invitation email
-        # send_invitation_email(invitation)
+        # Send invitation email
+        try:
+            from apps.notifications.services import NotificationService
+            NotificationService.send_notification(
+                template_type='user_invitation',
+                recipient_email=invitation.email,
+                context={
+                    'invite_url': invitation.get_absolute_url() if hasattr(invitation, 'get_absolute_url') else '',
+                    'inviter_name': request.user.get_full_name() or request.user.email,
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Could not send invitation email: {e}")
 
         return Response(
             UserInvitationSerializer(invitation).data,

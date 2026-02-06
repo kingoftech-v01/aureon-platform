@@ -160,7 +160,7 @@ class Invoice(models.Model):
     def __str__(self):
         return self.number
     
-    def __save__(self, *args, **kwargs):
+    def save(self, *args, **kwargs):
         # Calculer subtotal, tax_amount, total avant de sauvegarder
         self.subtotal = sum(item.line_total for item in self.items.all())
         self.tax_amount = self.subtotal * Decimal("0.20")  # Exemple: 20% de TVA
