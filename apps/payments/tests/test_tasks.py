@@ -10,7 +10,6 @@ from decimal import Decimal
 from unittest.mock import patch, MagicMock, PropertyMock
 
 from django.utils import timezone
-from django.test import override_settings
 
 from apps.payments.models import Payment
 from apps.invoicing.models import Invoice
@@ -20,6 +19,13 @@ from apps.payments.tasks import (
     retry_failed_payment,
     sync_stripe_data,
 )
+
+
+@pytest.fixture(autouse=True)
+def stripe_settings(settings):
+    """Set Stripe secret key for all tests in this module."""
+    settings.STRIPE_SECRET_KEY = 'sk_test_fake_key'
+    return settings
 
 
 @pytest.mark.django_db
@@ -109,7 +115,6 @@ class TestProcessStripeWebhook:
 
 
 @pytest.mark.django_db
-@override_settings(STRIPE_SECRET_KEY='sk_test_fake_key')
 class TestProcessPayment:
     """Tests for process_payment task."""
 
@@ -267,7 +272,6 @@ class TestRetryFailedPayment:
 
 
 @pytest.mark.django_db
-@override_settings(STRIPE_SECRET_KEY='sk_test_fake_key')
 class TestSyncStripeData:
     """Tests for sync_stripe_data task."""
 

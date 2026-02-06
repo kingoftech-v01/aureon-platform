@@ -6,9 +6,26 @@ Tests cover SecurityMonitor: alert sending, alert deduplication, and hourly stat
 import pytest
 from unittest.mock import patch, MagicMock, call
 
-from django.core.cache import cache
 from django.utils import timezone
 
+
+# Override CACHES to use in-memory cache before importing security module.
+# security.py creates global IPBlocker() at import time which calls cache.get(),
+# so the cache backend must be available before the import.
+from django.conf import settings as _django_settings
+_django_settings.CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+# Reset cached cache connections so new CACHES setting takes effect
+from django.core.cache import caches as _caches
+try:
+    _caches._connections.caches = {}
+except AttributeError:
+    pass
+
+from django.core.cache import cache
 from apps.core.security import SecurityMonitor
 
 
@@ -113,7 +130,6 @@ class TestSecurityMonitorTriggerAlert:
             monitor.record_event('failed_logins', {'ip': '10.0.0.1'})
 
         mock_send_alert.assert_called_once()
-        call_args = mock_send_alert.call_args[1] if mock_send_alert.call_args[1] else {}
         positional = mock_send_alert.call_args[0]
 
         assert positional[0] == 'failed_logins'

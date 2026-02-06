@@ -10,7 +10,6 @@ from decimal import Decimal
 from unittest.mock import patch, MagicMock
 
 from django.utils import timezone
-from django.test import override_settings
 from django.contrib.auth import get_user_model
 
 from apps.subscriptions.models import Subscription, SubscriptionPlan
@@ -80,8 +79,14 @@ def subscription_expiring(db, manager_user, subscription_plan):
     )
 
 
+@pytest.fixture(autouse=True)
+def stripe_settings(settings):
+    """Set Stripe secret key for all tests in this module."""
+    settings.STRIPE_SECRET_KEY = 'sk_test_fake_key'
+    return settings
+
+
 @pytest.mark.django_db
-@override_settings(STRIPE_SECRET_KEY='sk_test_fake_key')
 class TestProcessSubscriptionPayment:
     """Tests for process_subscription_payment task."""
 
