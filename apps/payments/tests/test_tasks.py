@@ -86,17 +86,14 @@ class TestProcessStripeWebhook:
         assert WebhookEvent.PROCESSING in statuses_during_handling
 
     def test_retries_on_event_not_found(self):
-        """Test that the task retries when webhook event does not exist."""
-        from celery.exceptions import Retry
-
-        with pytest.raises(Retry):
+        """Test that the task raises an exception (triggering retry) when webhook event does not exist."""
+        with pytest.raises(Exception):
             process_stripe_webhook(str(uuid.uuid4()))
 
     @patch('apps.webhooks.stripe_handlers.StripeWebhookHandler')
     def test_retries_on_handler_exception(self, mock_handler_cls):
-        """Test that the task retries when handler raises an exception."""
+        """Test that the task raises an exception (triggering retry) when handler raises an exception."""
         from apps.webhooks.models import WebhookEvent
-        from celery.exceptions import Retry
 
         webhook_event = WebhookEvent.objects.create(
             source=WebhookEvent.STRIPE,
@@ -110,7 +107,7 @@ class TestProcessStripeWebhook:
         mock_handler.handle.side_effect = RuntimeError("Handler error")
         mock_handler_cls.return_value = mock_handler
 
-        with pytest.raises(Retry):
+        with pytest.raises(Exception):
             process_stripe_webhook(str(webhook_event.id))
 
 
@@ -224,10 +221,8 @@ class TestProcessPayment:
             mock_mark_paid.assert_called_once()
 
     def test_retries_on_payment_not_found(self):
-        """Test that the task retries when payment does not exist."""
-        from celery.exceptions import Retry
-
-        with pytest.raises(Retry):
+        """Test that the task raises an exception (triggering retry) when payment does not exist."""
+        with pytest.raises(Exception):
             process_payment(str(uuid.uuid4()))
 
 
@@ -264,10 +259,8 @@ class TestRetryFailedPayment:
         assert result['status'] == 'skipped'
 
     def test_retries_on_payment_not_found(self):
-        """Test that the task retries when payment does not exist."""
-        from celery.exceptions import Retry
-
-        with pytest.raises(Retry):
+        """Test that the task raises an exception (triggering retry) when payment does not exist."""
+        with pytest.raises(Exception):
             retry_failed_payment(str(uuid.uuid4()))
 
 

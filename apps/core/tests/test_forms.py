@@ -14,6 +14,7 @@ import time
 import pytest
 from unittest.mock import patch, MagicMock
 from django import forms
+from django.conf import settings
 from django.test import override_settings
 from django.utils import timezone
 
@@ -27,6 +28,15 @@ from apps.core.forms import (
     get_honeypot_css,
     HONEYPOT_CSS,
 )
+
+
+# ---------------------------------------------------------------------------
+# Helper: get the first 3 honeypot field names used at runtime
+# ---------------------------------------------------------------------------
+
+def _active_honeypot_fields():
+    """Return the first 3 honeypot field names that the mixin will actually use."""
+    return getattr(settings, 'HONEYPOT_FIELDS', HoneypotFormMixin.HONEYPOT_FIELDS)[:3]
 
 
 # ---------------------------------------------------------------------------
@@ -57,19 +67,20 @@ class TestHoneypotFormMixin:
     def test_honeypot_fields_added(self):
         """Honeypot fields should be added to the form."""
         form = HoneypotTestForm()
-        for field_name in HoneypotFormMixin.HONEYPOT_FIELDS:
+        for field_name in _active_honeypot_fields():
             assert field_name in form.fields, f"Missing honeypot field: {field_name}"
 
     def test_honeypot_fields_not_required(self):
         """Honeypot fields should not be required."""
         form = HoneypotTestForm()
-        for field_name in HoneypotFormMixin.HONEYPOT_FIELDS:
+        for field_name in _active_honeypot_fields():
             assert not form.fields[field_name].required
 
     def test_honeypot_field_widget_attributes(self):
         """Honeypot field widgets should have hidden attributes."""
         form = HoneypotTestForm()
-        field = form.fields['website_url']
+        first_hp = _active_honeypot_fields()[0]
+        field = form.fields[first_hp]
         attrs = field.widget.attrs
         assert attrs['tabindex'] == '-1'
         assert attrs['autocomplete'] == 'off'
@@ -81,49 +92,50 @@ class TestHoneypotFormMixin:
         data = {
             'name': 'Test User',
             'email': 'user@example.com',
-            'website_url': '',
-            'email_confirm': '',
-            'hp_field': '',
         }
+        for field_name in _active_honeypot_fields():
+            data[field_name] = ''
         form = HoneypotTestForm(data=data)
-        assert form.is_valid()
+        assert form.is_valid(), form.errors
 
-    def test_clean_fails_when_honeypot_filled(self):
-        """Form should reject submission when honeypot field is filled."""
+    def test_clean_fails_when_first_honeypot_filled(self):
+        """Form should reject submission when the first honeypot field is filled."""
         data = {
             'name': 'Test User',
             'email': 'user@example.com',
-            'website_url': 'http://spam.com',
-            'email_confirm': '',
-            'hp_field': '',
         }
+        hp_fields = _active_honeypot_fields()
+        for field_name in hp_fields:
+            data[field_name] = ''
+        data[hp_fields[0]] = 'http://spam.com'
         form = HoneypotTestForm(data=data)
         assert not form.is_valid()
         assert '__all__' in form.errors
-        assert 'honeypot_triggered' in form.errors['__all__'][0] or \
-            'could not be processed' in form.errors['__all__'][0]
+        assert 'could not be processed' in form.errors['__all__'][0]
 
     def test_clean_fails_when_second_honeypot_filled(self):
-        """Should catch any honeypot field being filled."""
+        """Should catch the second honeypot field being filled."""
         data = {
             'name': 'Test User',
             'email': 'user@example.com',
-            'website_url': '',
-            'email_confirm': 'trap@spam.com',
-            'hp_field': '',
         }
+        hp_fields = _active_honeypot_fields()
+        for field_name in hp_fields:
+            data[field_name] = ''
+        data[hp_fields[1]] = 'trap@spam.com'
         form = HoneypotTestForm(data=data)
         assert not form.is_valid()
 
     def test_clean_fails_when_third_honeypot_filled(self):
-        """Should catch any honeypot field being filled."""
+        """Should catch the third honeypot field being filled."""
         data = {
             'name': 'Test User',
             'email': 'user@example.com',
-            'website_url': '',
-            'email_confirm': '',
-            'hp_field': 'gotcha',
         }
+        hp_fields = _active_honeypot_fields()
+        for field_name in hp_fields:
+            data[field_name] = ''
+        data[hp_fields[2]] = 'gotcha'
         form = HoneypotTestForm(data=data)
         assert not form.is_valid()
 
@@ -132,10 +144,10 @@ class TestHoneypotFormMixin:
         data = {
             'name': 'Test User',
             'email': 'user@example.com',
-            'website_url': '   ',
-            'email_confirm': '',
-            'hp_field': '',
         }
+        hp_fields = _active_honeypot_fields()
+        for field_name in hp_fields:
+            data[field_name] = '   '
         form = HoneypotTestForm(data=data)
         assert form.is_valid()
 
@@ -171,10 +183,11 @@ class TestHoneypotFormMixin:
         data = {
             'name': 'Test',
             'email': 'user@example.com',
-            'website_url': 'bot-value',
-            'email_confirm': '',
-            'hp_field': '',
         }
+        hp_fields = _active_honeypot_fields()
+        for field_name in hp_fields:
+            data[field_name] = ''
+        data[hp_fields[0]] = 'bot-value'
         with patch('apps.core.forms.security_logger') as mock_logger:
             form = HoneypotTestForm(data=data)
             form.is_valid()
@@ -213,12 +226,10 @@ class TestTimestampFormMixin:
 
     def test_submission_too_fast_fails(self):
         """Form submitted too quickly should fail validation."""
-        # Timestamp 0.1 seconds ago -- well below the 2-second minimum
         now_ts = str(timezone.now().timestamp())
         data = {'name': 'Test', '_form_timestamp': now_ts}
         form = TimestampTestForm(data=data)
         assert not form.is_valid()
-        # Check for the correct error code / message
         errors = form.errors.get('__all__', [])
         assert any('review your submission' in str(e) or 'submission_too_fast' in str(e)
                     for e in errors)
@@ -238,7 +249,6 @@ class TestTimestampFormMixin:
     @override_settings(HONEYPOT_MIN_FORM_SUBMISSION_TIME=5)
     def test_custom_min_submission_time(self):
         """Should respect custom minimum submission time from settings."""
-        # 3 seconds ago is below the custom 5-second threshold
         past = str(timezone.now().timestamp() - 3)
         data = {'name': 'Test', '_form_timestamp': past}
         form = TimestampTestForm(data=data)
@@ -273,7 +283,7 @@ class TestSecureFormMixin:
     def test_has_both_honeypot_and_timestamp(self):
         """Should include both honeypot fields and a timestamp field."""
         form = SecureMixinTestForm()
-        assert 'website_url' in form.fields
+        assert _active_honeypot_fields()[0] in form.fields
         assert '_form_timestamp' in form.fields
 
     def test_request_stored(self):
@@ -293,13 +303,12 @@ class TestSecureFormMixin:
         data = {
             'name': 'Test',
             'email': 'test@example.com',
-            'website_url': '',
-            'email_confirm': '',
-            'hp_field': '',
             '_form_timestamp': past,
         }
+        for field_name in _active_honeypot_fields():
+            data[field_name] = ''
         form = SecureMixinTestForm(data=data)
-        assert form.is_valid()
+        assert form.is_valid(), form.errors
 
     def test_honeypot_trigger_blocks_in_combined(self):
         """Honeypot trigger should still work in combined mixin."""
@@ -307,11 +316,12 @@ class TestSecureFormMixin:
         data = {
             'name': 'Test',
             'email': 'test@example.com',
-            'website_url': 'spam',
-            'email_confirm': '',
-            'hp_field': '',
             '_form_timestamp': past,
         }
+        hp_fields = _active_honeypot_fields()
+        for field_name in hp_fields:
+            data[field_name] = ''
+        data[hp_fields[0]] = 'spam'
         form = SecureMixinTestForm(data=data)
         assert not form.is_valid()
 
@@ -321,11 +331,10 @@ class TestSecureFormMixin:
         data = {
             'name': 'Test',
             'email': 'test@example.com',
-            'website_url': '',
-            'email_confirm': '',
-            'hp_field': '',
             '_form_timestamp': now_ts,
         }
+        for field_name in _active_honeypot_fields():
+            data[field_name] = ''
         form = SecureMixinTestForm(data=data)
         assert not form.is_valid()
 
@@ -353,7 +362,7 @@ class TestSecureForm:
 
         form = MyForm()
         assert 'username' in form.fields
-        assert 'website_url' in form.fields
+        assert _active_honeypot_fields()[0] in form.fields
         assert '_form_timestamp' in form.fields
 
 
@@ -366,13 +375,11 @@ class TestSecureModelFormMixin:
 
     def test_save_with_commit_true(self):
         """save(commit=True) should persist the instance."""
-        # We need a ModelForm subclass.  Use a minimal mock approach.
         with patch.object(SecureModelFormMixin, '__init__', lambda self, *a, **kw: None):
             mixin = SecureModelFormMixin()
 
         mock_instance = MagicMock()
-        # Simulate super().save(commit=False) returning an unsaved instance
-        with patch('apps.core.forms.SecureFormMixin.save', return_value=mock_instance) as mock_super_save:
+        with patch('apps.core.forms.SecureFormMixin.save', return_value=mock_instance):
             mixin.save_m2m = MagicMock()
             result = SecureModelFormMixin.save(mixin, commit=True)
 

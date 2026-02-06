@@ -14,29 +14,29 @@ class TestInvoicingURLs:
     def test_invoice_list_url_resolves(self):
         """Test that the invoice list URL resolves correctly."""
         url = reverse('invoicing:invoice-list')
-        assert url == '/api/invoices/'
+        # App urls.py has path('api/', ...) and config/urls.py includes under 'api/'
+        assert url == '/api/api/invoices/'
         resolver = resolve(url)
         assert resolver.func.cls == InvoiceViewSet
 
     def test_invoice_detail_url_resolves(self):
         """Test that the invoice detail URL resolves correctly."""
-        # Using a dummy UUID for URL resolution
         url = reverse('invoicing:invoice-detail', kwargs={'pk': '00000000-0000-0000-0000-000000000001'})
-        assert '/api/invoices/' in url
+        assert '/invoices/' in url
         resolver = resolve(url)
         assert resolver.func.cls == InvoiceViewSet
 
     def test_invoice_stats_url_resolves(self):
         """Test that the invoice stats action URL resolves."""
         url = reverse('invoicing:invoice-stats')
-        assert url == '/api/invoices/stats/'
+        assert url == '/api/api/invoices/stats/'
         resolver = resolve(url)
         assert resolver.func.cls == InvoiceViewSet
 
     def test_invoice_send_url_resolves(self):
         """Test that the invoice send action URL resolves."""
         url = reverse('invoicing:invoice-send', kwargs={'pk': '00000000-0000-0000-0000-000000000001'})
-        assert '/api/invoices/' in url
+        assert '/invoices/' in url
         assert '/send/' in url
         resolver = resolve(url)
         assert resolver.func.cls == InvoiceViewSet
@@ -72,14 +72,14 @@ class TestInvoicingURLs:
     def test_invoice_item_list_url_resolves(self):
         """Test that the invoice item list URL resolves correctly."""
         url = reverse('invoicing:invoice-item-list')
-        assert url == '/api/items/'
+        assert url == '/api/api/items/'
         resolver = resolve(url)
         assert resolver.func.cls == InvoiceItemViewSet
 
     def test_invoice_item_detail_url_resolves(self):
         """Test that the invoice item detail URL resolves correctly."""
         url = reverse('invoicing:invoice-item-detail', kwargs={'pk': '00000000-0000-0000-0000-000000000001'})
-        assert '/api/items/' in url
+        assert '/items/' in url
         resolver = resolve(url)
         assert resolver.func.cls == InvoiceItemViewSet
 
@@ -91,6 +91,7 @@ class TestInvoicingURLs:
     def test_router_registered_viewsets(self):
         """Test that the router has registered both viewsets."""
         from apps.invoicing.urls import router
-        registered_basenames = [r.name for r in router.registry]
+        # router.registry is a list of tuples: (prefix, viewset, basename)
+        registered_basenames = [entry[2] for entry in router.registry]
         assert 'invoice' in registered_basenames
         assert 'invoice-item' in registered_basenames

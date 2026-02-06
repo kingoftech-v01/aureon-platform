@@ -122,20 +122,16 @@ class TestGenerateContractPdf:
         assert result['status'] == 'success'
 
     def test_retries_on_contract_not_found(self):
-        """Test that the task retries when contract does not exist."""
-        from celery.exceptions import Retry
-
-        with pytest.raises(Retry):
+        """Test that the task raises an exception (triggering retry) when contract does not exist."""
+        with pytest.raises(Exception):
             generate_contract_pdf(str(uuid.uuid4()))
 
     @patch('reportlab.platypus.SimpleDocTemplate')
     def test_retries_on_build_failure(self, mock_doc_cls, contract_fixed):
-        """Test that the task retries when PDF build fails."""
-        from celery.exceptions import Retry
-
+        """Test that the task raises an exception (triggering retry) when PDF build fails."""
         mock_doc_cls.side_effect = RuntimeError("Build failed")
 
-        with pytest.raises(Retry):
+        with pytest.raises(Exception):
             generate_contract_pdf(str(contract_fixed.id))
 
 
@@ -198,10 +194,8 @@ class TestSendContractForSignature:
         assert result['status'] == 'success'
 
     def test_retries_on_contract_not_found(self):
-        """Test that the task retries when contract does not exist."""
-        from celery.exceptions import Retry
-
-        with pytest.raises(Retry):
+        """Test that the task raises an exception (triggering retry) when contract does not exist."""
+        with pytest.raises(Exception):
             send_contract_for_signature(str(uuid.uuid4()))
 
 

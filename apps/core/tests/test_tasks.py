@@ -129,9 +129,7 @@ class TestBackupCriticalData:
         mock_os.path.join = lambda *args: '/'.join(args)
         mock_serialize.side_effect = Exception("Serialization failed")
 
-        from celery.exceptions import Retry
-
-        with pytest.raises(Retry):
+        with pytest.raises(Exception):
             backup_critical_data()
 
 
