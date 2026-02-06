@@ -101,6 +101,7 @@ def domain(db, tenant):
 def admin_user(db, tenant):
     """Create an admin user."""
     user = User.objects.create_user(
+        username='admin',
         email='admin@testorg.com',
         password='SecurePass123!',
         first_name='Admin',
@@ -117,6 +118,7 @@ def admin_user(db, tenant):
 def manager_user(db, tenant):
     """Create a manager user."""
     user = User.objects.create_user(
+        username='manager',
         email='manager@testorg.com',
         password='SecurePass123!',
         first_name='Manager',
@@ -133,6 +135,7 @@ def manager_user(db, tenant):
 def contributor_user(db, tenant):
     """Create a contributor user."""
     user = User.objects.create_user(
+        username='contributor',
         email='contributor@testorg.com',
         password='SecurePass123!',
         first_name='Contributor',
@@ -149,6 +152,7 @@ def contributor_user(db, tenant):
 def client_user(db, tenant):
     """Create a client user (portal access)."""
     user = User.objects.create_user(
+        username='clientuser',
         email='client@external.com',
         password='SecurePass123!',
         first_name='Client',
@@ -165,6 +169,7 @@ def client_user(db, tenant):
 def superuser(db):
     """Create a superuser."""
     user = User.objects.create_superuser(
+        username='superadmin',
         email='superadmin@aureon.com',
         password='SuperSecurePass123!',
         first_name='Super',
@@ -177,6 +182,7 @@ def superuser(db):
 def inactive_user(db, tenant):
     """Create an inactive user."""
     user = User.objects.create_user(
+        username='inactive',
         email='inactive@testorg.com',
         password='SecurePass123!',
         first_name='Inactive',
