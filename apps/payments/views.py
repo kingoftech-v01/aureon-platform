@@ -76,7 +76,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            refund_amount = float(refund_amount)
+            from decimal import Decimal, InvalidOperation
+            refund_amount = Decimal(str(refund_amount))
             payment.process_refund(refund_amount, reason)
 
             serializer = self.get_serializer(payment)

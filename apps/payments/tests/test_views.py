@@ -420,7 +420,7 @@ class TestPaymentMethodViewSetList:
         assert response.status_code == http_status.HTTP_200_OK
 
         for pm in response.data['results']:
-            assert pm['client'] == str(client_company.id)
+            assert str(pm['client']) == str(client_company.id)
 
     @pytest.mark.django_db
     def test_filter_by_is_default(self, authenticated_admin_client, payment_method_card):

@@ -53,13 +53,7 @@ def process_payment(self, payment_id):
             if intent.status == 'succeeded':
                 payment.status = Payment.SUCCEEDED
                 payment.save(update_fields=['status', 'updated_at'])
-                # Update invoice
-                if payment.invoice:
-                    payment.invoice.mark_as_paid(
-                        payment_amount=payment.amount,
-                        payment_method=payment.get_payment_method_display(),
-                        payment_reference=payment.transaction_id
-                    )
+                # Invoice update is handled by the post_save signal
             elif intent.status == 'requires_payment_method':
                 payment.status = Payment.FAILED
                 payment.failure_message = 'Payment method required'
@@ -139,12 +133,7 @@ def sync_stripe_data(self):
                     payment.save(update_fields=['status', 'updated_at'])
                     synced_count += 1
 
-                    # If succeeded, update invoice
-                    if new_status == Payment.SUCCEEDED and payment.invoice:
-                        payment.invoice.mark_as_paid(
-                            payment_amount=payment.amount,
-                            payment_reference=payment.transaction_id
-                        )
+                    # Invoice update is handled by the post_save signal
             except Exception as e:
                 logger.warning(f"Could not sync payment {payment.transaction_id}: {e}")
 

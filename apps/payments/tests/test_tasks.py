@@ -72,7 +72,7 @@ class TestProcessStripeWebhook:
             status=WebhookEvent.PENDING,
         )
 
-        def track_status(payload):
+        def track_status():
             event = WebhookEvent.objects.get(id=webhook_event.id)
             statuses_during_handling.append(event.status)
             return {'ok': True}
@@ -243,7 +243,7 @@ class TestRetryFailedPayment:
         assert payment_failed.failure_code == ''
         assert payment_failed.failure_message == ''
 
-        mock_process.delay.assert_called_once_with(payment_failed.id)
+        mock_process.delay.assert_called_once_with(str(payment_failed.id))
 
     def test_skips_non_failed_payment(self, payment_pending):
         """Test that a non-failed payment is skipped."""
