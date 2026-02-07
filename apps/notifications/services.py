@@ -139,7 +139,7 @@ class NotificationService:
         """
         context = {
             'invoice_number': invoice.invoice_number,
-            'client_name': invoice.client.full_name,
+            'client_name': invoice.client.get_full_name(),
             'amount': f"${invoice.total:.2f}",
             'currency': invoice.currency,
             'due_date': invoice.due_date.strftime('%B %d, %Y'),
@@ -169,7 +169,7 @@ class NotificationService:
         context = {
             'payment_id': str(payment.id),
             'invoice_number': invoice.invoice_number if invoice else 'N/A',
-            'client_name': payment.client.full_name if payment.client else 'Customer',
+            'client_name': invoice.client.get_full_name() if invoice and invoice.client else 'Customer',
             'amount': f"${payment.amount:.2f}",
             'currency': payment.currency,
             'payment_date': payment.payment_date.strftime('%B %d, %Y'),
@@ -177,7 +177,7 @@ class NotificationService:
             'company_name': settings.SITE_NAME,
         }
 
-        recipient = invoice.client.email if invoice else payment.client.email
+        recipient = invoice.client.email if invoice and invoice.client else ''
 
         return NotificationService.send_notification(
             template_type=NotificationTemplate.PAYMENT_RECEIPT,
@@ -201,7 +201,7 @@ class NotificationService:
         """
         context = {
             'contract_title': contract.title,
-            'client_name': contract.client.full_name,
+            'client_name': contract.client.get_full_name(),
             'contract_value': f"${contract.total_value:.2f}",
             'start_date': contract.start_date.strftime('%B %d, %Y'),
             'end_date': contract.end_date.strftime('%B %d, %Y') if contract.end_date else 'Ongoing',
@@ -227,7 +227,7 @@ class NotificationService:
             Notification: Created notification instance
         """
         context = {
-            'client_name': client.full_name,
+            'client_name': client.get_full_name(),
             'company_name': settings.SITE_NAME,
         }
 
