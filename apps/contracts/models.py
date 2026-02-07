@@ -301,6 +301,11 @@ class Contract(models.Model):
         return self.signed_by_client and self.signed_by_company
 
     @property
+    def total_value(self):
+        """Return the total contract value (alias for value)."""
+        return self.value
+
+    @property
     def outstanding_amount(self):
         """Calculate outstanding amount."""
         return self.invoiced_amount - self.paid_amount

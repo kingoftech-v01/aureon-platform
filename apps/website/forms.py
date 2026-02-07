@@ -75,6 +75,8 @@ class ContactForm(SecureModelFormMixin, forms.ModelForm):
         self.fields['email'].required = True
         self.fields['subject'].required = True
         self.fields['message'].required = True
+        # inquiry_type has a model default, so it's optional in the form
+        self.fields['inquiry_type'].required = False
 
     def clean_email(self):
         """Validate and clean email"""

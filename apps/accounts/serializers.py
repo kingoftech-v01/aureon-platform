@@ -80,6 +80,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
+        # Ensure username is set (defaults to email for AbstractUser compatibility)
+        if 'username' not in validated_data:
+            validated_data['username'] = validated_data['email']
         user = User.objects.create_user(**validated_data)
         return user
 

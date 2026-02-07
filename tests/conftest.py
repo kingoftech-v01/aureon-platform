@@ -43,6 +43,13 @@ def override_test_settings(settings):
     # Ensure testserver is in allowed hosts
     if 'testserver' not in settings.ALLOWED_HOSTS:
         settings.ALLOWED_HOSTS.append('testserver')
+    # Add testserver to trusted origins for CSRF middleware
+    settings.CSRF_TRUSTED_ORIGINS = [
+        'http://testserver',
+        'https://testserver',
+        'http://localhost',
+        'https://localhost',
+    ]
 
 
 # ============================================================================

@@ -88,7 +88,7 @@ class NotificationService:
             channel=template.channel,
             subject=rendered['subject'],
             message_text=rendered['body_text'],
-            message_html=rendered['body_html'],
+            message_html=rendered['body_html'] or '',
             **kwargs
         )
 

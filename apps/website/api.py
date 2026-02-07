@@ -392,7 +392,8 @@ def api_newsletter(request):
             return api_response({'success': True, 'message': 'You are already subscribed!'})
 
         # Create subscription
-        NewsletterSubscriber.objects.create(email=email, is_confirmed=True)
+        from django.utils import timezone as tz
+        NewsletterSubscriber.objects.create(email=email, confirmed_at=tz.now())
 
         return api_response({'success': True, 'message': 'Thank you for subscribing!'})
     except json.JSONDecodeError:
