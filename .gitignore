@@ -59,6 +59,7 @@ logs/
 # Static and Media (production)
 staticfiles/
 media/
+mediafiles/
 
 # Node modules (frontend)
 node_modules/
