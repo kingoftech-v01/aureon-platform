@@ -485,8 +485,13 @@ class TestCacheInvalidator:
 class TestCachedDecorator:
     """Test the @cached decorator."""
 
-    def test_caches_function_result(self):
+    @patch("config.cache.caches")
+    def test_caches_function_result(self, mock_caches):
         """Test that function result is cached."""
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = None  # First call: cache miss
+        mock_caches.__getitem__.return_value = mock_cache
+
         call_count = 0
 
         @cached(timeout=300, cache_alias="default")
@@ -495,19 +500,38 @@ class TestCachedDecorator:
             call_count += 1
             return x * 2
 
-        # First call should execute the function
         result1 = my_func(5)
         assert result1 == 10
         assert call_count == 1
+        mock_cache.set.assert_called_once()
 
-        # Second call should return cached result
-        result2 = my_func(5)
-        assert result2 == 10
-        # call_count may or may not increment depending on cache backend
-        # In test environment with locmem, it should be cached
+    @patch("config.cache.caches")
+    def test_cache_hit_returns_cached_value(self, mock_caches):
+        """Test that cache hit returns cached value without calling function."""
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = 20  # Cache hit
+        mock_caches.__getitem__.return_value = mock_cache
 
-    def test_different_args_cached_separately(self):
+        call_count = 0
+
+        @cached(timeout=300, cache_alias="default")
+        def my_func(x):
+            nonlocal call_count
+            call_count += 1
+            return x * 2
+
+        result = my_func(5)
+        assert result == 20
+        assert call_count == 0  # Function not called
+        mock_cache.set.assert_not_called()
+
+    @patch("config.cache.caches")
+    def test_different_args_cached_separately(self, mock_caches):
         """Test that different arguments result in separate cache entries."""
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = None  # Cache miss
+        mock_caches.__getitem__.return_value = mock_cache
+
         @cached(timeout=300, cache_alias="default")
         def add(a, b):
             return a + b
@@ -516,15 +540,25 @@ class TestCachedDecorator:
         result2 = add(3, 4)
         assert result1 == 3
         assert result2 == 7
+        # Two different cache keys set
+        assert mock_cache.set.call_count == 2
 
-    def test_custom_key_prefix(self):
+    @patch("config.cache.caches")
+    def test_custom_key_prefix(self, mock_caches):
         """Test using a custom key prefix."""
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = None
+        mock_caches.__getitem__.return_value = mock_cache
+
         @cached(timeout=300, key_prefix="custom_prefix", cache_alias="default")
         def my_func():
             return "result"
 
         result = my_func()
         assert result == "result"
+        # Verify the cache key uses the custom prefix
+        cache_key = mock_cache.set.call_args[0][0]
+        assert "custom_prefix" in cache_key
 
     def test_invalidate_method_exists(self):
         """Test that the decorated function has an invalidate method."""
@@ -535,21 +569,18 @@ class TestCachedDecorator:
         assert hasattr(my_func, "invalidate")
         assert callable(my_func.invalidate)
 
-    def test_invalidate_clears_cache(self):
+    @patch("config.cache.caches")
+    def test_invalidate_clears_cache(self, mock_caches):
         """Test that calling invalidate clears the cache for those args."""
-        call_count = 0
+        mock_cache = MagicMock()
+        mock_caches.__getitem__.return_value = mock_cache
 
         @cached(timeout=300, cache_alias="default")
         def counter_func(x):
-            nonlocal call_count
-            call_count += 1
-            return call_count
+            return x
 
-        result1 = counter_func(42)
         counter_func.invalidate(42)
-        result2 = counter_func(42)
-        # After invalidation, the function should be called again
-        assert call_count >= 2
+        mock_cache.delete.assert_called_once()
 
     def test_preserves_function_name(self):
         """Test that the decorator preserves the function name."""
@@ -559,8 +590,13 @@ class TestCachedDecorator:
 
         assert my_special_function.__name__ == "my_special_function"
 
-    def test_cached_with_kwargs(self):
+    @patch("config.cache.caches")
+    def test_cached_with_kwargs(self, mock_caches):
         """Test cached decorator with keyword arguments."""
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = None
+        mock_caches.__getitem__.return_value = mock_cache
+
         @cached(timeout=300, cache_alias="default")
         def func_with_kwargs(a, b=10):
             return a + b
@@ -568,27 +604,51 @@ class TestCachedDecorator:
         result = func_with_kwargs(5, b=20)
         assert result == 25
 
-    def test_cached_with_custom_version(self):
+    @patch("config.cache.caches")
+    def test_cached_with_custom_version(self, mock_caches):
         """Test cached decorator with custom version."""
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = None
+        mock_caches.__getitem__.return_value = mock_cache
+
         @cached(timeout=300, version="v2", cache_alias="default")
         def versioned_func():
             return "v2_result"
 
         result = versioned_func()
         assert result == "v2_result"
+        # Verify v2 in cache key
+        cache_key = mock_cache.set.call_args[0][0]
+        assert "v2" in cache_key
 
 
 class TestMultiLayerCachedDecorator:
     """Test the @multi_layer_cached decorator."""
 
-    def test_multi_layer_caches_result(self):
+    @patch("config.cache.caches")
+    def test_multi_layer_caches_result(self, mock_caches):
         """Test that multi-layer caching works."""
+        mock_local = MagicMock()
+        mock_redis = MagicMock()
+        mock_local.get.return_value = None
+        mock_redis.get.return_value = None
+
+        def cache_side_effect(alias):
+            if alias == CACHE_ALIAS_LOCAL:
+                return mock_local
+            return mock_redis
+
+        mock_caches.__getitem__.side_effect = cache_side_effect
+
         @multi_layer_cached(timeout=300, local_timeout=60)
         def my_func():
             return "multi_cached"
 
         result = my_func()
         assert result == "multi_cached"
+        # Both caches should be populated
+        mock_redis.set.assert_called_once()
+        mock_local.set.assert_called_once()
 
     def test_multi_layer_preserves_function_name(self):
         """Test that multi_layer_cached preserves function name."""
@@ -598,8 +658,21 @@ class TestMultiLayerCachedDecorator:
 
         assert my_func.__name__ == "my_func"
 
-    def test_multi_layer_with_args(self):
+    @patch("config.cache.caches")
+    def test_multi_layer_with_args(self, mock_caches):
         """Test multi-layer caching with arguments."""
+        mock_local = MagicMock()
+        mock_redis = MagicMock()
+        mock_local.get.return_value = None
+        mock_redis.get.return_value = None
+
+        def cache_side_effect(alias):
+            if alias == CACHE_ALIAS_LOCAL:
+                return mock_local
+            return mock_redis
+
+        mock_caches.__getitem__.side_effect = cache_side_effect
+
         @multi_layer_cached(timeout=300, key_prefix="ml_test")
         def multiply(a, b):
             return a * b
@@ -607,8 +680,20 @@ class TestMultiLayerCachedDecorator:
         result = multiply(3, 4)
         assert result == 12
 
-    def test_multi_layer_l1_hit(self):
+    @patch("config.cache.caches")
+    def test_multi_layer_l1_hit(self, mock_caches):
         """Test that L1 cache hit returns without checking L2."""
+        mock_local = MagicMock()
+        mock_redis = MagicMock()
+        mock_local.get.return_value = "cached_result"  # L1 hit
+
+        def cache_side_effect(alias):
+            if alias == CACHE_ALIAS_LOCAL:
+                return mock_local
+            return mock_redis
+
+        mock_caches.__getitem__.side_effect = cache_side_effect
+
         call_count = 0
 
         @multi_layer_cached(timeout=300, local_timeout=60)
@@ -617,12 +702,34 @@ class TestMultiLayerCachedDecorator:
             call_count += 1
             return "result"
 
-        # First call populates both caches
-        tracked_func()
-        # Second call should hit L1
-        tracked_func()
-        # The function was only called once (subsequent calls returned cached)
-        assert call_count == 1
+        result = tracked_func()
+        assert result == "cached_result"
+        assert call_count == 0  # Function not called
+        mock_redis.get.assert_not_called()  # L2 not checked
+
+    @patch("config.cache.caches")
+    def test_multi_layer_l2_hit_populates_l1(self, mock_caches):
+        """Test that L2 hit populates L1 cache."""
+        mock_local = MagicMock()
+        mock_redis = MagicMock()
+        mock_local.get.return_value = None  # L1 miss
+        mock_redis.get.return_value = "l2_cached"  # L2 hit
+
+        def cache_side_effect(alias):
+            if alias == CACHE_ALIAS_LOCAL:
+                return mock_local
+            return mock_redis
+
+        mock_caches.__getitem__.side_effect = cache_side_effect
+
+        @multi_layer_cached(timeout=300, local_timeout=60)
+        def my_func():
+            return "fresh"
+
+        result = my_func()
+        assert result == "l2_cached"
+        # L1 should be populated
+        mock_local.set.assert_called_once()
 
 
 class TestDistributedLock:

@@ -371,30 +371,33 @@ class TestSecureForm:
 # ---------------------------------------------------------------------------
 
 class TestSecureModelFormMixin:
-    """Tests for SecureModelFormMixin save() behaviour."""
+    """Tests for SecureModelFormMixin save() behaviour.
+
+    SecureModelFormMixin.save() relies on super().save(commit=False) from
+    forms.ModelForm, so we must test it through a concrete form that has
+    ModelForm in its MRO.
+    """
 
     def test_save_with_commit_true(self):
-        """save(commit=True) should persist the instance."""
-        with patch.object(SecureModelFormMixin, '__init__', lambda self, *a, **kw: None):
-            mixin = SecureModelFormMixin()
-
+        """save(commit=True) should call instance.save() and save_m2m()."""
         mock_instance = MagicMock()
-        with patch('apps.core.forms.SecureFormMixin.save', return_value=mock_instance):
-            mixin.save_m2m = MagicMock()
-            result = SecureModelFormMixin.save(mixin, commit=True)
+        # Patch ModelForm.save which is what super().save() resolves to
+        with patch.object(forms.ModelForm, 'save', return_value=mock_instance):
+            # Create a concrete form instance via SecureModelForm
+            form_obj = SecureModelForm.__new__(SecureModelForm)
+            form_obj.save_m2m = MagicMock()
+            result = form_obj.save(commit=True)
 
         mock_instance.save.assert_called_once()
-        mixin.save_m2m.assert_called_once()
+        form_obj.save_m2m.assert_called_once()
         assert result is mock_instance
 
     def test_save_with_commit_false(self):
-        """save(commit=False) should return unsaved instance."""
-        with patch.object(SecureModelFormMixin, '__init__', lambda self, *a, **kw: None):
-            mixin = SecureModelFormMixin()
-
+        """save(commit=False) should return unsaved instance without saving."""
         mock_instance = MagicMock()
-        with patch('apps.core.forms.SecureFormMixin.save', return_value=mock_instance):
-            result = SecureModelFormMixin.save(mixin, commit=False)
+        with patch.object(forms.ModelForm, 'save', return_value=mock_instance):
+            form_obj = SecureModelForm.__new__(SecureModelForm)
+            result = form_obj.save(commit=False)
 
         mock_instance.save.assert_not_called()
         assert result is mock_instance

@@ -14,6 +14,8 @@ from unittest.mock import patch, MagicMock, PropertyMock
 from datetime import timedelta
 from django.utils import timezone
 
+import requests as requests_module
+
 from apps.webhooks.tasks import (
     process_stripe_webhook,
     retry_failed_webhooks,

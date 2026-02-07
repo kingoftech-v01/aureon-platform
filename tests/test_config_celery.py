@@ -548,11 +548,12 @@ class TestDebugTask:
 
     def test_debug_task_execution(self):
         """Test that debug task can be called."""
-        # Call the inner function directly
-        # The task is bind=True, so self is the first argument
-        mock_self = MagicMock()
-        mock_self.request = "test-request"
-        debug_task.run(mock_self)
+        # For bind=True tasks, Celery auto-injects self when calling .run()
+        # We need to call the underlying __wrapped__ function or use apply()
+        # The task wraps a function(self) with bind=True
+        with patch("builtins.print") as mock_print:
+            debug_task.run()
+            mock_print.assert_called_once()
 
 
 class TestTaskPriority:
