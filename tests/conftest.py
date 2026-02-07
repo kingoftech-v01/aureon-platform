@@ -66,6 +66,7 @@ def admin_user(db):
         first_name='Admin',
         last_name='User',
         role=User.ADMIN,
+        is_staff=True,
         is_verified=True,
         is_active=True,
     )

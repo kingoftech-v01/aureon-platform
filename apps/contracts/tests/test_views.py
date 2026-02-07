@@ -182,7 +182,8 @@ class TestContractSearchFilter:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        for contract in response.data:
+        results = response.data.get('results', response.data)
+        for contract in results:
             assert contract['status'] == Contract.ACTIVE
 
     def test_filter_by_contract_type(
@@ -194,7 +195,8 @@ class TestContractSearchFilter:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        for contract in response.data:
+        results = response.data.get('results', response.data)
+        for contract in results:
             assert contract['contract_type'] == Contract.HOURLY
 
     def test_ordering_by_value(self, authenticated_admin_client, contract_fixed, contract_hourly):
@@ -373,16 +375,19 @@ class TestContractMilestoneViewSet:
     def test_generate_invoice_for_milestone(
         self, authenticated_admin_client, contract_milestone
     ):
-        """Test generating invoice for milestone."""
+        """Test generating invoice for milestone succeeds and creates invoice."""
         response = authenticated_admin_client.post(
             f'/api/api/milestones/{contract_milestone.id}/generate_invoice/'
         )
 
-        # Should succeed or fail based on implementation
-        assert response.status_code in [
-            status.HTTP_201_CREATED,
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-        ]
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['detail'] == 'Invoice generated successfully.'
+        assert 'invoice_id' in response.data
+        assert 'invoice_number' in response.data
+
+        # Milestone should be marked as invoiced
+        contract_milestone.refresh_from_db()
+        assert contract_milestone.invoice_generated is True
 
     def test_generate_invoice_already_generated(
         self, authenticated_admin_client, contract_milestone
@@ -523,3 +528,341 @@ class TestContractViewEdgeCases:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['metadata']['priority'] == 'high'
+
+
+# ============================================================================
+# Coverage Boost Tests
+# ============================================================================
+
+@pytest.mark.django_db
+class TestContractSignBothParties:
+    """Tests that cover the both-parties-signed branch (views.py 118-119)."""
+
+    def test_sign_both_parties_sets_signed_at(
+        self, authenticated_admin_client, contract_draft
+    ):
+        """When both client and company sign, signed_at should be set."""
+        url = f'/api/api/contracts/{contract_draft.id}/sign/'
+
+        # Sign as client first
+        resp1 = authenticated_admin_client.post(url, {
+            'party': 'client',
+            'signature': 'client_sig',
+        })
+        assert resp1.status_code == status.HTTP_200_OK
+        assert resp1.data['signed_by_client'] is True
+        # signed_at should NOT be set yet (only one party signed)
+        assert resp1.data['signed_at'] is None
+
+        # Sign as company second
+        resp2 = authenticated_admin_client.post(url, {
+            'party': 'company',
+            'signature': 'company_sig',
+        })
+        assert resp2.status_code == status.HTTP_200_OK
+        assert resp2.data['signed_by_company'] is True
+        # Now both parties signed -> signed_at should be populated
+        assert resp2.data['signed_at'] is not None
+
+
+@pytest.mark.django_db
+class TestContractFinancialExceptionPaths:
+    """Tests that trigger exception handlers in financial actions
+    (views.py 137-138, 154-155)."""
+
+    def test_update_financial_summary_exception(
+        self, authenticated_admin_client, contract_fixed, monkeypatch
+    ):
+        """Cover the except branch when update_financial_summary raises."""
+        from apps.contracts.models import Contract as ContractModel
+
+        def _explode(self):
+            raise RuntimeError('boom')
+
+        monkeypatch.setattr(ContractModel, 'update_financial_summary', _explode)
+
+        response = authenticated_admin_client.post(
+            f'/api/api/contracts/{contract_fixed.id}/update_financial_summary/'
+        )
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'boom' in response.data['detail']
+
+    def test_update_completion_exception(
+        self, authenticated_admin_client, contract_fixed, monkeypatch
+    ):
+        """Cover the except branch when update_completion_percentage raises."""
+        from apps.contracts.models import Contract as ContractModel
+
+        def _explode(self):
+            raise RuntimeError('completion error')
+
+        monkeypatch.setattr(ContractModel, 'update_completion_percentage', _explode)
+
+        response = authenticated_admin_client.post(
+            f'/api/api/contracts/{contract_fixed.id}/update_completion/'
+        )
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'completion error' in response.data['detail']
+
+
+@pytest.mark.django_db
+class TestMilestoneNonStaffQueryset:
+    """Cover the non-staff queryset filter in ContractMilestoneViewSet
+    (views.py line 189)."""
+
+    def test_non_staff_milestone_list(
+        self, authenticated_contributor_client, contract_fixed,
+        contract_milestone, contributor_user
+    ):
+        """Non-staff sees only milestones of contracts they own or unowned."""
+        # Assign contract to contributor so they can see it
+        contract_fixed.owner = contributor_user
+        contract_fixed.save()
+
+        response = authenticated_contributor_client.get('/api/api/milestones/')
+        assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+class TestContractModelCoverage:
+    """Tests for uncovered model lines (289-290, 306)."""
+
+    def test_auto_contract_number_generation(self, db, client_company, admin_user):
+        """Cover contract_number auto-generation (including except branch)."""
+        from apps.contracts.models import Contract
+
+        # Create a contract without providing contract_number
+        contract = Contract.objects.create(
+            client=client_company,
+            title='Auto Number',
+            description='Test auto number generation.',
+            contract_type=Contract.FIXED_PRICE,
+            status=Contract.DRAFT,
+            start_date=date.today(),
+            value=Decimal('1000.00'),
+            owner=admin_user,
+        )
+        assert contract.contract_number.startswith('CNT-')
+
+    def test_contract_number_with_invalid_previous(
+        self, db, client_company, admin_user
+    ):
+        """Cover the ValueError/IndexError branch (models.py 289-290)."""
+        from apps.contracts.models import Contract
+
+        # Create a contract with a non-standard contract_number to trigger
+        # the exception path in the next auto-generated number.
+        Contract.objects.create(
+            contract_number='CNT-INVALID',
+            client=client_company,
+            title='Bad Number',
+            description='Has a non-numeric contract number.',
+            contract_type=Contract.FIXED_PRICE,
+            status=Contract.DRAFT,
+            start_date=date.today(),
+            value=Decimal('500.00'),
+            owner=admin_user,
+        )
+
+        # Next contract should gracefully fall back to 1
+        contract2 = Contract.objects.create(
+            client=client_company,
+            title='After Bad Number',
+            description='Auto generation after invalid number.',
+            contract_type=Contract.FIXED_PRICE,
+            status=Contract.DRAFT,
+            start_date=date.today(),
+            value=Decimal('600.00'),
+            owner=admin_user,
+        )
+        assert contract2.contract_number.startswith('CNT-')
+
+    def test_total_value_property(self, contract_fixed):
+        """Cover the total_value property (models.py line 306)."""
+        assert contract_fixed.total_value == contract_fixed.value
+
+
+@pytest.mark.django_db
+class TestSerializerCoverage:
+    """Tests for uncovered serializer lines."""
+
+    def test_list_serializer_owner_name_none(
+        self, authenticated_admin_client, client_company, admin_user
+    ):
+        """Cover owner_name returning None when owner is unset (serializer line 57)."""
+        from apps.contracts.models import Contract
+
+        contract = Contract.objects.create(
+            client=client_company,
+            title='No Owner Contract',
+            description='No owner.',
+            contract_type=Contract.FIXED_PRICE,
+            status=Contract.ACTIVE,
+            start_date=date.today(),
+            value=Decimal('3000.00'),
+            owner=None,
+        )
+
+        response = authenticated_admin_client.get('/api/api/contracts/')
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        # Find our contract in the list
+        no_owner = [c for c in results if c['title'] == 'No Owner Contract']
+        assert len(no_owner) == 1
+        assert no_owner[0]['owner_name'] is None
+
+    def test_detail_serializer_owner_name_none(
+        self, authenticated_admin_client, client_company
+    ):
+        """Cover detail serializer owner_name None (serializer line 83)."""
+        from apps.contracts.models import Contract
+
+        contract = Contract.objects.create(
+            client=client_company,
+            title='Detail No Owner',
+            description='No owner.',
+            contract_type=Contract.FIXED_PRICE,
+            status=Contract.ACTIVE,
+            start_date=date.today(),
+            value=Decimal('4000.00'),
+            owner=None,
+        )
+
+        response = authenticated_admin_client.get(
+            f'/api/api/contracts/{contract.id}/'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['owner_name'] is None
+
+    def test_update_contract_with_milestones_replace(
+        self, authenticated_admin_client, contract_fixed, contract_milestone
+    ):
+        """Cover the milestone update/delete logic in serializer update method
+        (serializer lines 160-169)."""
+        # PATCH with new milestones list (no id = create new, drop old)
+        data = {
+            'milestones': [
+                {
+                    'title': 'New Phase A',
+                    'due_date': str(date.today() + timedelta(days=15)),
+                    'amount': '2000.00',
+                    'order': 1,
+                },
+            ],
+        }
+
+        response = authenticated_admin_client.patch(
+            f'/api/api/contracts/{contract_fixed.id}/',
+            data,
+            format='json',
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        # Old milestone should be deleted, new one created
+        from apps.contracts.models import ContractMilestone
+        milestones = ContractMilestone.objects.filter(contract=contract_fixed)
+        assert milestones.count() == 1
+        assert milestones.first().title == 'New Phase A'
+
+    def test_update_contract_with_existing_milestone_id(
+        self, authenticated_admin_client, contract_fixed, contract_milestone
+    ):
+        """Cover the milestone update-by-id branch (serializer lines 166-167)."""
+        data = {
+            'milestones': [
+                {
+                    'id': str(contract_milestone.id),
+                    'title': 'Updated Phase Title',
+                    'due_date': str(date.today() + timedelta(days=45)),
+                    'amount': '5500.00',
+                    'order': 1,
+                },
+            ],
+        }
+
+        response = authenticated_admin_client.patch(
+            f'/api/api/contracts/{contract_fixed.id}/',
+            data,
+            format='json',
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        contract_milestone.refresh_from_db()
+        assert contract_milestone.title == 'Updated Phase Title'
+
+
+# ============================================================================
+# Generate Invoice Exception Path
+# ============================================================================
+
+@pytest.mark.django_db
+class TestGenerateInvoiceException:
+    """Cover the exception handler in generate_invoice (views.py 274-275)."""
+
+    def test_generate_invoice_exception_path(
+        self, authenticated_admin_client, contract_milestone, monkeypatch
+    ):
+        """Trigger an exception inside generate_invoice to cover the except block."""
+
+        def _explode(*args, **kwargs):
+            raise RuntimeError('invoice creation boom')
+
+        from apps.invoicing.models import Invoice
+        monkeypatch.setattr(Invoice.objects, 'create', _explode)
+
+        response = authenticated_admin_client.post(
+            f'/api/api/milestones/{contract_milestone.id}/generate_invoice/'
+        )
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'invoice creation boom' in response.data['detail']
+
+
+# ============================================================================
+# Filters Coverage
+# ============================================================================
+
+@pytest.mark.django_db
+class TestContractFiltersCoverage:
+    """Tests for uncovered filter methods (filters.py 110-113, 119-129)."""
+
+    def test_filter_is_signed_true(
+        self, authenticated_admin_client, contract_fixed, contract_draft
+    ):
+        """Cover filter_is_signed with value=true (filters.py 110-113)."""
+        response = authenticated_admin_client.get(
+            '/api/api/contracts/?is_signed=true'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        for c in results:
+            assert c['is_signed'] is True
+
+    def test_filter_is_signed_false(
+        self, authenticated_admin_client, contract_fixed, contract_draft
+    ):
+        """Cover filter_is_signed with value=false (filters.py 113)."""
+        response = authenticated_admin_client.get(
+            '/api/api/contracts/?is_signed=false'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        for c in results:
+            assert c['is_signed'] is False
+
+    def test_filter_active_period_true(
+        self, authenticated_admin_client, contract_fixed
+    ):
+        """Cover filter_active_period with value=true (filters.py 119-127)."""
+        response = authenticated_admin_client.get(
+            '/api/api/contracts/?is_active_period=true'
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_filter_active_period_false(
+        self, authenticated_admin_client, contract_fixed
+    ):
+        """Cover filter_active_period with value=false (filters.py 128-131)."""
+        response = authenticated_admin_client.get(
+            '/api/api/contracts/?is_active_period=false'
+        )
+        assert response.status_code == status.HTTP_200_OK

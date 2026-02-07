@@ -2,12 +2,15 @@
 Views and ViewSets for the contracts app API.
 """
 
+from datetime import timedelta
+
+from django.db.models import Q, Sum, Avg
+from django.utils import timezone
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q, Sum, Avg
 from .models import Contract, ContractMilestone
 from .serializers import (
     ContractListSerializer,
@@ -242,7 +245,7 @@ class ContractMilestoneViewSet(viewsets.ModelViewSet):
                 contract=milestone.contract,
                 status='draft',
                 issue_date=timezone.now().date(),
-                due_date=timezone.now().date() + timezone.timedelta(days=30),
+                due_date=timezone.now().date() + timedelta(days=30),
                 notes=f"Invoice for milestone: {milestone.title}"
             )
 
