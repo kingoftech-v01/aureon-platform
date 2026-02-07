@@ -204,6 +204,7 @@ class TestBlogPostAdmin:
     @pytest.fixture
     def author(self, db):
         return User.objects.create_user(
+            username="blogadmin",
             email="blogadmin@example.com",
             password="TestPass123!",
             first_name="Blog",
@@ -255,6 +256,7 @@ class TestBlogPostAdmin:
 
     def test_save_model_preserves_existing_author(self, rf, author):
         other_user = User.objects.create_user(
+            username="other",
             email="other@example.com",
             password="TestPass123!",
         )

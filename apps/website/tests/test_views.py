@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 
 from django.test import RequestFactory, Client
 from django.http import HttpResponse
-from django.urls import reverse
+from django.urls import path, include
 
 from apps.website.models import (
     ContactSubmission,
@@ -54,16 +54,20 @@ from apps.website.views import (
 )
 
 
-@pytest.fixture
-def client():
-    """Django test client."""
-    return Client()
+# ---------------------------------------------------------------------------
+# URL configuration for tests -- use a minimal URL conf that includes just
+# the website app URLs so reverse() calls resolve without needing the
+# entire project URL conf (which has many heavy includes).
+# ---------------------------------------------------------------------------
+urlpatterns = [
+    path('', include('apps.website.urls')),
+]
 
 
 @pytest.fixture
-def rf():
-    """Django request factory."""
-    return RequestFactory()
+def _website_urls(settings):
+    """Override ROOT_URLCONF to use the local URL patterns above."""
+    settings.ROOT_URLCONF = 'apps.website.tests.test_views'
 
 
 # ============================================================================
@@ -317,6 +321,10 @@ class TestMarketingPageViews:
 class TestContactSubmitView:
     """Tests for the contact_submit function-based view."""
 
+    @pytest.fixture(autouse=True)
+    def _use_website_urls(self, _website_urls):
+        pass
+
     @patch("apps.website.views.send_contact_notification")
     @patch("apps.website.views.send_contact_confirmation")
     def test_successful_submission(self, mock_confirm, mock_notify, client):
@@ -330,7 +338,7 @@ class TestContactSubmitView:
             "message": "This is a test message with enough content.",
         }
         response = client.post(
-            reverse("website:contact_submit"),
+            "/contact/submit/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -352,7 +360,7 @@ class TestContactSubmitView:
             "message": "Testing IP capture from forwarded header.",
         }
         response = client.post(
-            reverse("website:contact_submit"),
+            "/contact/submit/",
             data=json.dumps(data),
             content_type="application/json",
             HTTP_X_FORWARDED_FOR="1.2.3.4, 5.6.7.8",
@@ -371,7 +379,7 @@ class TestContactSubmitView:
             "message": "Testing remote addr capture for IP.",
         }
         request = rf.post(
-            reverse("website:contact_submit"),
+            "/contact/submit/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -390,7 +398,7 @@ class TestContactSubmitView:
             "message": "Testing user agent capture field.",
         }
         response = client.post(
-            reverse("website:contact_submit"),
+            "/contact/submit/",
             data=json.dumps(data),
             content_type="application/json",
             HTTP_USER_AGENT="TestBrowser/1.0",
@@ -407,7 +415,7 @@ class TestContactSubmitView:
             "message": "short",
         }
         response = client.post(
-            reverse("website:contact_submit"),
+            "/contact/submit/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -417,13 +425,13 @@ class TestContactSubmitView:
         assert "errors" in result
 
     def test_get_method_not_allowed(self, client):
-        response = client.get(reverse("website:contact_submit"))
+        response = client.get("/contact/submit/")
         assert response.status_code == 405
 
     def test_exception_returns_500(self, client):
         # Send invalid JSON to trigger an exception
         response = client.post(
-            reverse("website:contact_submit"),
+            "/contact/submit/",
             data="not valid json{{{",
             content_type="application/json",
         )
@@ -485,11 +493,15 @@ class TestSendContactEmails:
 class TestNewsletterSubscribeView:
     """Tests for the newsletter_subscribe function-based view."""
 
+    @pytest.fixture(autouse=True)
+    def _use_website_urls(self, _website_urls):
+        pass
+
     @patch("apps.website.views.send_newsletter_confirmation")
     def test_successful_subscription_json(self, mock_send, client):
         data = {"email": "new@example.com", "name": "Subscriber"}
         response = client.post(
-            reverse("website:newsletter_subscribe"),
+            "/newsletter/subscribe/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -504,7 +516,7 @@ class TestNewsletterSubscribeView:
     def test_captures_source(self, mock_send, client):
         data = {"email": "source@example.com", "source": "footer"}
         response = client.post(
-            reverse("website:newsletter_subscribe"),
+            "/newsletter/subscribe/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -516,7 +528,7 @@ class TestNewsletterSubscribeView:
     def test_captures_ip_from_forwarded(self, mock_send, client):
         data = {"email": "ip@example.com"}
         response = client.post(
-            reverse("website:newsletter_subscribe"),
+            "/newsletter/subscribe/",
             data=json.dumps(data),
             content_type="application/json",
             HTTP_X_FORWARDED_FOR="10.0.0.1, 10.0.0.2",
@@ -529,7 +541,7 @@ class TestNewsletterSubscribeView:
     def test_captures_ip_from_remote_addr(self, mock_send, rf):
         data = {"email": "remote@example.com"}
         request = rf.post(
-            reverse("website:newsletter_subscribe"),
+            "/newsletter/subscribe/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -541,7 +553,7 @@ class TestNewsletterSubscribeView:
     def test_invalid_form_returns_400(self, client):
         data = {"email": "not-an-email"}
         response = client.post(
-            reverse("website:newsletter_subscribe"),
+            "/newsletter/subscribe/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -551,12 +563,12 @@ class TestNewsletterSubscribeView:
         assert "errors" in result
 
     def test_get_method_not_allowed(self, client):
-        response = client.get(reverse("website:newsletter_subscribe"))
+        response = client.get("/newsletter/subscribe/")
         assert response.status_code == 405
 
     def test_exception_returns_500(self, client):
         response = client.post(
-            reverse("website:newsletter_subscribe"),
+            "/newsletter/subscribe/",
             data="bad json{",
             content_type="application/json",
         )
@@ -568,7 +580,7 @@ class TestNewsletterSubscribeView:
     def test_default_source_website(self, mock_send, client):
         data = {"email": "defaultsource@example.com"}
         response = client.post(
-            reverse("website:newsletter_subscribe"),
+            "/newsletter/subscribe/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -585,6 +597,10 @@ class TestNewsletterSubscribeView:
 @pytest.mark.django_db
 class TestSendNewsletterConfirmation:
     """Test the newsletter confirmation email helper."""
+
+    @pytest.fixture(autouse=True)
+    def _use_website_urls(self, _website_urls):
+        pass
 
     @patch("apps.website.views.render_to_string", return_value="<html>Confirm</html>")
     @patch("apps.website.views.EmailMultiAlternatives")
@@ -608,10 +624,14 @@ class TestSendNewsletterConfirmation:
 class TestNewsletterConfirmView:
     """Tests for the newsletter_confirm function-based view."""
 
+    @pytest.fixture(autouse=True)
+    def _use_website_urls(self, _website_urls):
+        pass
+
     def test_confirm_valid_token(self, client):
         sub = NewsletterSubscriber.objects.create(email="confirm@example.com")
         response = client.get(
-            reverse("website:newsletter_confirm", kwargs={"token": sub.confirmation_token})
+            f"/newsletter/confirm/{sub.confirmation_token}/"
         )
         assert response.status_code == 302  # redirect
         sub.refresh_from_db()
@@ -620,7 +640,7 @@ class TestNewsletterConfirmView:
 
     def test_confirm_invalid_token_returns_404(self, client):
         response = client.get(
-            reverse("website:newsletter_confirm", kwargs={"token": "invalid-token"})
+            "/newsletter/confirm/invalid-token/"
         )
         assert response.status_code == 404
 
@@ -634,11 +654,15 @@ class TestNewsletterConfirmView:
 class TestNewsletterUnsubscribeView:
     """Tests for the newsletter_unsubscribe function-based view."""
 
+    @pytest.fixture(autouse=True)
+    def _use_website_urls(self, _website_urls):
+        pass
+
     def test_unsubscribe_valid_token(self, client):
         sub = NewsletterSubscriber.objects.create(email="unsub@example.com")
         sub.confirm_subscription()
         response = client.get(
-            reverse("website:newsletter_unsubscribe", kwargs={"token": sub.confirmation_token})
+            f"/newsletter/unsubscribe/{sub.confirmation_token}/"
         )
         assert response.status_code == 302  # redirect
         sub.refresh_from_db()
@@ -647,7 +671,7 @@ class TestNewsletterUnsubscribeView:
 
     def test_unsubscribe_invalid_token_returns_404(self, client):
         response = client.get(
-            reverse("website:newsletter_unsubscribe", kwargs={"token": "nonexistent"})
+            "/newsletter/unsubscribe/nonexistent/"
         )
         assert response.status_code == 404
 
@@ -661,12 +685,16 @@ class TestNewsletterUnsubscribeView:
 class TestCreateCheckoutSessionView:
     """Tests for the create_checkout_session function-based view."""
 
+    @pytest.fixture(autouse=True)
+    def _use_website_urls(self, _website_urls):
+        pass
+
     @patch("apps.website.views.stripe.checkout.Session.create")
     def test_successful_checkout_session(self, mock_stripe, client):
         mock_stripe.return_value = MagicMock(id="cs_test_123")
         data = {"price_id": "price_abc123"}
         response = client.post(
-            reverse("website:create_checkout_session"),
+            "/create-checkout-session/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -677,7 +705,7 @@ class TestCreateCheckoutSessionView:
     def test_missing_price_id_returns_400(self, client):
         data = {}
         response = client.post(
-            reverse("website:create_checkout_session"),
+            "/create-checkout-session/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -691,7 +719,7 @@ class TestCreateCheckoutSessionView:
         mock_stripe.side_effect = Exception("Stripe error")
         data = {"price_id": "price_invalid"}
         response = client.post(
-            reverse("website:create_checkout_session"),
+            "/create-checkout-session/",
             data=json.dumps(data),
             content_type="application/json",
         )
@@ -700,7 +728,7 @@ class TestCreateCheckoutSessionView:
         assert "error" in result
 
     def test_get_method_not_allowed(self, client):
-        response = client.get(reverse("website:create_checkout_session"))
+        response = client.get("/create-checkout-session/")
         assert response.status_code == 405
 
     @patch("apps.website.views.stripe.checkout.Session.create")
@@ -712,7 +740,7 @@ class TestCreateCheckoutSessionView:
         user = User(email="user@example.com", is_authenticated=True)
 
         request = rf.post(
-            reverse("website:create_checkout_session"),
+            "/create-checkout-session/",
             data=json.dumps({"price_id": "price_test"}),
             content_type="application/json",
         )
@@ -733,8 +761,12 @@ class TestCreateCheckoutSessionView:
 class TestSEOFiles:
     """Tests for robots.txt and sitemap.xml views."""
 
+    @pytest.fixture(autouse=True)
+    def _use_website_urls(self, _website_urls):
+        pass
+
     def test_robots_txt(self, client):
-        response = client.get(reverse("website:robots"))
+        response = client.get("/robots.txt")
         assert response.status_code == 200
         assert response["Content-Type"] == "text/plain"
         content = response.content.decode()
@@ -743,7 +775,7 @@ class TestSEOFiles:
         assert "Sitemap:" in content
 
     def test_sitemap_xml(self, client):
-        response = client.get(reverse("website:sitemap"))
+        response = client.get("/sitemap.xml")
         assert response.status_code == 200
         assert response["Content-Type"] == "application/xml"
         content = response.content.decode()

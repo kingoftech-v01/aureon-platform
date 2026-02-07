@@ -21,6 +21,7 @@ class TestLogUserCreationSignal:
         """Signal logs a message when a new user is created."""
         with caplog.at_level(logging.INFO, logger='aureon.accounts'):
             user = User.objects.create_user(
+                username='signaltest',
                 email='signaltest@example.com',
                 password='V3ryS3cureP@ss!',
                 first_name='Signal',
@@ -51,6 +52,7 @@ class TestLogUserCreationSignal:
         """Signal log message includes tenant information."""
         with caplog.at_level(logging.INFO, logger='aureon.accounts'):
             User.objects.create_user(
+                username='tenantlog',
                 email='tenantlog@example.com',
                 password='V3ryS3cureP@ss!',
                 first_name='Tenant',
@@ -69,6 +71,7 @@ class TestLogUserCreationSignal:
         """Signal fires correctly for a user created without a tenant (e.g., superuser)."""
         with caplog.at_level(logging.INFO, logger='aureon.accounts'):
             User.objects.create_superuser(
+                username='notenant',
                 email='notenant@example.com',
                 password='V3ryS3cureP@ss!',
                 first_name='No',
@@ -87,6 +90,7 @@ class TestLogUserCreationSignal:
         mock_logger = mock_get_logger.return_value
 
         User.objects.create_user(
+            username='loggername',
             email='loggername@example.com',
             password='V3ryS3cureP@ss!',
             first_name='Logger',
@@ -102,6 +106,7 @@ class TestLogUserCreationSignal:
         """Signal fires independently for each user created."""
         with caplog.at_level(logging.INFO, logger='aureon.accounts'):
             User.objects.create_user(
+                username='first',
                 email='first@example.com',
                 password='V3ryS3cureP@ss!',
                 first_name='First',
@@ -109,6 +114,7 @@ class TestLogUserCreationSignal:
                 tenant=tenant,
             )
             User.objects.create_user(
+                username='second',
                 email='second@example.com',
                 password='V3ryS3cureP@ss!',
                 first_name='Second',

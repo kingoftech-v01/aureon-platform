@@ -95,6 +95,7 @@ class NotificationModelTests(TestCase):
         from apps.accounts.models import User
 
         self.user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123',
             first_name='Test',

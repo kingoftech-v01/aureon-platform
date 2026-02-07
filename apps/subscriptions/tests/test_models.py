@@ -159,6 +159,7 @@ class TestSubscription:
     def user(self, tenant):
         """Create a user for testing."""
         return User.objects.create_user(
+            username='subscriber',
             email='subscriber@test.com',
             password='TestPass123!',
             first_name='Sub',

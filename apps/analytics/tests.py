@@ -564,6 +564,7 @@ class ActivityLoggerTests(TestCase):
         from apps.accounts.models import User
 
         self.user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123',
             first_name='Test',
@@ -770,6 +771,7 @@ class DashboardDataServiceTests(TestCase):
         from apps.accounts.models import User
 
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )

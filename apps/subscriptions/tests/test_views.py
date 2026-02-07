@@ -117,6 +117,7 @@ class TestUserSubscriptionView:
     @pytest.fixture
     def user(self, tenant):
         return User.objects.create_user(
+            username='subuser',
             email='subuser@test.com',
             password='TestPass123!',
             first_name='Sub',
@@ -224,6 +225,7 @@ class TestUserSubscriptionView:
     def test_view_ignores_other_users_subscriptions(self, factory, user, plan, tenant):
         """Test that view only returns subscriptions for the requesting user."""
         other_user = User.objects.create_user(
+            username='other',
             email='other@test.com',
             password='TestPass123!',
             first_name='Other',

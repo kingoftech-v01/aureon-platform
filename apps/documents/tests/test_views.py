@@ -14,7 +14,6 @@ import pytest
 from unittest.mock import patch, MagicMock
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import path, include
-from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -31,11 +30,14 @@ urlpatterns = [
 
 
 @pytest.mark.django_db
-@override_settings(ROOT_URLCONF='apps.documents.tests.test_views')
 class TestDocumentViewSet:
     """Tests for the DocumentViewSet."""
 
     BASE_URL = '/api/documents/'
+
+    @pytest.fixture(autouse=True)
+    def _use_custom_urls(self, settings):
+        settings.ROOT_URLCONF = 'apps.documents.tests.test_views'
 
     @pytest.fixture
     def doc_pdf(self, admin_user):

@@ -28,6 +28,7 @@ class TestUserModel:
     def test_create_user_with_email(self, tenant):
         """Test creating a user with email as primary identifier."""
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='SecurePass123!',
             first_name='Test',
@@ -48,6 +49,7 @@ class TestUserModel:
         """Test that creating a user without email raises an error."""
         with pytest.raises(ValueError):
             User.objects.create_user(
+                username='empty',
                 email='',
                 password='SecurePass123!',
             )
@@ -55,6 +57,7 @@ class TestUserModel:
     def test_create_superuser(self):
         """Test creating a superuser."""
         superuser = User.objects.create_superuser(
+            username='superadmin',
             email='superadmin@example.com',
             password='SuperPass123!',
             first_name='Super',
@@ -92,6 +95,7 @@ class TestUserModel:
     def test_get_short_name_fallback_to_email(self, tenant):
         """Test get_short_name falls back to email prefix."""
         user = User.objects.create_user(
+            username='testuser',
             email='testuser@example.com',
             password='SecurePass123!',
             first_name='',
@@ -104,6 +108,7 @@ class TestUserModel:
     def test_auto_generate_username_from_email(self, tenant):
         """Test username is auto-generated from email."""
         user = User.objects.create_user(
+            username='newuser',
             email='newuser@example.com',
             password='SecurePass123!',
             tenant=tenant,
@@ -414,6 +419,7 @@ class TestUserModelEdgeCases:
     def test_user_timezone_default(self, tenant):
         """Test user timezone default value."""
         user = User.objects.create_user(
+            username='timezone',
             email='timezone@test.com',
             password='Pass123!',
             tenant=tenant,
@@ -423,6 +429,7 @@ class TestUserModelEdgeCases:
     def test_user_language_default(self, tenant):
         """Test user language default value."""
         user = User.objects.create_user(
+            username='lang',
             email='lang@test.com',
             password='Pass123!',
             tenant=tenant,
@@ -432,6 +439,7 @@ class TestUserModelEdgeCases:
     def test_user_notification_preferences_defaults(self, tenant):
         """Test user notification preferences defaults."""
         user = User.objects.create_user(
+            username='notif',
             email='notif@test.com',
             password='Pass123!',
             tenant=tenant,
@@ -448,6 +456,7 @@ class TestUserModelEdgeCases:
     def test_user_verified_status(self, tenant):
         """Test user verified status fields."""
         user = User.objects.create_user(
+            username='unverified',
             email='unverified@test.com',
             password='Pass123!',
             tenant=tenant,

@@ -13,7 +13,6 @@ import uuid
 import pytest
 from unittest.mock import patch, MagicMock
 from django.urls import path, include
-from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -30,11 +29,14 @@ urlpatterns = [
 
 
 @pytest.mark.django_db
-@override_settings(ROOT_URLCONF='apps.integrations.tests.test_views')
 class TestIntegrationViewSet:
     """Tests for the IntegrationViewSet."""
 
     BASE_URL = '/api/integrations/'
+
+    @pytest.fixture(autouse=True)
+    def _use_custom_urls(self, settings):
+        settings.ROOT_URLCONF = 'apps.integrations.tests.test_views'
 
     @pytest.fixture
     def quickbooks_integration(self, db):

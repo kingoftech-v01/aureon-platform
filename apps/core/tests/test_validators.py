@@ -18,10 +18,21 @@ Covers:
 
 import io
 import os
+import sys
 import pytest
 from unittest.mock import patch, MagicMock, PropertyMock
 from django.core.exceptions import ValidationError
 from django.test import override_settings
+
+# ---------------------------------------------------------------------------
+# Mock the 'magic' module before importing validators, since python-magic
+# may not be installed in the test environment.  Tests that exercise MIME
+# detection patch ``apps.core.validators.magic.from_buffer`` anyway.
+# ---------------------------------------------------------------------------
+if 'magic' not in sys.modules or sys.modules['magic'] is None:
+    _mock_magic = MagicMock()
+    _mock_magic.from_buffer = MagicMock(return_value='application/octet-stream')
+    sys.modules['magic'] = _mock_magic
 
 from apps.core.validators import (
     StrictEmailValidator,

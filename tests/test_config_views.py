@@ -11,12 +11,13 @@ Tests the view layer including:
 - serve_react_app helper function
 """
 
+import json
 import os
 import pytest
 import tempfile
 from unittest.mock import patch, MagicMock
 
-from django.test import RequestFactory, TestCase, override_settings
+from django.test import RequestFactory, override_settings
 from django.http import HttpResponse, JsonResponse
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.contrib.auth.models import AnonymousUser
@@ -30,12 +31,6 @@ from config.views import (
     serve_marketing_site,
     serve_react_app,
 )
-
-
-@pytest.fixture
-def rf():
-    """Provide a RequestFactory instance."""
-    return RequestFactory()
 
 
 def _add_session(request):
@@ -369,6 +364,7 @@ class TestTenantDashboardView:
             mock_serve.assert_called_once()
 
 
+@pytest.mark.django_db
 class TestTenantLoginView:
     """Test the TenantLoginView class."""
 
@@ -381,7 +377,6 @@ class TestTenantLoginView:
             response = TenantLoginView.as_view()(request)
             mock_serve.assert_called_once_with(request)
 
-    @pytest.mark.django_db
     def test_post_missing_credentials(self, rf):
         """Test POST with missing credentials returns 400."""
         request = rf.post("/login/", {"email": "", "password": ""})
@@ -390,12 +385,10 @@ class TestTenantLoginView:
 
         response = TenantLoginView.as_view()(request)
         assert response.status_code == 400
-        import json
         data = json.loads(response.content)
         assert data["success"] is False
         assert "email and password" in data["error"]
 
-    @pytest.mark.django_db
     def test_post_missing_email(self, rf):
         """Test POST with missing email returns 400."""
         request = rf.post("/login/", {"email": "", "password": "somepass"})
@@ -405,7 +398,6 @@ class TestTenantLoginView:
         response = TenantLoginView.as_view()(request)
         assert response.status_code == 400
 
-    @pytest.mark.django_db
     def test_post_missing_password(self, rf):
         """Test POST with missing password returns 400."""
         request = rf.post("/login/", {"email": "user@test.com", "password": ""})
@@ -415,7 +407,6 @@ class TestTenantLoginView:
         response = TenantLoginView.as_view()(request)
         assert response.status_code == 400
 
-    @pytest.mark.django_db
     def test_post_invalid_credentials(self, rf):
         """Test POST with invalid credentials returns 401."""
         request = rf.post("/login/", {"email": "bad@test.com", "password": "wrong"})
@@ -424,12 +415,10 @@ class TestTenantLoginView:
 
         response = TenantLoginView.as_view()(request)
         assert response.status_code == 401
-        import json
         data = json.loads(response.content)
         assert data["success"] is False
         assert "Invalid" in data["error"]
 
-    @pytest.mark.django_db
     def test_post_successful_login_superuser(self, rf, superuser):
         """Test successful login for superuser."""
         request = rf.post(
@@ -441,12 +430,10 @@ class TestTenantLoginView:
 
         response = TenantLoginView.as_view()(request)
         assert response.status_code == 200
-        import json
         data = json.loads(response.content)
         assert data["success"] is True
         assert data["redirect"] == "/dashboard"
 
-    @pytest.mark.django_db
     def test_post_custom_next_url(self, rf, superuser):
         """Test login with custom next URL."""
         request = rf.post(
@@ -462,11 +449,9 @@ class TestTenantLoginView:
 
         response = TenantLoginView.as_view()(request)
         assert response.status_code == 200
-        import json
         data = json.loads(response.content)
         assert data["redirect"] == "/invoices/"
 
-    @pytest.mark.django_db
     def test_post_tenant_mismatch(self, rf, admin_user, tenant, domain):
         """Test that a user from a different tenant is rejected."""
         from apps.tenants.models import Tenant, Domain
@@ -498,11 +483,9 @@ class TestTenantLoginView:
 
         response = TenantLoginView.as_view()(request)
         assert response.status_code == 403
-        import json
         data = json.loads(response.content)
         assert "access" in data["error"].lower()
 
-    @pytest.mark.django_db
     def test_get_tenant_returns_none_for_unknown_domain(self, rf):
         """Test that get_tenant returns None for unknown domain."""
         view = TenantLoginView()
@@ -511,7 +494,6 @@ class TestTenantLoginView:
         tenant = view.get_tenant(request)
         assert tenant is None
 
-    @pytest.mark.django_db
     def test_get_tenant_returns_tenant_for_valid_domain(self, rf, tenant, domain):
         """Test that get_tenant returns correct tenant for valid domain."""
         view = TenantLoginView()
@@ -521,7 +503,6 @@ class TestTenantLoginView:
         assert result is not None
         assert result.id == tenant.id
 
-    @pytest.mark.django_db
     def test_login_with_no_tenant_domain(self, rf, superuser):
         """Test login when no tenant domain exists (tenant=None scenario)."""
         request = rf.post(
@@ -536,10 +517,10 @@ class TestTenantLoginView:
         assert response.status_code == 200
 
 
+@pytest.mark.django_db
 class TestTenantLogoutView:
     """Test the TenantLogoutView class."""
 
-    @pytest.mark.django_db
     def test_get_logout_redirects(self, rf, admin_user):
         """Test that GET logout redirects to /auth/login."""
         request = rf.get("/logout/")
@@ -550,7 +531,6 @@ class TestTenantLogoutView:
         assert response.status_code == 302
         assert response.url == "/auth/login"
 
-    @pytest.mark.django_db
     def test_post_logout_returns_json(self, rf, admin_user):
         """Test that POST logout returns JSON success response."""
         request = rf.post("/logout/")
@@ -559,11 +539,9 @@ class TestTenantLogoutView:
 
         response = TenantLogoutView.as_view()(request)
         assert response.status_code == 200
-        import json
         data = json.loads(response.content)
         assert data["success"] is True
 
-    @pytest.mark.django_db
     def test_get_logout_anonymous_user(self, rf):
         """Test GET logout for anonymous user."""
         request = rf.get("/logout/")
@@ -573,7 +551,6 @@ class TestTenantLogoutView:
         response = TenantLogoutView.as_view()(request)
         assert response.status_code == 302
 
-    @pytest.mark.django_db
     def test_post_logout_anonymous_user(self, rf):
         """Test POST logout for anonymous user."""
         request = rf.post("/logout/")

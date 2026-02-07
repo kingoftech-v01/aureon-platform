@@ -26,12 +26,6 @@ from config.health import (
 )
 
 
-@pytest.fixture
-def rf():
-    """Provide a RequestFactory instance."""
-    return RequestFactory()
-
-
 class TestHealthCheckView:
     """Test the basic HealthCheckView."""
 
@@ -212,10 +206,10 @@ class TestDeepHealthCheckView:
             assert "timestamp" in data
 
 
+@pytest.mark.django_db
 class TestDeepHealthCheckDatabaseCheck:
     """Test the _check_database method of DeepHealthCheckView."""
 
-    @pytest.mark.django_db
     def test_database_healthy(self):
         """Test database health check with working database."""
         view = DeepHealthCheckView()
@@ -426,10 +420,10 @@ class TestDeepHealthCheckCeleryCheck:
             assert "Broker unreachable" in result["error"]
 
 
+@pytest.mark.django_db
 class TestReadinessCheckView:
     """Test the ReadinessCheckView."""
 
-    @pytest.mark.django_db
     def test_ready_when_all_good(self, rf):
         """Test readiness check returns ready when all services are up."""
         request = rf.get("/api/health/ready/")
@@ -455,7 +449,6 @@ class TestReadinessCheckView:
             assert data["status"] == "not_ready"
             assert data["reason"] == "database_unavailable"
 
-    @pytest.mark.django_db
     def test_not_ready_cache_down(self, rf):
         """Test readiness check returns not_ready when cache is down."""
         request = rf.get("/api/health/ready/")

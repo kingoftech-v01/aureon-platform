@@ -42,6 +42,7 @@ class UserModelTests(TestCase):
     def test_user_creation_with_email(self):
         """Test creating user with email."""
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123',
             first_name='Test',
@@ -55,6 +56,7 @@ class UserModelTests(TestCase):
     def test_user_creation_generates_username(self):
         """Test that username is auto-generated from email."""
         user = User.objects.create_user(
+            username='john.doe',
             email='john.doe@example.com',
             password='testpass123'
         )
@@ -64,6 +66,7 @@ class UserModelTests(TestCase):
     def test_get_full_name_with_full_name_field(self):
         """Test get_full_name when full_name field is set."""
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123',
             full_name='John Alexander Doe'
@@ -74,6 +77,7 @@ class UserModelTests(TestCase):
     def test_get_full_name_with_first_last_name(self):
         """Test get_full_name with first_name and last_name."""
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123',
             first_name='Jane',
@@ -85,6 +89,7 @@ class UserModelTests(TestCase):
     def test_get_full_name_fallback_to_email(self):
         """Test get_full_name falls back to email."""
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )
@@ -94,6 +99,7 @@ class UserModelTests(TestCase):
     def test_get_short_name(self):
         """Test get_short_name method."""
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123',
             first_name='John'
@@ -104,12 +110,14 @@ class UserModelTests(TestCase):
     def test_is_admin_property(self):
         """Test is_admin property."""
         admin = User.objects.create_user(
+            username='admin',
             email='admin@example.com',
             password='testpass123',
             role=User.ADMIN
         )
 
         regular = User.objects.create_user(
+            username='regular',
             email='regular@example.com',
             password='testpass123',
             role=User.CONTRIBUTOR
@@ -121,12 +129,14 @@ class UserModelTests(TestCase):
     def test_is_manager_property(self):
         """Test is_manager property."""
         manager = User.objects.create_user(
+            username='manager',
             email='manager@example.com',
             password='testpass123',
             role=User.MANAGER
         )
 
         contributor = User.objects.create_user(
+            username='contributor',
             email='contributor@example.com',
             password='testpass123',
             role=User.CONTRIBUTOR
@@ -138,12 +148,14 @@ class UserModelTests(TestCase):
     def test_is_client_user_property(self):
         """Test is_client_user property."""
         client_user = User.objects.create_user(
+            username='client',
             email='client@example.com',
             password='testpass123',
             role=User.CLIENT
         )
 
         regular_user = User.objects.create_user(
+            username='regular',
             email='regular@example.com',
             password='testpass123',
             role=User.CONTRIBUTOR
@@ -155,6 +167,7 @@ class UserModelTests(TestCase):
     def test_has_tenant_permission(self):
         """Test has_tenant_permission method."""
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123',
             tenant=self.tenant
@@ -171,6 +184,7 @@ class UserModelTests(TestCase):
     def test_superuser_has_all_permissions(self):
         """Test that superuser has all permissions."""
         superuser = User.objects.create_superuser(
+            username='super',
             email='super@example.com',
             password='testpass123'
         )
@@ -183,18 +197,21 @@ class UserModelTests(TestCase):
     def test_permission_methods(self):
         """Test various permission methods."""
         admin = User.objects.create_user(
+            username='admin',
             email='admin@example.com',
             password='testpass123',
             role=User.ADMIN
         )
 
         manager = User.objects.create_user(
+            username='manager',
             email='manager@example.com',
             password='testpass123',
             role=User.MANAGER
         )
 
         contributor = User.objects.create_user(
+            username='contributor',
             email='contributor@example.com',
             password='testpass123',
             role=User.CONTRIBUTOR
@@ -233,6 +250,7 @@ class TwoFactorAuthServiceTests(TestCase):
     def test_generate_qr_code(self):
         """Test generating QR code."""
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )
@@ -303,6 +321,7 @@ class Enable2FATests(TestCase):
         """Set up test data."""
         self.factory = APIRequestFactory()
         self.user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )
@@ -344,6 +363,7 @@ class Verify2FASetupTests(TestCase):
         """Set up test data."""
         self.factory = APIRequestFactory()
         self.user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )
@@ -398,6 +418,7 @@ class Verify2FASetupTests(TestCase):
     def test_verify_2fa_setup_not_initiated(self):
         """Test verifying 2FA setup when not initiated."""
         user_without_secret = User.objects.create_user(
+            username='nosecret',
             email='nosecret@example.com',
             password='testpass123'
         )
@@ -419,6 +440,7 @@ class Disable2FATests(TestCase):
         """Set up test data."""
         self.factory = APIRequestFactory()
         self.user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )
@@ -500,6 +522,7 @@ class Verify2FATokenTests(TestCase):
         """Set up test data."""
         self.factory = APIRequestFactory()
         self.user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )
@@ -543,6 +566,7 @@ class UseBackupCodeTests(TestCase):
         """Set up test data."""
         self.factory = APIRequestFactory()
         self.user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )
@@ -610,6 +634,7 @@ class RegenerateBackupCodesTests(TestCase):
         """Set up test data."""
         self.factory = APIRequestFactory()
         self.user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )
@@ -661,6 +686,7 @@ class Get2FAStatusTests(TestCase):
     def test_get_2fa_status_enabled(self):
         """Test getting 2FA status when enabled."""
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )
@@ -680,6 +706,7 @@ class Get2FAStatusTests(TestCase):
     def test_get_2fa_status_disabled(self):
         """Test getting 2FA status when disabled."""
         user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123'
         )
@@ -708,6 +735,7 @@ class UserInvitationModelTests(TestCase):
         )
 
         self.admin = User.objects.create_user(
+            username='admin',
             email='admin@example.com',
             password='testpass123',
             role=User.ADMIN
@@ -743,6 +771,7 @@ class UserInvitationModelTests(TestCase):
     def test_accept_invitation(self):
         """Test accepting invitation."""
         new_user = User.objects.create_user(
+            username='invite',
             email='invite@example.com',
             password='testpass123'
         )
@@ -777,6 +806,7 @@ class ApiKeyModelTests(TestCase):
         )
 
         self.user = User.objects.create_user(
+            username='test',
             email='test@example.com',
             password='testpass123',
             tenant=self.tenant

@@ -166,6 +166,7 @@ class TestBlogPost:
     @pytest.fixture
     def author(self, db):
         return User.objects.create_user(
+            username="author",
             email="author@example.com",
             password="TestPass123!",
             first_name="Blog",

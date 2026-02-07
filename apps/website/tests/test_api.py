@@ -472,6 +472,7 @@ class TestApiBlogPosts:
     @pytest.fixture
     def author(self, db):
         return User.objects.create_user(
+            username="blogauthor",
             email="blogauthor@example.com",
             password="TestPass123!",
             first_name="Blog",
@@ -584,6 +585,7 @@ class TestApiBlogPostDetail:
     @pytest.fixture
     def author(self, db):
         return User.objects.create_user(
+            username="detailauthor",
             email="detailauthor@example.com",
             password="TestPass123!",
             first_name="Detail",
