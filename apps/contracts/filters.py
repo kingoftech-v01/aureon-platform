@@ -3,6 +3,7 @@ Filters for the contracts app.
 """
 
 import django_filters
+from django.db.models import Q
 from .models import Contract
 
 

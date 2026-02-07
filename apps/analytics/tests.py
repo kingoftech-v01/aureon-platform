@@ -102,7 +102,7 @@ class RevenueMetricsCalculatorTests(TestCase):
                 client=self.client,
                 amount=Decimal('100.00'),
                 currency='USD',
-                status=Payment.SUCCESS,
+                status=Payment.SUCCEEDED,
                 payment_method=Payment.CARD,
                 payment_date=self.start_date + timedelta(days=i)
             )
@@ -283,7 +283,7 @@ class RevenueMetricsCalculatorTests(TestCase):
             client=self.client,
             amount=Decimal('500.00'),
             currency='USD',
-            status=Payment.SUCCESS,
+            status=Payment.SUCCEEDED,
             payment_method=Payment.CARD,
             payment_date=self.start_date
         )
@@ -385,7 +385,7 @@ class ClientMetricsCalculatorTests(TestCase):
                 client=self.client,
                 amount=Decimal('250.00'),
                 currency='USD',
-                status=Payment.SUCCESS,
+                status=Payment.SUCCEEDED,
                 payment_method=Payment.CARD,
                 payment_date=date.today() - timedelta(days=i)
             )
@@ -416,7 +416,7 @@ class ClientMetricsCalculatorTests(TestCase):
             client=self.client,
             amount=Decimal('100.00'),
             currency='USD',
-            status=Payment.SUCCESS,
+            status=Payment.SUCCEEDED,
             payment_method=Payment.CARD,
             payment_date=last_payment_date
         )
@@ -470,7 +470,7 @@ class ClientMetricsCalculatorTests(TestCase):
                 client=self.client,
                 amount=Decimal('100.00'),
                 currency='USD',
-                status=Payment.SUCCESS,
+                status=Payment.SUCCEEDED,
                 payment_method=Payment.CARD,
                 payment_date=date.today()
             )
@@ -489,7 +489,7 @@ class ClientMetricsCalculatorTests(TestCase):
                 client=self.client,
                 amount=Decimal('100.00'),
                 currency='USD',
-                status=Payment.SUCCESS,
+                status=Payment.SUCCEEDED,
                 payment_method=Payment.CARD,
                 payment_date=date.today()
             )
@@ -520,7 +520,7 @@ class ClientMetricsCalculatorTests(TestCase):
                 client=self.client,
                 amount=Decimal('100.00'),
                 currency='USD',
-                status=Payment.SUCCESS,
+                status=Payment.SUCCEEDED,
                 payment_method=Payment.CARD,
                 payment_date=date.today()
             )

@@ -60,7 +60,7 @@ def payment_notification_handler(sender, instance, created, **kwargs):
         created: Whether this is a new payment
     """
     # Only send for successful payments
-    if instance.status != Payment.SUCCESS:
+    if instance.status != Payment.SUCCEEDED:
         return
 
     try:

@@ -20,6 +20,32 @@ User = get_user_model()
 
 
 # ============================================================================
+# Django Settings Overrides for Tests
+# ============================================================================
+
+@pytest.fixture(autouse=True)
+def override_test_settings(settings):
+    """Override Django settings for the test environment."""
+    # Use LocMemCache for all cache backends (Redis may not be available)
+    _locmem_cache = {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'TIMEOUT': 300,
+    }
+    settings.CACHES = {
+        'default': {**_locmem_cache, 'LOCATION': 'test-default'},
+        'sessions': {**_locmem_cache, 'LOCATION': 'test-sessions'},
+        'locks': {**_locmem_cache, 'LOCATION': 'test-locks'},
+        'throttle': {**_locmem_cache, 'LOCATION': 'test-throttle'},
+        'local': {**_locmem_cache, 'LOCATION': 'test-local'},
+    }
+    # Disable SSL redirect in tests
+    settings.SECURE_SSL_REDIRECT = False
+    # Ensure testserver is in allowed hosts
+    if 'testserver' not in settings.ALLOWED_HOSTS:
+        settings.ALLOWED_HOSTS.append('testserver')
+
+
+# ============================================================================
 # Tenant Fixtures
 # ============================================================================
 
@@ -618,7 +644,10 @@ def payment_method_card(db, client_company):
 @pytest.fixture
 def api_client():
     """Create an API test client."""
-    return APIClient()
+    client = APIClient()
+    client.defaults['HTTP_ORIGIN'] = 'http://testserver'
+    client.defaults['SERVER_NAME'] = 'testserver'
+    return client
 
 
 @pytest.fixture

@@ -41,7 +41,7 @@ class TestRevenueMetricsCalculator:
         from apps.payments.models import Payment
 
         with patch.object(Payment, 'SUCCESS', Payment.SUCCEEDED, create=True), \
-             patch('apps.analytics.services.Contract') as mock_contract_model, \
+             patch('apps.contracts.models.Contract') as mock_contract_model, \
              patch('apps.analytics.services.Client') as mock_client_model:
 
             # Set up Contract mock to avoid FieldError on signature_date and total_value
@@ -76,7 +76,7 @@ class TestRevenueMetricsCalculator:
         month = date.today().month
 
         with patch.object(Payment, 'SUCCESS', Payment.SUCCEEDED, create=True), \
-             patch('apps.analytics.services.Contract') as mock_contract_model, \
+             patch('apps.contracts.models.Contract') as mock_contract_model, \
              patch('apps.analytics.services.Client') as mock_client_model:
 
             mock_contracts_qs = MagicMock()
@@ -153,7 +153,7 @@ class TestRevenueMetricsCalculator:
         from apps.payments.models import Payment
 
         with patch.object(Payment, 'SUCCESS', Payment.SUCCEEDED, create=True), \
-             patch('apps.analytics.services.Contract') as mock_contract_model, \
+             patch('apps.contracts.models.Contract') as mock_contract_model, \
              patch('apps.analytics.services.Client') as mock_client_model:
 
             mock_contracts_qs = MagicMock()
@@ -182,7 +182,7 @@ class TestRevenueMetricsCalculator:
         from apps.payments.models import Payment
 
         with patch.object(Payment, 'SUCCESS', Payment.SUCCEEDED, create=True), \
-             patch('apps.analytics.services.Contract') as mock_contract_model, \
+             patch('apps.contracts.models.Contract') as mock_contract_model, \
              patch('apps.analytics.services.Client') as mock_client_model:
 
             mock_contracts_qs = MagicMock()
@@ -400,9 +400,9 @@ class TestActivityLogger:
 class TestDashboardDataService:
     """Tests for DashboardDataService."""
 
-    @patch('apps.analytics.services.Invoice')
+    @patch('apps.invoicing.models.Invoice')
     @patch('apps.analytics.services.Payment')
-    @patch('apps.analytics.services.Contract')
+    @patch('apps.contracts.models.Contract')
     @patch('apps.analytics.services.Client')
     def test_returns_dashboard_summary_structure(
         self, mock_client, mock_contract, mock_payment, mock_invoice
@@ -432,9 +432,9 @@ class TestDashboardDataService:
 
     def test_revenue_trend_has_six_months(self):
         """Test that revenue trend contains 6 months of data."""
-        with patch('apps.analytics.services.Invoice') as mock_invoice, \
+        with patch('apps.invoicing.models.Invoice') as mock_invoice, \
              patch('apps.analytics.services.Payment') as mock_payment, \
-             patch('apps.analytics.services.Contract') as mock_contract, \
+             patch('apps.contracts.models.Contract') as mock_contract, \
              patch('apps.analytics.services.Client') as mock_client:
 
             for mock_model in [mock_invoice, mock_payment, mock_contract, mock_client]:
@@ -452,9 +452,9 @@ class TestDashboardDataService:
 
     def test_handles_no_current_metric(self):
         """Test dashboard when no revenue metric exists for current month."""
-        with patch('apps.analytics.services.Invoice') as mock_invoice, \
+        with patch('apps.invoicing.models.Invoice') as mock_invoice, \
              patch('apps.analytics.services.Payment') as mock_payment, \
-             patch('apps.analytics.services.Contract') as mock_contract, \
+             patch('apps.contracts.models.Contract') as mock_contract, \
              patch('apps.analytics.services.Client') as mock_client:
 
             for mock_model in [mock_invoice, mock_payment, mock_contract, mock_client]:
@@ -479,9 +479,9 @@ class TestDashboardDataService:
             user=admin_user,
         )
 
-        with patch('apps.analytics.services.Invoice') as mock_invoice, \
+        with patch('apps.invoicing.models.Invoice') as mock_invoice, \
              patch('apps.analytics.services.Payment') as mock_payment, \
-             patch('apps.analytics.services.Contract') as mock_contract, \
+             patch('apps.contracts.models.Contract') as mock_contract, \
              patch('apps.analytics.services.Client') as mock_client:
 
             for mock_model in [mock_invoice, mock_payment, mock_contract, mock_client]:

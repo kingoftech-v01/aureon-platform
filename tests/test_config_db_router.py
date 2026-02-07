@@ -409,28 +409,28 @@ class TestTransactionAwareRouter:
         """Test that TransactionAwareRouter extends ReadWriteRouter."""
         assert isinstance(self.router, ReadWriteRouter)
 
-    @patch("config.db_router.connection")
+    @patch("django.db.connection")
     def test_db_for_read_in_atomic_block(self, mock_connection):
         """Test reads in atomic block use master."""
         mock_connection.in_atomic_block = True
         db = self.router.db_for_read(MockModel)
         assert db == "default"
 
-    @patch("config.db_router.connection")
+    @patch("django.db.connection")
     def test_db_for_read_outside_atomic_block(self, mock_connection):
         """Test reads outside atomic block use normal routing."""
         mock_connection.in_atomic_block = False
         db = self.router.db_for_read(MockModel)
         assert db == "replica"
 
-    @patch("config.db_router.connection")
+    @patch("django.db.connection")
     def test_db_for_read_master_model_in_atomic(self, mock_connection):
         """Test master-only model reads in atomic block use master."""
         mock_connection.in_atomic_block = True
         db = self.router.db_for_read(MockPaymentModel)
         assert db == "default"
 
-    @patch("config.db_router.connection")
+    @patch("django.db.connection")
     def test_db_for_read_master_model_outside_atomic(self, mock_connection):
         """Test master-only model reads outside atomic block still use master."""
         mock_connection.in_atomic_block = False
@@ -457,7 +457,7 @@ class TestUseMasterDecorator:
 
         assert my_func.__name__ == "my_func"
 
-    @patch("config.db_router.connection")
+    @patch("django.db.connection")
     def test_decorator_sets_alias_to_default(self, mock_connection):
         """Test that the decorator forces default database."""
         mock_cursor = MagicMock()
@@ -478,7 +478,7 @@ class TestUseMasterDecorator:
         def add(a, b):
             return a + b
 
-        with patch("config.db_router.connection"):
+        with patch("django.db.connection"):
             result = add(3, 4)
             assert result == 7
 
@@ -490,7 +490,7 @@ class TestUseMasterDecorator:
 class TestUseMasterContextManager:
     """Test the UseMaster context manager."""
 
-    @patch("config.db_router.connections")
+    @patch("django.db.connections")
     def test_context_manager_enter(self, mock_connections):
         """Test entering the context manager."""
         mock_connections.__getitem__.return_value.alias = "default"
@@ -498,7 +498,7 @@ class TestUseMasterContextManager:
         with UseMaster() as ctx:
             assert ctx is not None
 
-    @patch("config.db_router.connections")
+    @patch("django.db.connections")
     def test_context_manager_exit(self, mock_connections):
         """Test exiting the context manager."""
         mock_connections.__getitem__.return_value.alias = "default"
@@ -507,7 +507,7 @@ class TestUseMasterContextManager:
             pass
         # Should not raise
 
-    @patch("config.db_router.connections")
+    @patch("django.db.connections")
     def test_context_manager_stores_old_db(self, mock_connections):
         """Test that the context manager stores the old database alias."""
         mock_connections.__getitem__.return_value.alias = "replica"
@@ -525,7 +525,7 @@ class TestUseMasterContextManager:
 class TestCheckReplicaLag:
     """Test the check_replica_lag function."""
 
-    @patch("config.db_router.connections")
+    @patch("django.db.connections")
     def test_healthy_replica(self, mock_connections):
         """Test healthy replica with low lag."""
         mock_cursor = MagicMock()
@@ -542,7 +542,7 @@ class TestCheckReplicaLag:
         assert results["replica"]["status"] == "healthy"
         assert results["replica"]["lag_seconds"] == 1.5
 
-    @patch("config.db_router.connections")
+    @patch("django.db.connections")
     def test_lagging_replica(self, mock_connections):
         """Test lagging replica with high lag."""
         mock_cursor = MagicMock()
@@ -558,7 +558,7 @@ class TestCheckReplicaLag:
         assert results["replica"]["status"] == "lagging"
         assert results["replica"]["lag_seconds"] == 10.5
 
-    @patch("config.db_router.connections")
+    @patch("django.db.connections")
     def test_replica_error(self, mock_connections):
         """Test replica with connection error."""
         mock_connections.__getitem__.return_value.cursor.return_value.__enter__ = MagicMock(
@@ -569,7 +569,7 @@ class TestCheckReplicaLag:
         assert results["replica"]["status"] == "error"
         assert "Connection refused" in results["replica"]["error"]
 
-    @patch("config.db_router.connections")
+    @patch("django.db.connections")
     def test_replica_zero_lag(self, mock_connections):
         """Test replica with zero lag (fully caught up)."""
         mock_cursor = MagicMock()
@@ -585,7 +585,7 @@ class TestCheckReplicaLag:
         assert results["replica"]["status"] == "healthy"
         assert results["replica"]["lag_seconds"] == 0
 
-    @patch("config.db_router.connections")
+    @patch("django.db.connections")
     def test_replica_none_lag(self, mock_connections):
         """Test replica with None lag value."""
         mock_cursor = MagicMock()
@@ -600,7 +600,7 @@ class TestCheckReplicaLag:
         results = check_replica_lag()
         assert results["replica"]["status"] == "lagging"
 
-    @patch("config.db_router.connections")
+    @patch("django.db.connections")
     def test_replica_empty_fetchone(self, mock_connections):
         """Test replica when fetchone returns None."""
         mock_cursor = MagicMock()
@@ -617,7 +617,7 @@ class TestCheckReplicaLag:
 
     def test_custom_max_lag(self):
         """Test custom max_lag_seconds parameter."""
-        with patch("config.db_router.connections") as mock_connections:
+        with patch("django.db.connections") as mock_connections:
             mock_cursor = MagicMock()
             mock_cursor.fetchone.return_value = (3.0,)
             mock_connections.__getitem__.return_value.cursor.return_value.__enter__ = MagicMock(

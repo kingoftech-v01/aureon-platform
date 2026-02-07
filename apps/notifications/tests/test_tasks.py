@@ -33,7 +33,7 @@ class TestSendPendingNotifications:
         defaults.update(kwargs)
         return Notification.objects.create(**defaults)
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_send_pending_email_notifications_success(self, mock_email_service):
         """Test sending pending email notifications successfully."""
         mock_email_service.send_email.return_value = True
@@ -46,7 +46,7 @@ class TestSendPendingNotifications:
         assert result['failed'] == 0
         assert mock_email_service.send_email.call_count == 2
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_send_pending_notifications_with_failures(self, mock_email_service):
         """Test sending pending notifications with some failures."""
         mock_email_service.send_email.side_effect = [True, False, True]
@@ -59,7 +59,7 @@ class TestSendPendingNotifications:
         assert result['sent'] == 2
         assert result['failed'] == 1
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_send_pending_notifications_none_pending(self, mock_email_service):
         """Test when there are no pending notifications."""
         self._create_notification(status=Notification.SENT)
@@ -70,7 +70,7 @@ class TestSendPendingNotifications:
         assert result['failed'] == 0
         mock_email_service.send_email.assert_not_called()
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_send_pending_skips_non_email_channels(self, mock_email_service):
         """Test that non-email channels are skipped."""
         self._create_notification(channel=NotificationTemplate.SMS)
@@ -82,7 +82,7 @@ class TestSendPendingNotifications:
         assert result['failed'] == 0
         mock_email_service.send_email.assert_not_called()
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_send_pending_notifications_limit(self, mock_email_service):
         """Test that only up to 100 notifications are processed at a time."""
         mock_email_service.send_email.return_value = True
@@ -95,7 +95,7 @@ class TestSendPendingNotifications:
         assert result['sent'] == 100
         assert mock_email_service.send_email.call_count == 100
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_send_pending_all_fail(self, mock_email_service):
         """Test when all notifications fail to send."""
         mock_email_service.send_email.return_value = False
@@ -466,7 +466,7 @@ class TestRetryFailedNotifications:
         defaults.update(kwargs)
         return Notification.objects.create(**defaults)
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_retry_failed_notifications_success(self, mock_email_service):
         """Test retrying failed notifications successfully."""
         mock_email_service.send_email.return_value = True
@@ -476,7 +476,7 @@ class TestRetryFailedNotifications:
 
         assert result['retried'] == 1
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_skip_notifications_at_max_retries(self, mock_email_service):
         """Test that notifications with retry_count >= 3 are skipped."""
         self._create_notification(retry_count=3)
@@ -487,7 +487,7 @@ class TestRetryFailedNotifications:
         assert result['retried'] == 0
         mock_email_service.send_email.assert_not_called()
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_retry_limit_50(self, mock_email_service):
         """Test that only up to 50 failed notifications are retried."""
         mock_email_service.send_email.return_value = True
@@ -498,7 +498,7 @@ class TestRetryFailedNotifications:
 
         assert result['retried'] == 50
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_retry_non_email_channels_skipped(self, mock_email_service):
         """Test that non-email failed notifications are skipped."""
         self._create_notification(channel=NotificationTemplate.SMS, retry_count=1)
@@ -507,7 +507,7 @@ class TestRetryFailedNotifications:
 
         assert result['retried'] == 0
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_retry_fails_again(self, mock_email_service):
         """Test when retry also fails."""
         mock_email_service.send_email.return_value = False
@@ -626,7 +626,7 @@ class TestSendNotificationAsync:
         defaults.update(kwargs)
         return Notification.objects.create(**defaults)
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_send_async_success(self, mock_email_service):
         """Test sending a notification asynchronously."""
         mock_email_service.send_email.return_value = True
@@ -637,7 +637,7 @@ class TestSendNotificationAsync:
         assert result['sent'] is True
         assert result['notification_id'] == str(notification.id)
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_send_async_failure(self, mock_email_service):
         """Test handling send failure."""
         mock_email_service.send_email.return_value = False
@@ -655,7 +655,7 @@ class TestSendNotificationAsync:
 
         assert result['error'] == 'Notification not found'
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_send_async_unsupported_channel(self, mock_email_service):
         """Test sending notification with unsupported channel."""
         notification = self._create_notification(channel=NotificationTemplate.SMS)
@@ -665,7 +665,7 @@ class TestSendNotificationAsync:
         assert result['error'] == 'Unsupported channel'
         mock_email_service.send_email.assert_not_called()
 
-    @patch('apps.notifications.tasks.EmailService')
+    @patch('apps.notifications.services.EmailService')
     def test_send_async_in_app_unsupported(self, mock_email_service):
         """Test sending notification with in_app channel returns unsupported."""
         notification = self._create_notification(channel=NotificationTemplate.IN_APP)

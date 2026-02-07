@@ -66,7 +66,7 @@ class RevenueMetricsCalculator:
             payment_date__lt=end_date
         )
 
-        successful_payments = payments.filter(status=Payment.SUCCESS)
+        successful_payments = payments.filter(status=Payment.SUCCEEDED)
         metric.payments_received = successful_payments.count()
         metric.payments_failed = payments.filter(status=Payment.FAILED).count()
 
@@ -195,15 +195,15 @@ class ClientMetricsCalculator:
 
         # Payment Metrics
         payments = Payment.objects.filter(client=client)
-        metric.total_payments = payments.filter(status=Payment.SUCCESS).count()
+        metric.total_payments = payments.filter(status=Payment.SUCCEEDED).count()
         metric.failed_payments = payments.filter(status=Payment.FAILED).count()
 
         # Lifetime value (total successful payments)
-        ltv = payments.filter(status=Payment.SUCCESS).aggregate(total=Sum('amount'))['total']
+        ltv = payments.filter(status=Payment.SUCCEEDED).aggregate(total=Sum('amount'))['total']
         metric.lifetime_value = ltv or Decimal('0.00')
 
         # Last payment date
-        last_payment = payments.filter(status=Payment.SUCCESS).order_by('-payment_date').first()
+        last_payment = payments.filter(status=Payment.SUCCEEDED).order_by('-payment_date').first()
         if last_payment:
             metric.last_payment_date = last_payment.payment_date
             metric.days_since_last_payment = (timezone.now().date() - last_payment.payment_date).days

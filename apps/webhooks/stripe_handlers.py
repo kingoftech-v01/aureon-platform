@@ -76,13 +76,13 @@ class StripeWebhookHandler:
             defaults={
                 'amount': amount,
                 'currency': currency,
-                'status': Payment.SUCCESS,
+                'status': Payment.SUCCEEDED,
                 'payment_method': Payment.CARD,  # Default to card
             }
         )
 
         if not created:
-            payment.status = Payment.SUCCESS
+            payment.status = Payment.SUCCEEDED
             payment.save(update_fields=['status', 'updated_at'])
 
         # Update related invoice if exists
@@ -169,7 +169,7 @@ class StripeWebhookHandler:
 
             if payment:
                 payment.stripe_charge_id = charge_id
-                payment.status = Payment.SUCCESS
+                payment.status = Payment.SUCCEEDED
                 payment.save(update_fields=['stripe_charge_id', 'status', 'updated_at'])
 
                 return {

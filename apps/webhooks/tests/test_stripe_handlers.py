@@ -40,7 +40,7 @@ class TestHandlePaymentIntentSucceeded:
     @patch('apps.webhooks.stripe_handlers.Payment')
     def test_handle_payment_intent_succeeded(self, MockPayment, MockInvoice):
         """Successful payment intent should create/update payment and update invoice."""
-        MockPayment.SUCCESS = 'succeeded'
+        MockPayment.SUCCEEDED = 'succeeded'
         MockPayment.CARD = 'card'
 
         mock_payment = MagicMock()
@@ -68,7 +68,7 @@ class TestHandlePaymentIntentSucceeded:
     @patch('apps.webhooks.stripe_handlers.Payment')
     def test_handle_payment_intent_succeeded_existing_payment(self, MockPayment, MockInvoice):
         """Existing payment should be updated to SUCCESS status."""
-        MockPayment.SUCCESS = 'succeeded'
+        MockPayment.SUCCEEDED = 'succeeded'
         MockPayment.CARD = 'card'
 
         mock_payment = MagicMock()
@@ -249,7 +249,7 @@ class TestHandleChargeSucceeded:
     @patch('apps.webhooks.stripe_handlers.Payment')
     def test_handle_charge_succeeded(self, MockPayment, MockInvoice):
         """Successful charge should link charge ID to payment."""
-        MockPayment.SUCCESS = 'succeeded'
+        MockPayment.SUCCEEDED = 'succeeded'
 
         mock_payment = MagicMock()
         mock_payment.id = uuid.uuid4()
@@ -284,7 +284,7 @@ class TestHandleChargeSucceeded:
     @patch('apps.webhooks.stripe_handlers.Payment')
     def test_handle_charge_succeeded_payment_not_found(self, MockPayment, MockInvoice):
         """Charge with payment_intent but no matching payment should be ignored."""
-        MockPayment.SUCCESS = 'succeeded'
+        MockPayment.SUCCEEDED = 'succeeded'
         MockPayment.objects.filter.return_value.first.return_value = None
 
         event = _build_event('charge.succeeded', {
@@ -612,7 +612,7 @@ class TestHandlerRouting:
     @patch('apps.webhooks.stripe_handlers.Payment')
     def test_handler_raises_on_error(self, MockPayment, MockInvoice):
         """Handler should re-raise exceptions from handler methods."""
-        MockPayment.SUCCESS = 'succeeded'
+        MockPayment.SUCCEEDED = 'succeeded'
         MockPayment.CARD = 'card'
         MockPayment.objects.get_or_create.side_effect = Exception('DB error')
 

@@ -272,9 +272,14 @@ class Client(models.Model):
             return f"{self.company_name} ({self.get_full_name()})"
         return self.get_full_name()
 
-    def get_full_name(self):
+    @property
+    def full_name(self):
         """Return full name of contact."""
         return f"{self.first_name} {self.last_name}".strip()
+
+    def get_full_name(self):
+        """Return full name of contact."""
+        return self.full_name
 
     def get_display_name(self):
         """Return display name (company name or full name)."""

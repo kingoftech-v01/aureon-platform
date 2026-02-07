@@ -21,9 +21,9 @@ from apps.analytics.tasks import (
 class TestGenerateDailyAnalytics:
     """Tests for generate_daily_analytics task."""
 
-    @patch('apps.analytics.tasks.ClientMetricsCalculator')
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
-    @patch('apps.analytics.tasks.Client')
+    @patch('apps.analytics.services.ClientMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
+    @patch('apps.clients.models.Client')
     def test_generates_daily_analytics_successfully(
         self, mock_client_model, mock_revenue_calc, mock_client_calc
     ):
@@ -42,9 +42,9 @@ class TestGenerateDailyAnalytics:
         assert result['revenue'] == '50000.00'
         mock_revenue_calc.calculate_month_metrics.assert_called_once()
 
-    @patch('apps.analytics.tasks.ClientMetricsCalculator')
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
-    @patch('apps.analytics.tasks.Client')
+    @patch('apps.analytics.services.ClientMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
+    @patch('apps.clients.models.Client')
     def test_updates_active_client_metrics(
         self, mock_client_model, mock_revenue_calc, mock_client_calc
     ):
@@ -66,9 +66,9 @@ class TestGenerateDailyAnalytics:
         assert result['clients_updated'] == 2
         assert mock_client_calc.calculate_client_metrics.call_count == 2
 
-    @patch('apps.analytics.tasks.ClientMetricsCalculator')
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
-    @patch('apps.analytics.tasks.Client')
+    @patch('apps.analytics.services.ClientMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
+    @patch('apps.clients.models.Client')
     def test_handles_client_metric_failure_gracefully(
         self, mock_client_model, mock_revenue_calc, mock_client_calc
     ):
@@ -96,9 +96,9 @@ class TestGenerateDailyAnalytics:
         assert result['status'] == 'success'
         assert result['clients_updated'] == 1
 
-    @patch('apps.analytics.tasks.ClientMetricsCalculator')
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
-    @patch('apps.analytics.tasks.Client')
+    @patch('apps.analytics.services.ClientMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
+    @patch('apps.clients.models.Client')
     def test_returns_correct_date(
         self, mock_client_model, mock_revenue_calc, mock_client_calc
     ):
@@ -121,7 +121,7 @@ class TestGenerateWeeklyReports:
     """Tests for generate_weekly_reports task."""
 
     @patch('apps.analytics.tasks.DashboardDataService')
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
     def test_generates_weekly_report_successfully(
         self, mock_revenue_calc, mock_dashboard_svc
     ):
@@ -142,7 +142,7 @@ class TestGenerateWeeklyReports:
         assert mock_revenue_calc.calculate_month_metrics.call_count <= 4
 
     @patch('apps.analytics.tasks.DashboardDataService')
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
     def test_calculates_total_revenue_from_all_weeks(
         self, mock_revenue_calc, mock_dashboard_svc
     ):
@@ -162,7 +162,7 @@ class TestGenerateWeeklyReports:
         assert Decimal(result['total_revenue']) > Decimal('0.00')
 
     @patch('apps.analytics.tasks.DashboardDataService')
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
     def test_includes_week_number(
         self, mock_revenue_calc, mock_dashboard_svc
     ):
@@ -185,7 +185,7 @@ class TestGenerateWeeklyReports:
 class TestCalculateRevenueMetrics:
     """Tests for calculate_revenue_metrics task."""
 
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
     def test_calculates_current_month(self, mock_calc):
         """Test that current month revenue metrics are calculated."""
         mock_metric = MagicMock()
@@ -198,7 +198,7 @@ class TestCalculateRevenueMetrics:
         assert result['revenue'] == '30000.00'
         mock_calc.calculate_month_metrics.assert_called()
 
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
     def test_recalculates_previous_month_in_first_week(self, mock_calc):
         """Test that the previous month is also recalculated in the first week."""
         mock_metric = MagicMock()
@@ -217,7 +217,7 @@ class TestCalculateRevenueMetrics:
             # Should be called twice: current month + previous month
             assert mock_calc.calculate_month_metrics.call_count == 2
 
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
     def test_does_not_recalculate_previous_month_after_first_week(self, mock_calc):
         """Test that previous month is not recalculated after the first week."""
         mock_metric = MagicMock()
@@ -235,7 +235,7 @@ class TestCalculateRevenueMetrics:
             # Only called once for current month
             assert mock_calc.calculate_month_metrics.call_count == 1
 
-    @patch('apps.analytics.tasks.RevenueMetricsCalculator')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
     def test_handles_january_previous_month(self, mock_calc):
         """Test that previous month calculation in January uses December of prior year."""
         mock_metric = MagicMock()

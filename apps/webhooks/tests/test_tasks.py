@@ -96,7 +96,7 @@ def webhook_endpoint(db):
 @pytest.mark.django_db
 class TestProcessStripeWebhook:
 
-    @patch('apps.webhooks.tasks.StripeWebhookHandler')
+    @patch('apps.webhooks.stripe_handlers.StripeWebhookHandler')
     def test_successful_processing(self, MockHandler, webhook_event):
         mock_handler = MagicMock()
         mock_handler.handle.return_value = {'status': 'processed'}
@@ -114,7 +114,7 @@ class TestProcessStripeWebhook:
         result = process_stripe_webhook(fake_id)
         assert result == {'error': 'WebhookEvent not found'}
 
-    @patch('apps.webhooks.tasks.StripeWebhookHandler')
+    @patch('apps.webhooks.stripe_handlers.StripeWebhookHandler')
     def test_processing_sets_status_to_processing(self, MockHandler, webhook_event):
         """Should mark event as 'processing' before handling."""
         def check_status(payload):
@@ -127,7 +127,7 @@ class TestProcessStripeWebhook:
         MockHandler.side_effect = check_status
         process_stripe_webhook(webhook_event.id)
 
-    @patch('apps.webhooks.tasks.StripeWebhookHandler')
+    @patch('apps.webhooks.stripe_handlers.StripeWebhookHandler')
     def test_error_with_retry_available(self, MockHandler, webhook_event):
         """Should retry on failure when retries remain."""
         MockHandler.return_value.handle.side_effect = ValueError('boom')
@@ -141,7 +141,7 @@ class TestProcessStripeWebhook:
         assert webhook_event.status in [WebhookEvent.RETRYING, WebhookEvent.FAILED]
         assert webhook_event.retry_count >= 1
 
-    @patch('apps.webhooks.tasks.StripeWebhookHandler')
+    @patch('apps.webhooks.stripe_handlers.StripeWebhookHandler')
     def test_error_no_retry_when_max_reached(self, MockHandler, webhook_event):
         """Should mark as failed when max retries exceeded."""
         MockHandler.return_value.handle.side_effect = ValueError('boom')
@@ -270,7 +270,7 @@ class TestSendOutgoingWebhook:
         )
         assert 'skipped' in result
 
-    @patch('apps.webhooks.tasks.requests.post')
+    @patch('requests.post')
     def test_successful_delivery(self, mock_post, webhook_endpoint):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -296,7 +296,7 @@ class TestSendOutgoingWebhook:
         assert webhook_endpoint.total_deliveries == 1
         assert webhook_endpoint.successful_deliveries == 1
 
-    @patch('apps.webhooks.tasks.requests.post')
+    @patch('requests.post')
     def test_delivery_non_success_status(self, mock_post, webhook_endpoint):
         mock_response = MagicMock()
         mock_response.status_code = 500
@@ -315,7 +315,7 @@ class TestSendOutgoingWebhook:
         webhook_endpoint.refresh_from_db()
         assert webhook_endpoint.failed_deliveries == 1
 
-    @patch('apps.webhooks.tasks.requests.post')
+    @patch('requests.post')
     def test_delivery_accepted_status_codes(self, mock_post, webhook_endpoint):
         """201, 202, and 204 should count as success."""
         for status_code in [201, 202, 204]:
@@ -330,7 +330,7 @@ class TestSendOutgoingWebhook:
             )
             assert result['delivered'] is True
 
-    @patch('apps.webhooks.tasks.requests.post')
+    @patch('requests.post')
     def test_request_exception(self, mock_post, webhook_endpoint):
         import requests
         mock_post.side_effect = requests.exceptions.ConnectionError('connection refused')
@@ -347,7 +347,7 @@ class TestSendOutgoingWebhook:
         webhook_endpoint.refresh_from_db()
         assert webhook_endpoint.failed_deliveries == 1
 
-    @patch('apps.webhooks.tasks.requests.post')
+    @patch('requests.post')
     def test_custom_headers_included(self, mock_post, webhook_endpoint):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -363,7 +363,7 @@ class TestSendOutgoingWebhook:
         headers = call_kwargs[1]['headers'] if 'headers' in call_kwargs[1] else call_kwargs.kwargs['headers']
         assert headers.get('X-Custom') == 'value'
 
-    @patch('apps.webhooks.tasks.requests.post')
+    @patch('requests.post')
     def test_timeout_passed(self, mock_post, webhook_endpoint):
         mock_response = MagicMock()
         mock_response.status_code = 200
