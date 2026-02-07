@@ -63,7 +63,7 @@ class Document(models.Model):
 
     client = models.ForeignKey(
         'clients.Client', on_delete=models.CASCADE, null=True, blank=True,
-        related_name='documents'
+        related_name='document_files'
     )
 
     contract = models.ForeignKey(
