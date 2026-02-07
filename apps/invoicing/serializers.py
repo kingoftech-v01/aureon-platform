@@ -12,10 +12,14 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
     """
     Serializer for invoice items.
     """
+    invoice = serializers.PrimaryKeyRelatedField(
+        queryset=Invoice.objects.all(),
+        required=False,
+    )
 
     class Meta:
         model = InvoiceItem
-        fields = ['id', 'description', 'quantity', 'unit_price', 'amount', 'order']
+        fields = ['id', 'invoice', 'description', 'quantity', 'unit_price', 'amount', 'order']
         read_only_fields = ['id', 'amount']
 
 
@@ -66,14 +70,16 @@ class InvoiceCreateUpdateSerializer(serializers.ModelSerializer):
     Serializer for creating and updating invoices.
     """
     items = InvoiceItemSerializer(many=True, required=False)
+    invoice_number = serializers.CharField(read_only=True)
 
     class Meta:
         model = Invoice
         fields = [
-            'client', 'contract', 'status', 'issue_date', 'due_date',
+            'id', 'invoice_number', 'client', 'contract', 'status', 'issue_date', 'due_date',
             'tax_rate', 'discount_amount', 'currency', 'notes', 'terms',
-            'metadata', 'items'
+            'metadata', 'items', 'subtotal', 'tax_amount', 'total',
         ]
+        read_only_fields = ['id', 'invoice_number', 'subtotal', 'tax_amount', 'total']
 
     def validate(self, data):
         """Validate invoice data."""

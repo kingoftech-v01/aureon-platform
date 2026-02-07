@@ -471,6 +471,32 @@ class TestInvoiceCreateUpdateSerializer:
         updated = serializer.save()
         assert updated.items.count() == 0
 
+    @pytest.mark.django_db
+    def test_update_existing_item_by_id(self, invoice_draft, invoice_item):
+        """Test updating an existing item by providing its ID."""
+        data = {
+            'items': [
+                {
+                    'id': str(invoice_item.id),
+                    'description': 'Updated Description',
+                    'quantity': '3.00',
+                    'unit_price': '250.00',
+                    'order': 0,
+                },
+            ],
+        }
+        serializer = InvoiceCreateUpdateSerializer(
+            instance=invoice_draft,
+            data=data,
+            partial=True,
+        )
+        assert serializer.is_valid(), serializer.errors
+
+        updated = serializer.save()
+        assert updated.items.count() == 1
+        updated_item = updated.items.first()
+        assert updated_item.description == 'Updated Description'
+
 
 # ============================================================================
 # InvoiceStatsSerializer Tests

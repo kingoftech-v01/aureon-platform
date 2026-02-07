@@ -3,6 +3,7 @@ Views and ViewSets for the invoicing app API.
 """
 
 import logging
+from decimal import Decimal, InvalidOperation
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -134,6 +135,16 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         payment_amount = request.data.get('payment_amount')
         payment_method = request.data.get('payment_method')
         payment_reference = request.data.get('payment_reference')
+
+        # Convert payment_amount to Decimal if provided
+        if payment_amount is not None:
+            try:
+                payment_amount = Decimal(str(payment_amount))
+            except (InvalidOperation, ValueError):
+                return Response(
+                    {'detail': 'Invalid payment amount.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         try:
             invoice.mark_as_paid(

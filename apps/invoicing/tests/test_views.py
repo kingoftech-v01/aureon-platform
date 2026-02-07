@@ -13,6 +13,7 @@ Tests cover:
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
+from unittest.mock import patch, MagicMock
 from rest_framework import status
 from apps.invoicing.models import Invoice, InvoiceItem
 
@@ -156,7 +157,8 @@ class TestInvoiceSearchFilter:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        for invoice in response.data:
+        results = response.data.get('results', response.data)
+        for invoice in results:
             assert invoice['status'] == Invoice.DRAFT
 
     def test_ordering_by_total(self, authenticated_admin_client, invoice_draft, invoice_paid):
@@ -257,14 +259,16 @@ class TestInvoiceActions:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['status'] == Invoice.PARTIALLY_PAID
 
-    def test_generate_pdf(self, authenticated_admin_client, invoice_draft):
+    @patch('apps.invoicing.tasks.generate_invoice.delay')
+    def test_generate_pdf(self, mock_delay, authenticated_admin_client, invoice_draft):
         """Test generating PDF for invoice."""
         response = authenticated_admin_client.post(
             f'/api/api/invoices/{invoice_draft.id}/generate_pdf/'
         )
 
-        # Should return success even if PDF generation is not implemented
+        # Should return success when PDF generation task is queued
         assert response.status_code == status.HTTP_200_OK
+        mock_delay.assert_called_once_with(str(invoice_draft.id))
 
     def test_recalculate_totals(self, authenticated_admin_client, invoice_draft, invoice_item):
         """Test recalculating invoice totals."""
@@ -400,4 +404,98 @@ class TestInvoiceViewEdgeCases:
         response = authenticated_admin_client.post('/api/api/invoices/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['contract'] == str(contract_fixed.id)
+        assert str(response.data['contract']) == str(contract_fixed.id)
+
+
+# ============================================================================
+# Coverage Tests for Error Branches
+# ============================================================================
+
+@pytest.mark.django_db
+class TestInvoiceViewCoverage:
+    """Tests to cover error handling branches in views."""
+
+    @patch('apps.invoicing.models.Invoice.mark_as_sent', side_effect=Exception('send failed'))
+    def test_send_invoice_error_returns_500(
+        self, mock_mark_sent, authenticated_admin_client, invoice_draft
+    ):
+        """Test send action returns 500 when mark_as_sent raises."""
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_draft.id}/send/'
+        )
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'Failed to send invoice' in response.data['detail']
+
+    def test_mark_paid_invalid_amount_returns_400(
+        self, authenticated_admin_client, invoice_sent
+    ):
+        """Test mark_paid with invalid payment_amount returns 400."""
+        data = {
+            'payment_amount': 'not-a-number',
+        }
+
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_sent.id}/mark_paid/',
+            data
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'Invalid payment amount' in response.data['detail']
+
+    @patch('apps.invoicing.models.Invoice.mark_as_paid', side_effect=Exception('payment failed'))
+    def test_mark_paid_error_returns_500(
+        self, mock_mark_paid, authenticated_admin_client, invoice_sent
+    ):
+        """Test mark_paid action returns 500 when mark_as_paid raises."""
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_sent.id}/mark_paid/',
+            {}
+        )
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'Failed to mark invoice as paid' in response.data['detail']
+
+    @patch('apps.invoicing.models.Invoice.generate_pdf', side_effect=Exception('pdf failed'))
+    def test_generate_pdf_error_returns_500(
+        self, mock_gen_pdf, authenticated_admin_client, invoice_draft
+    ):
+        """Test generate_pdf returns 500 when generate_pdf raises."""
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_draft.id}/generate_pdf/'
+        )
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'Failed to generate PDF' in response.data['detail']
+
+    @patch('apps.invoicing.models.Invoice.calculate_totals', side_effect=Exception('calc failed'))
+    def test_recalculate_error_returns_500(
+        self, mock_calc, authenticated_admin_client, invoice_draft, invoice_item
+    ):
+        """Test recalculate returns 500 when calculate_totals raises."""
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_draft.id}/recalculate/'
+        )
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'Failed to recalculate totals' in response.data['detail']
+
+    def test_non_staff_item_access(
+        self, authenticated_contributor_client, invoice_item
+    ):
+        """Test non-staff users have filtered access to invoice items."""
+        response = authenticated_contributor_client.get('/api/api/items/')
+
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_mark_paid_defaults_to_balance_due(
+        self, authenticated_admin_client, invoice_sent
+    ):
+        """Test mark_paid without payment_amount defaults to balance due."""
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_sent.id}/mark_paid/',
+            {}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['status'] == Invoice.PAID

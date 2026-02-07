@@ -350,7 +350,7 @@ class TestInvoiceEdgeCases:
             )
             items.append(item)
 
-        assert invoice_draft.items.count() == 6  # 5 + original from fixture
+        assert invoice_draft.items.count() == 5
 
     def test_invoice_item_order(self, invoice_draft):
         """Test invoice items are ordered."""
@@ -374,3 +374,65 @@ class TestInvoiceEdgeCases:
         items = list(invoice_draft.items.all())
         orders = [item.order for item in items]
         assert orders == sorted(orders)
+
+
+# ============================================================================
+# Coverage Tests for Uncovered Branches
+# ============================================================================
+
+@pytest.mark.django_db
+class TestInvoiceModelCoverage:
+    """Tests to cover remaining uncovered lines in models.py."""
+
+    def test_auto_number_fallback_on_malformed_invoice_number(self, client_company):
+        """Test that auto-numbering falls back to 1 on malformed invoice number."""
+        # Create an invoice with a non-standard invoice number
+        Invoice.objects.create(
+            client=client_company,
+            invoice_number='INV-BADNUMBER',
+            status=Invoice.DRAFT,
+            issue_date=date.today(),
+            due_date=date.today() + timedelta(days=30),
+            total=Decimal('1000.00'),
+        )
+
+        # Next invoice should fall back to INV-00001
+        next_invoice = Invoice.objects.create(
+            client=client_company,
+            status=Invoice.DRAFT,
+            issue_date=date.today(),
+            due_date=date.today() + timedelta(days=30),
+            total=Decimal('2000.00'),
+        )
+
+        assert next_invoice.invoice_number == 'INV-00001'
+
+    def test_mark_as_paid_defaults_to_balance_due(self, invoice_sent):
+        """Test mark_as_paid without payment_amount uses balance_due."""
+        balance = invoice_sent.balance_due
+        invoice_sent.mark_as_paid()
+
+        assert invoice_sent.paid_amount == balance
+        assert invoice_sent.status == Invoice.PAID
+        assert invoice_sent.paid_at is not None
+
+    def test_mark_as_paid_without_contract(self, client_company):
+        """Test mark_as_paid on invoice without contract."""
+        invoice = Invoice.objects.create(
+            client=client_company,
+            contract=None,
+            status=Invoice.SENT,
+            issue_date=date.today() - timedelta(days=5),
+            due_date=date.today() + timedelta(days=25),
+            subtotal=Decimal('1000.00'),
+            total=Decimal('1000.00'),
+            currency='USD',
+        )
+
+        invoice.mark_as_paid(
+            payment_amount=Decimal('1000.00'),
+            payment_method='bank_transfer',
+        )
+
+        assert invoice.status == Invoice.PAID
+        assert invoice.payment_method == 'bank_transfer'

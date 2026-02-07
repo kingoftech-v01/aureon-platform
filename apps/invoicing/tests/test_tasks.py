@@ -431,7 +431,123 @@ class TestSendPaymentReminders:
                 currency='USD',
             )
 
+        # Reset mock to clear calls from post_save signal during invoice creation
+        mock_notify.reset_mock()
+
         result = send_payment_reminders()
 
         assert result['reminders_sent'] == 3
         assert mock_notify.call_count == 3
+
+
+# ============================================================================
+# Coverage Tests for Recurring Invoice Edge Cases
+# ============================================================================
+
+@pytest.mark.django_db
+class TestRecurringInvoiceCoverage:
+    """Tests to cover remaining uncovered branches in tasks.py."""
+
+    def test_monthly_schedule_december_wrap_around(self, client_company, admin_user):
+        """Test monthly schedule wraps from December to January of next year."""
+        contract = Contract.objects.create(
+            client=client_company,
+            title='Monthly December Contract',
+            description='Monthly retainer starting in December.',
+            contract_type=Contract.RETAINER,
+            status=Contract.ACTIVE,
+            start_date=date(2025, 11, 1),
+            end_date=date(2026, 12, 31),
+            value=Decimal('2000.00'),
+            currency='USD',
+            invoice_schedule='monthly',
+            owner=admin_user,
+        )
+
+        # Create an invoice in December - the next one should be January
+        Invoice.objects.create(
+            client=client_company,
+            contract=contract,
+            status=Invoice.DRAFT,
+            issue_date=date(2025, 12, 15),
+            due_date=date(2026, 1, 15),
+            subtotal=Decimal('2000.00'),
+            total=Decimal('2000.00'),
+            currency='USD',
+        )
+
+        result = generate_recurring_invoices()
+
+        assert result['status'] == 'success'
+        # The next invoice should be generated since today (2026-02) >= January 2026
+        assert result['invoices_generated'] >= 1
+
+    def test_weekly_schedule_with_existing_recent_invoice(self, client_company, admin_user):
+        """Test weekly schedule skips when recent invoice exists."""
+        contract = Contract.objects.create(
+            client=client_company,
+            title='Weekly Contract',
+            description='Weekly deliverables.',
+            contract_type=Contract.MILESTONE,
+            status=Contract.ACTIVE,
+            start_date=date.today() - timedelta(days=60),
+            end_date=date.today() + timedelta(days=300),
+            value=Decimal('500.00'),
+            currency='USD',
+            invoice_schedule='weekly',
+            owner=admin_user,
+        )
+
+        # Create an invoice from 3 days ago (less than 7 days, so weekly should skip)
+        Invoice.objects.create(
+            client=client_company,
+            contract=contract,
+            status=Invoice.DRAFT,
+            issue_date=date.today() - timedelta(days=3),
+            due_date=date.today() + timedelta(days=27),
+            subtotal=Decimal('500.00'),
+            total=Decimal('500.00'),
+            currency='USD',
+        )
+
+        result = generate_recurring_invoices()
+
+        # Should not generate another invoice since less than 7 days passed
+        assert result['status'] == 'success'
+        invoice_count = Invoice.objects.filter(contract=contract).count()
+        assert invoice_count == 1
+
+    def test_weekly_schedule_with_old_invoice_generates_new(self, client_company, admin_user):
+        """Test weekly schedule generates new invoice when last one is old enough."""
+        contract = Contract.objects.create(
+            client=client_company,
+            title='Weekly Contract Old',
+            description='Weekly deliverables with old invoice.',
+            contract_type=Contract.MILESTONE,
+            status=Contract.ACTIVE,
+            start_date=date.today() - timedelta(days=60),
+            end_date=date.today() + timedelta(days=300),
+            value=Decimal('500.00'),
+            currency='USD',
+            invoice_schedule='weekly',
+            owner=admin_user,
+        )
+
+        # Create an invoice from 10 days ago (more than 7 days, so weekly should trigger)
+        Invoice.objects.create(
+            client=client_company,
+            contract=contract,
+            status=Invoice.DRAFT,
+            issue_date=date.today() - timedelta(days=10),
+            due_date=date.today() + timedelta(days=20),
+            subtotal=Decimal('500.00'),
+            total=Decimal('500.00'),
+            currency='USD',
+        )
+
+        result = generate_recurring_invoices()
+
+        assert result['status'] == 'success'
+        assert result['invoices_generated'] >= 1
+        invoice_count = Invoice.objects.filter(contract=contract).count()
+        assert invoice_count == 2
