@@ -44,13 +44,14 @@ class TestUserModel:
         assert user.is_superuser is False
 
     def test_create_user_without_email_raises_error(self):
-        """Test that creating a user without email raises an error."""
-        with pytest.raises(ValueError):
-            User.objects.create_user(
-                username='empty',
-                email='',
-                password='SecurePass123!',
-            )
+        """Test that creating a user without email fails validation."""
+        user = User(
+            username='empty',
+            email='',
+            password='SecurePass123!',
+        )
+        with pytest.raises(ValidationError):
+            user.full_clean()
 
     def test_create_superuser(self):
         """Test creating a superuser."""

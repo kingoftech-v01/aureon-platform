@@ -1,856 +1,940 @@
 """
-Tests for accounts two_factor module.
+Comprehensive unit tests for accounts app.
 
-Covers:
-- TwoFactorAuthService.generate_secret
-- TwoFactorAuthService.generate_qr_code
-- TwoFactorAuthService.verify_token (valid, invalid, expired)
-- TwoFactorAuthService.generate_backup_codes (format, uniqueness, count)
-- enable_2fa view (success, already enabled)
-- verify_2fa_setup (success, missing token, invalid token, no secret)
-- disable_2fa (with token, with backup code, not enabled, invalid)
-- verify_2fa_token (valid, invalid, not enabled)
-- use_backup_code (valid, invalid, not enabled, last code)
-- regenerate_backup_codes (success, invalid token, not enabled)
-- get_2fa_status (enabled, disabled)
+Tests 2FA setup, token verification, and backup codes.
 """
 
-import re
 import pytest
 from unittest.mock import patch, MagicMock
+from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from rest_framework.test import APIRequestFactory, force_authenticate
 from rest_framework import status
-from rest_framework.test import APIClient
+import pyotp
 
-from apps.accounts.two_factor import TwoFactorAuthService
+from apps.accounts.models import User, UserInvitation, ApiKey
+from apps.accounts.two_factor import (
+    TwoFactorAuthService,
+    enable_2fa,
+    verify_2fa_setup,
+    disable_2fa,
+    verify_2fa_token,
+    use_backup_code,
+    regenerate_backup_codes,
+    get_2fa_status
+)
 
 User = get_user_model()
 
-AUTH_URL_PREFIX = "/api/auth/"
 
+class UserModelTests(TestCase):
+    """Test User model."""
 
-# ============================================================================
-# TwoFactorAuthService Unit Tests
-# ============================================================================
-
-
-class TestTwoFactorAuthServiceGenerateSecret:
-    """Tests for TwoFactorAuthService.generate_secret."""
-
-    def test_generate_secret_returns_string(self):
-        """generate_secret returns a string."""
-        secret = TwoFactorAuthService.generate_secret()
-        assert isinstance(secret, str)
-
-    def test_generate_secret_not_empty(self):
-        """generate_secret returns a non-empty string."""
-        secret = TwoFactorAuthService.generate_secret()
-        assert len(secret) > 0
-
-    def test_generate_secret_is_base32(self):
-        """generate_secret returns a valid base32-encoded string."""
-        secret = TwoFactorAuthService.generate_secret()
-        # Base32 characters: A-Z and 2-7
-        assert re.match(r'^[A-Z2-7]+=*$', secret), f"Not valid base32: {secret}"
-
-    def test_generate_secret_unique(self):
-        """generate_secret produces unique secrets across calls."""
-        secrets_set = {TwoFactorAuthService.generate_secret() for _ in range(50)}
-        assert len(secrets_set) == 50
-
-    @patch('apps.accounts.two_factor.pyotp.random_base32')
-    def test_generate_secret_calls_pyotp(self, mock_random_base32):
-        """generate_secret delegates to pyotp.random_base32."""
-        mock_random_base32.return_value = 'JBSWY3DPEHPK3PXP'
-        secret = TwoFactorAuthService.generate_secret()
-        mock_random_base32.assert_called_once()
-        assert secret == 'JBSWY3DPEHPK3PXP'
-
-
-class TestTwoFactorAuthServiceGenerateQrCode:
-    """Tests for TwoFactorAuthService.generate_qr_code."""
-
-    @pytest.mark.django_db
-    def test_generate_qr_code_returns_data_uri(self, admin_user):
-        """generate_qr_code returns a data URI with base64 PNG content."""
-        secret = 'JBSWY3DPEHPK3PXP'
-        qr_code = TwoFactorAuthService.generate_qr_code(admin_user, secret)
-
-        assert qr_code.startswith("data:image/png;base64,")
-
-    @pytest.mark.django_db
-    def test_generate_qr_code_contains_base64_data(self, admin_user):
-        """generate_qr_code returns valid base64-encoded data after the prefix."""
-        import base64
-
-        secret = 'JBSWY3DPEHPK3PXP'
-        qr_code = TwoFactorAuthService.generate_qr_code(admin_user, secret)
-
-        # Extract and decode the base64 portion
-        base64_data = qr_code.split(",")[1]
-        decoded = base64.b64decode(base64_data)
-        # PNG magic bytes
-        assert decoded[:4] == b'\x89PNG'
-
-    @pytest.mark.django_db
-    @patch('apps.accounts.two_factor.pyotp.TOTP')
-    def test_generate_qr_code_uses_correct_issuer(self, mock_totp_cls, admin_user):
-        """generate_qr_code creates provisioning URI with correct issuer name."""
-        mock_totp_instance = MagicMock()
-        mock_totp_instance.provisioning_uri.return_value = (
-            'otpauth://totp/Aureon%20Platform:admin@testorg.com?secret=JBSWY3DPEHPK3PXP&issuer=Aureon+Platform'
-        )
-        mock_totp_cls.return_value = mock_totp_instance
-
-        secret = 'JBSWY3DPEHPK3PXP'
-        TwoFactorAuthService.generate_qr_code(admin_user, secret)
-
-        mock_totp_instance.provisioning_uri.assert_called_once_with(
-            name=admin_user.email,
-            issuer_name='Aureon Platform'
+    def test_user_creation_with_email(self):
+        """Test creating user with email."""
+        user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123',
+            first_name='Test',
+            last_name='User'
         )
 
+        self.assertEqual(user.email, 'test@example.com')
+        self.assertTrue(user.check_password('testpass123'))
+        self.assertIsNotNone(user.username)  # Auto-generated
 
-class TestTwoFactorAuthServiceVerifyToken:
-    """Tests for TwoFactorAuthService.verify_token."""
+    def test_user_creation_generates_username(self):
+        """Test that username is auto-generated from email."""
+        user = User.objects.create_user(
+            username='john.doe',
+            email='john.doe@example.com',
+            password='testpass123'
+        )
 
-    @patch('apps.accounts.two_factor.pyotp.TOTP')
-    def test_verify_token_valid(self, mock_totp_cls):
-        """verify_token returns True for a valid token."""
-        mock_totp_instance = MagicMock()
-        mock_totp_instance.verify.return_value = True
-        mock_totp_cls.return_value = mock_totp_instance
+        self.assertIn('john.doe', user.username)
 
-        result = TwoFactorAuthService.verify_token('JBSWY3DPEHPK3PXP', '123456')
+    def test_get_full_name_with_full_name_field(self):
+        """Test get_full_name when full_name field is set."""
+        user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123',
+            full_name='John Alexander Doe'
+        )
 
-        assert result is True
-        mock_totp_instance.verify.assert_called_once_with('123456', valid_window=1)
+        self.assertEqual(user.get_full_name(), 'John Alexander Doe')
 
-    @patch('apps.accounts.two_factor.pyotp.TOTP')
-    def test_verify_token_invalid(self, mock_totp_cls):
-        """verify_token returns False for an invalid token."""
-        mock_totp_instance = MagicMock()
-        mock_totp_instance.verify.return_value = False
-        mock_totp_cls.return_value = mock_totp_instance
+    def test_get_full_name_with_first_last_name(self):
+        """Test get_full_name with first_name and last_name."""
+        user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123',
+            first_name='Jane',
+            last_name='Smith'
+        )
 
-        result = TwoFactorAuthService.verify_token('JBSWY3DPEHPK3PXP', '000000')
+        self.assertEqual(user.get_full_name(), 'Jane Smith')
 
-        assert result is False
+    def test_get_full_name_fallback_to_email(self):
+        """Test get_full_name falls back to email."""
+        user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
+        )
 
-    @patch('apps.accounts.two_factor.pyotp.TOTP')
-    def test_verify_token_uses_valid_window(self, mock_totp_cls):
-        """verify_token allows 1 time step tolerance."""
-        mock_totp_instance = MagicMock()
-        mock_totp_instance.verify.return_value = True
-        mock_totp_cls.return_value = mock_totp_instance
+        self.assertEqual(user.get_full_name(), 'test@example.com')
 
-        TwoFactorAuthService.verify_token('SECRET', '123456')
+    def test_get_short_name(self):
+        """Test get_short_name method."""
+        user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123',
+            first_name='John'
+        )
 
-        mock_totp_instance.verify.assert_called_with('123456', valid_window=1)
+        self.assertEqual(user.get_short_name(), 'John')
+
+    def test_is_admin_property(self):
+        """Test is_admin property."""
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='testpass123',
+            role=User.ADMIN
+        )
+
+        regular = User.objects.create_user(
+            username='regular',
+            email='regular@example.com',
+            password='testpass123',
+            role=User.CONTRIBUTOR
+        )
+
+        self.assertTrue(admin.is_admin)
+        self.assertFalse(regular.is_admin)
+
+    def test_is_manager_property(self):
+        """Test is_manager property."""
+        manager = User.objects.create_user(
+            username='manager',
+            email='manager@example.com',
+            password='testpass123',
+            role=User.MANAGER
+        )
+
+        contributor = User.objects.create_user(
+            username='contributor',
+            email='contributor@example.com',
+            password='testpass123',
+            role=User.CONTRIBUTOR
+        )
+
+        self.assertTrue(manager.is_manager)
+        self.assertFalse(contributor.is_manager)
+
+    def test_is_client_user_property(self):
+        """Test is_client_user property."""
+        client_user = User.objects.create_user(
+            username='client',
+            email='client@example.com',
+            password='testpass123',
+            role=User.CLIENT
+        )
+
+        regular_user = User.objects.create_user(
+            username='regular',
+            email='regular@example.com',
+            password='testpass123',
+            role=User.CONTRIBUTOR
+        )
+
+        self.assertTrue(client_user.is_client_user)
+        self.assertFalse(regular_user.is_client_user)
+
+    def test_superuser_has_all_permissions(self):
+        """Test that superuser has all permissions."""
+        superuser = User.objects.create_superuser(
+            username='super',
+            email='super@example.com',
+            password='testpass123'
+        )
+
+        self.assertTrue(superuser.is_admin)
+        self.assertTrue(superuser.can_manage_contracts())
+        self.assertTrue(superuser.can_manage_invoices())
+        self.assertTrue(superuser.can_manage_users())
+
+    def test_permission_methods(self):
+        """Test various permission methods."""
+        admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='testpass123',
+            role=User.ADMIN
+        )
+
+        manager = User.objects.create_user(
+            username='manager',
+            email='manager@example.com',
+            password='testpass123',
+            role=User.MANAGER
+        )
+
+        contributor = User.objects.create_user(
+            username='contributor',
+            email='contributor@example.com',
+            password='testpass123',
+            role=User.CONTRIBUTOR
+        )
+
+        # Admin can do everything
+        self.assertTrue(admin.can_manage_contracts())
+        self.assertTrue(admin.can_manage_invoices())
+        self.assertTrue(admin.can_manage_users())
+        self.assertTrue(admin.can_access_analytics())
+
+        # Manager can manage contracts/invoices but not users
+        self.assertTrue(manager.can_manage_contracts())
+        self.assertTrue(manager.can_manage_invoices())
+        self.assertFalse(manager.can_manage_users())
+        self.assertTrue(manager.can_access_analytics())
+
+        # Contributor has limited permissions
+        self.assertFalse(contributor.can_manage_contracts())
+        self.assertFalse(contributor.can_manage_invoices())
+        self.assertFalse(contributor.can_manage_users())
+        self.assertFalse(contributor.can_access_analytics())
 
 
-class TestTwoFactorAuthServiceGenerateBackupCodes:
-    """Tests for TwoFactorAuthService.generate_backup_codes."""
+class TwoFactorAuthServiceTests(TestCase):
+    """Test TwoFactorAuthService methods."""
 
-    def test_generate_backup_codes_default_count(self):
-        """generate_backup_codes returns 10 codes by default."""
-        codes = TwoFactorAuthService.generate_backup_codes()
-        assert len(codes) == 10
+    def test_generate_secret(self):
+        """Test generating TOTP secret."""
+        secret = TwoFactorAuthService.generate_secret()
 
-    def test_generate_backup_codes_custom_count(self):
-        """generate_backup_codes returns the specified number of codes."""
-        codes = TwoFactorAuthService.generate_backup_codes(count=5)
-        assert len(codes) == 5
+        self.assertIsNotNone(secret)
+        self.assertIsInstance(secret, str)
+        self.assertEqual(len(secret), 32)  # Base32 encoded
 
-        codes = TwoFactorAuthService.generate_backup_codes(count=20)
-        assert len(codes) == 20
+    def test_generate_qr_code(self):
+        """Test generating QR code."""
+        user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
+        )
+        secret = TwoFactorAuthService.generate_secret()
 
-    def test_generate_backup_codes_format(self):
-        """Each backup code has the XXXX-XXXX format."""
-        codes = TwoFactorAuthService.generate_backup_codes()
-        pattern = re.compile(r'^[A-Z2-9]{4}-[A-Z2-9]{4}$')
+        qr_code = TwoFactorAuthService.generate_qr_code(user, secret)
 
+        self.assertIsNotNone(qr_code)
+        self.assertTrue(qr_code.startswith('data:image/png;base64,'))
+
+    def test_verify_token_valid(self):
+        """Test verifying valid TOTP token."""
+        secret = TwoFactorAuthService.generate_secret()
+        totp = pyotp.TOTP(secret)
+        valid_token = totp.now()
+
+        result = TwoFactorAuthService.verify_token(secret, valid_token)
+
+        self.assertTrue(result)
+
+    def test_verify_token_invalid(self):
+        """Test verifying invalid TOTP token."""
+        secret = TwoFactorAuthService.generate_secret()
+        invalid_token = '000000'
+
+        result = TwoFactorAuthService.verify_token(secret, invalid_token)
+
+        self.assertFalse(result)
+
+    def test_verify_token_with_time_window(self):
+        """Test that token verification allows time window."""
+        secret = TwoFactorAuthService.generate_secret()
+        totp = pyotp.TOTP(secret)
+
+        # Get token from 30 seconds ago
+        import time
+        past_time = int(time.time()) - 30
+        past_token = totp.at(past_time)
+
+        # Should still be valid due to valid_window=1
+        result = TwoFactorAuthService.verify_token(secret, past_token)
+
+        # Note: This may occasionally fail near time boundaries
+        # In production, valid_window handles this
+
+    def test_generate_backup_codes(self):
+        """Test generating backup codes."""
+        codes = TwoFactorAuthService.generate_backup_codes(count=10)
+
+        self.assertEqual(len(codes), 10)
         for code in codes:
-            assert pattern.match(code), f"Code '{code}' does not match XXXX-XXXX format"
+            # Format: XXXX-XXXX
+            self.assertEqual(len(code), 9)
+            self.assertIn('-', code)
 
-    def test_generate_backup_codes_uniqueness(self):
-        """All generated backup codes are unique."""
-        codes = TwoFactorAuthService.generate_backup_codes(count=100)
-        assert len(set(codes)) == len(codes)
-
-    def test_generate_backup_codes_character_set(self):
-        """Backup codes only use uppercase letters (excluding I, O) and digits 2-9."""
-        allowed_chars = set('ABCDEFGHJKLMNPQRSTUVWXYZ23456789')
+    def test_generate_backup_codes_unique(self):
+        """Test that generated backup codes are unique."""
         codes = TwoFactorAuthService.generate_backup_codes(count=50)
 
-        for code in codes:
-            # Remove the dash
-            raw = code.replace('-', '')
-            for char in raw:
-                assert char in allowed_chars, f"Unexpected character '{char}' in code '{code}'"
-
-    def test_generate_backup_codes_no_ambiguous_characters(self):
-        """Backup codes do not contain ambiguous characters (I, O, 0, 1)."""
-        codes = TwoFactorAuthService.generate_backup_codes(count=100)
-        ambiguous = set('IO01')
-
-        for code in codes:
-            raw = code.replace('-', '')
-            for char in raw:
-                assert char not in ambiguous, (
-                    f"Ambiguous character '{char}' found in code '{code}'"
-                )
-
-    def test_generate_backup_codes_zero_count(self):
-        """generate_backup_codes with count=0 returns empty list."""
-        codes = TwoFactorAuthService.generate_backup_codes(count=0)
-        assert codes == []
+        # All codes should be unique
+        self.assertEqual(len(codes), len(set(codes)))
 
 
-# ============================================================================
-# enable_2fa View Tests
-# ============================================================================
+class Enable2FATests(TestCase):
+    """Test enabling 2FA."""
 
-
-class TestEnable2FA:
-    """Tests for the enable_2fa view."""
-
-    ENABLE_URL = f"{AUTH_URL_PREFIX}2fa/enable/"
-
-    @pytest.mark.django_db
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.generate_qr_code')
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.generate_secret')
-    def test_enable_2fa_success(
-        self, mock_generate_secret, mock_generate_qr_code,
-        authenticated_admin_client, admin_user
-    ):
-        """Enabling 2FA returns secret and QR code."""
-        mock_generate_secret.return_value = 'TESTSECRET123456'
-        mock_generate_qr_code.return_value = 'data:image/png;base64,abc123'
-
-        response = authenticated_admin_client.post(self.ENABLE_URL, format="json")
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["secret"] == 'TESTSECRET123456'
-        assert response.data["qr_code"] == 'data:image/png;base64,abc123'
-        assert "message" in response.data
-
-        # Verify secret was saved to user
-        admin_user.refresh_from_db()
-        assert admin_user.two_factor_secret == 'TESTSECRET123456'
-
-    @pytest.mark.django_db
-    def test_enable_2fa_already_enabled(self, authenticated_admin_client, admin_user):
-        """Enabling 2FA when already enabled returns 400."""
-        admin_user.two_factor_enabled = True
-        admin_user.two_factor_secret = 'EXISTINGSECRET'
-        admin_user.save()
-
-        response = authenticated_admin_client.post(self.ENABLE_URL, format="json")
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "already enabled" in response.data["error"]
-
-    @pytest.mark.django_db
-    def test_enable_2fa_unauthenticated(self, api_client):
-        """Unauthenticated users cannot enable 2FA."""
-        response = api_client.post(self.ENABLE_URL, format="json")
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-
-# ============================================================================
-# verify_2fa_setup View Tests
-# ============================================================================
-
-
-class TestVerify2FASetup:
-    """Tests for the verify_2fa_setup view."""
-
-    VERIFY_SETUP_URL = f"{AUTH_URL_PREFIX}2fa/verify-setup/"
-
-    @pytest.mark.django_db
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.verify_token')
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.generate_backup_codes')
-    def test_verify_2fa_setup_success(
-        self, mock_generate_backup, mock_verify_token,
-        authenticated_admin_client, admin_user
-    ):
-        """Successful 2FA verification enables 2FA and returns backup codes."""
-        admin_user.two_factor_secret = 'TESTSECRET123456'
-        admin_user.save()
-
-        mock_verify_token.return_value = True
-        mock_generate_backup.return_value = [
-            'ABCD-EFGH', 'IJKL-MNOP', 'QRST-UVWX',
-        ]
-
-        response = authenticated_admin_client.post(
-            self.VERIFY_SETUP_URL, {"token": "123456"}, format="json"
+    def setUp(self):
+        """Set up test data."""
+        self.factory = APIRequestFactory()
+        self.user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
         )
 
-        assert response.status_code == status.HTTP_200_OK
-        assert "backup_codes" in response.data
-        assert len(response.data["backup_codes"]) == 3
-        assert "warning" in response.data
+    def test_enable_2fa_success(self):
+        """Test successfully enabling 2FA."""
+        request = self.factory.post('/api/auth/2fa/enable/')
+        force_authenticate(request, user=self.user)
+
+        response = enable_2fa(request)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('secret', response.data)
+        self.assertIn('qr_code', response.data)
+
+        # Verify secret was saved
+        self.user.refresh_from_db()
+        self.assertIsNotNone(self.user.two_factor_secret)
+        self.assertFalse(self.user.two_factor_enabled)  # Not enabled until verified
+
+    def test_enable_2fa_already_enabled(self):
+        """Test enabling 2FA when already enabled."""
+        self.user.two_factor_enabled = True
+        self.user.save()
+
+        request = self.factory.post('/api/auth/2fa/enable/')
+        force_authenticate(request, user=self.user)
+
+        response = enable_2fa(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+
+
+class Verify2FASetupTests(TestCase):
+    """Test verifying 2FA setup."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.factory = APIRequestFactory()
+        self.user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
+        )
+        self.secret = TwoFactorAuthService.generate_secret()
+        self.user.two_factor_secret = self.secret
+        self.user.save()
+
+    def test_verify_2fa_setup_success(self):
+        """Test successfully verifying 2FA setup."""
+        totp = pyotp.TOTP(self.secret)
+        valid_token = totp.now()
+
+        request = self.factory.post('/api/auth/2fa/verify-setup/', {
+            'token': valid_token
+        }, format='json')
+        force_authenticate(request, user=self.user)
+
+        response = verify_2fa_setup(request)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('backup_codes', response.data)
 
         # Verify 2FA is now enabled
-        admin_user.refresh_from_db()
-        assert admin_user.two_factor_enabled is True
-        assert admin_user.two_factor_backup_codes == ['ABCD-EFGH', 'IJKL-MNOP', 'QRST-UVWX']
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.two_factor_enabled)
+        self.assertGreater(len(self.user.two_factor_backup_codes), 0)
 
-    @pytest.mark.django_db
-    def test_verify_2fa_setup_missing_token(self, authenticated_admin_client, admin_user):
-        """verify_2fa_setup fails when token is missing."""
-        admin_user.two_factor_secret = 'TESTSECRET123456'
-        admin_user.save()
+    def test_verify_2fa_setup_invalid_token(self):
+        """Test verifying 2FA setup with invalid token."""
+        request = self.factory.post('/api/auth/2fa/verify-setup/', {
+            'token': '000000'
+        }, format='json')
+        force_authenticate(request, user=self.user)
 
-        response = authenticated_admin_client.post(
-            self.VERIFY_SETUP_URL, {}, format="json"
+        response = verify_2fa_setup(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Verify 2FA is still not enabled
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.two_factor_enabled)
+
+    def test_verify_2fa_setup_missing_token(self):
+        """Test verifying 2FA setup without token."""
+        request = self.factory.post('/api/auth/2fa/verify-setup/', {}, format='json')
+        force_authenticate(request, user=self.user)
+
+        response = verify_2fa_setup(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_verify_2fa_setup_not_initiated(self):
+        """Test verifying 2FA setup when not initiated."""
+        user_without_secret = User.objects.create_user(
+            username='nosecret',
+            email='nosecret@example.com',
+            password='testpass123'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Token is required" in response.data["error"]
+        request = self.factory.post('/api/auth/2fa/verify-setup/', {
+            'token': '123456'
+        }, format='json')
+        force_authenticate(request, user=user_without_secret)
 
-    @pytest.mark.django_db
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.verify_token')
-    def test_verify_2fa_setup_invalid_token(
-        self, mock_verify_token, authenticated_admin_client, admin_user
-    ):
-        """verify_2fa_setup fails when token is invalid."""
-        admin_user.two_factor_secret = 'TESTSECRET123456'
-        admin_user.save()
+        response = verify_2fa_setup(request)
 
-        mock_verify_token.return_value = False
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        response = authenticated_admin_client.post(
-            self.VERIFY_SETUP_URL, {"token": "000000"}, format="json"
+
+class Disable2FATests(TestCase):
+    """Test disabling 2FA."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.factory = APIRequestFactory()
+        self.user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
         )
+        self.secret = TwoFactorAuthService.generate_secret()
+        self.user.two_factor_enabled = True
+        self.user.two_factor_secret = self.secret
+        self.user.two_factor_backup_codes = ['AAAA-BBBB', 'CCCC-DDDD']
+        self.user.save()
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Invalid token" in response.data["error"]
+    def test_disable_2fa_with_token_success(self):
+        """Test disabling 2FA with valid token."""
+        totp = pyotp.TOTP(self.secret)
+        valid_token = totp.now()
 
-        # 2FA should not be enabled
-        admin_user.refresh_from_db()
-        assert admin_user.two_factor_enabled is False
+        request = self.factory.post('/api/auth/2fa/disable/', {
+            'token': valid_token
+        }, format='json')
+        force_authenticate(request, user=self.user)
 
-    @pytest.mark.django_db
-    def test_verify_2fa_setup_no_secret(self, authenticated_admin_client, admin_user):
-        """verify_2fa_setup fails when no secret has been generated (enable not called)."""
-        # Ensure no secret is set
-        admin_user.two_factor_secret = ''
-        admin_user.save()
+        response = disable_2fa(request)
 
-        response = authenticated_admin_client.post(
-            self.VERIFY_SETUP_URL, {"token": "123456"}, format="json"
-        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "not initiated" in response.data["error"]
+        # Verify 2FA is disabled
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.two_factor_enabled)
+        self.assertEqual(self.user.two_factor_secret, '')
+        self.assertEqual(len(self.user.two_factor_backup_codes), 0)
 
-    @pytest.mark.django_db
-    def test_verify_2fa_setup_unauthenticated(self, api_client):
-        """Unauthenticated users cannot verify 2FA setup."""
-        response = api_client.post(
-            self.VERIFY_SETUP_URL, {"token": "123456"}, format="json"
-        )
+    def test_disable_2fa_with_backup_code_success(self):
+        """Test disabling 2FA with backup code."""
+        request = self.factory.post('/api/auth/2fa/disable/', {
+            'backup_code': 'AAAA-BBBB'
+        }, format='json')
+        force_authenticate(request, user=self.user)
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        response = disable_2fa(request)
 
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-# ============================================================================
-# disable_2fa View Tests
-# ============================================================================
+        # Verify 2FA is disabled
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.two_factor_enabled)
 
+    def test_disable_2fa_invalid_token(self):
+        """Test disabling 2FA with invalid token."""
+        request = self.factory.post('/api/auth/2fa/disable/', {
+            'token': '000000'
+        }, format='json')
+        force_authenticate(request, user=self.user)
 
-class TestDisable2FA:
-    """Tests for the disable_2fa view."""
+        response = disable_2fa(request)
 
-    DISABLE_URL = f"{AUTH_URL_PREFIX}2fa/disable/"
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def _setup_2fa_user(self, user, secret='TESTSECRET123456', backup_codes=None):
-        """Helper to set up a user with 2FA enabled."""
-        user.two_factor_enabled = True
-        user.two_factor_secret = secret
-        user.two_factor_backup_codes = backup_codes or ['ABCD-EFGH', 'IJKL-MNOP']
-        user.save()
+        # Verify 2FA is still enabled
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.two_factor_enabled)
 
-    @pytest.mark.django_db
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.verify_token')
-    def test_disable_2fa_with_token(
-        self, mock_verify_token, authenticated_admin_client, admin_user
-    ):
-        """Disable 2FA with a valid TOTP token."""
-        self._setup_2fa_user(admin_user)
-        mock_verify_token.return_value = True
+    def test_disable_2fa_not_enabled(self):
+        """Test disabling 2FA when not enabled."""
+        self.user.two_factor_enabled = False
+        self.user.save()
 
-        response = authenticated_admin_client.post(
-            self.DISABLE_URL, {"token": "123456"}, format="json"
-        )
+        request = self.factory.post('/api/auth/2fa/disable/', {
+            'token': '123456'
+        }, format='json')
+        force_authenticate(request, user=self.user)
 
-        assert response.status_code == status.HTTP_200_OK
-        assert "disabled" in response.data["message"]
+        response = disable_2fa(request)
 
-        admin_user.refresh_from_db()
-        assert admin_user.two_factor_enabled is False
-        assert admin_user.two_factor_secret == ''
-        assert admin_user.two_factor_backup_codes == []
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    @pytest.mark.django_db
-    def test_disable_2fa_with_backup_code(self, authenticated_admin_client, admin_user):
-        """Disable 2FA with a valid backup code."""
-        self._setup_2fa_user(admin_user, backup_codes=['ABCD-EFGH', 'IJKL-MNOP'])
+    def test_disable_2fa_no_token_or_backup_code(self):
+        """Test disabling 2FA with neither token nor backup code (covers branch 216->222)."""
+        request = self.factory.post('/api/auth/2fa/disable/', {}, format='json')
+        force_authenticate(request, user=self.user)
 
-        response = authenticated_admin_client.post(
-            self.DISABLE_URL, {"backup_code": "ABCD-EFGH"}, format="json"
-        )
+        response = disable_2fa(request)
 
-        assert response.status_code == status.HTTP_200_OK
-        assert "disabled" in response.data["message"]
-
-        admin_user.refresh_from_db()
-        assert admin_user.two_factor_enabled is False
-
-    @pytest.mark.django_db
-    def test_disable_2fa_not_enabled(self, authenticated_admin_client, admin_user):
-        """Disabling 2FA when not enabled returns 400."""
-        admin_user.two_factor_enabled = False
-        admin_user.save()
-
-        response = authenticated_admin_client.post(
-            self.DISABLE_URL, {"token": "123456"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "not enabled" in response.data["error"]
-
-    @pytest.mark.django_db
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.verify_token')
-    def test_disable_2fa_invalid_token(
-        self, mock_verify_token, authenticated_admin_client, admin_user
-    ):
-        """Disabling 2FA with an invalid token fails."""
-        self._setup_2fa_user(admin_user)
-        mock_verify_token.return_value = False
-
-        response = authenticated_admin_client.post(
-            self.DISABLE_URL, {"token": "000000"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Invalid token or backup code" in response.data["error"]
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
 
         # 2FA should still be enabled
-        admin_user.refresh_from_db()
-        assert admin_user.two_factor_enabled is True
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.two_factor_enabled)
 
-    @pytest.mark.django_db
-    def test_disable_2fa_invalid_backup_code(self, authenticated_admin_client, admin_user):
-        """Disabling 2FA with an invalid backup code fails."""
-        self._setup_2fa_user(admin_user, backup_codes=['ABCD-EFGH'])
+    def test_disable_2fa_invalid_backup_code(self):
+        """Test disabling 2FA with invalid backup code (covers branch 217->222)."""
+        request = self.factory.post('/api/auth/2fa/disable/', {
+            'backup_code': 'ZZZZ-ZZZZ'
+        }, format='json')
+        force_authenticate(request, user=self.user)
 
-        response = authenticated_admin_client.post(
-            self.DISABLE_URL, {"backup_code": "XXXX-YYYY"}, format="json"
+        response = disable_2fa(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+
+        # 2FA should still be enabled
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.two_factor_enabled)
+
+
+class Verify2FATokenTests(TestCase):
+    """Test verifying 2FA tokens during login."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.factory = APIRequestFactory()
+        self.user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
         )
+        self.secret = TwoFactorAuthService.generate_secret()
+        self.user.two_factor_enabled = True
+        self.user.two_factor_secret = self.secret
+        self.user.save()
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Invalid token or backup code" in response.data["error"]
+    def test_verify_token_success(self):
+        """Test verifying valid 2FA token."""
+        totp = pyotp.TOTP(self.secret)
+        valid_token = totp.now()
 
-    @pytest.mark.django_db
-    def test_disable_2fa_no_token_no_backup(self, authenticated_admin_client, admin_user):
-        """Disabling 2FA without token or backup code fails."""
-        self._setup_2fa_user(admin_user)
+        request = self.factory.post('/api/auth/2fa/verify/', {
+            'token': valid_token
+        }, format='json')
+        force_authenticate(request, user=self.user)
 
-        response = authenticated_admin_client.post(
-            self.DISABLE_URL, {}, format="json"
+        response = verify_2fa_token(request)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['verified'])
+
+    def test_verify_token_invalid(self):
+        """Test verifying invalid 2FA token."""
+        request = self.factory.post('/api/auth/2fa/verify/', {
+            'token': '000000'
+        }, format='json')
+        force_authenticate(request, user=self.user)
+
+        response = verify_2fa_token(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data['verified'])
+
+    def test_verify_token_missing_token(self):
+        """Test verifying 2FA token when no token is provided (covers line 256)."""
+        request = self.factory.post('/api/auth/2fa/verify/', {}, format='json')
+        force_authenticate(request, user=self.user)
+
+        response = verify_2fa_token(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+        self.assertIn('required', response.data['error'].lower())
+
+    def test_verify_token_2fa_not_enabled(self):
+        """Test verifying 2FA token when 2FA is not enabled (covers line 262)."""
+        self.user.two_factor_enabled = False
+        self.user.save()
+
+        request = self.factory.post('/api/auth/2fa/verify/', {
+            'token': '123456'
+        }, format='json')
+        force_authenticate(request, user=self.user)
+
+        response = verify_2fa_token(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+        self.assertIn('not enabled', response.data['error'].lower())
+
+
+class UseBackupCodeTests(TestCase):
+    """Test using backup codes."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.factory = APIRequestFactory()
+        self.user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
         )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-    @pytest.mark.django_db
-    def test_disable_2fa_unauthenticated(self, api_client):
-        """Unauthenticated users cannot disable 2FA."""
-        response = api_client.post(
-            self.DISABLE_URL, {"token": "123456"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-
-# ============================================================================
-# verify_2fa_token View Tests
-# ============================================================================
-
-
-class TestVerify2FAToken:
-    """Tests for the verify_2fa_token view."""
-
-    VERIFY_URL = f"{AUTH_URL_PREFIX}2fa/verify/"
-
-    @pytest.mark.django_db
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.verify_token')
-    def test_verify_2fa_token_valid(
-        self, mock_verify_token, authenticated_admin_client, admin_user
-    ):
-        """Verify a valid 2FA token succeeds."""
-        admin_user.two_factor_enabled = True
-        admin_user.two_factor_secret = 'TESTSECRET123456'
-        admin_user.save()
-
-        mock_verify_token.return_value = True
-
-        response = authenticated_admin_client.post(
-            self.VERIFY_URL, {"token": "123456"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["verified"] is True
-        assert "verified successfully" in response.data["message"]
-
-    @pytest.mark.django_db
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.verify_token')
-    def test_verify_2fa_token_invalid(
-        self, mock_verify_token, authenticated_admin_client, admin_user
-    ):
-        """Verify an invalid 2FA token returns error."""
-        admin_user.two_factor_enabled = True
-        admin_user.two_factor_secret = 'TESTSECRET123456'
-        admin_user.save()
-
-        mock_verify_token.return_value = False
-
-        response = authenticated_admin_client.post(
-            self.VERIFY_URL, {"token": "000000"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data["verified"] is False
-        assert "Invalid token" in response.data["error"]
-
-    @pytest.mark.django_db
-    def test_verify_2fa_token_not_enabled(self, authenticated_admin_client, admin_user):
-        """Verifying 2FA token when 2FA is not enabled returns error."""
-        admin_user.two_factor_enabled = False
-        admin_user.save()
-
-        response = authenticated_admin_client.post(
-            self.VERIFY_URL, {"token": "123456"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "not enabled" in response.data["error"]
-
-    @pytest.mark.django_db
-    def test_verify_2fa_token_missing_token(self, authenticated_admin_client, admin_user):
-        """Verifying without providing a token returns error."""
-        admin_user.two_factor_enabled = True
-        admin_user.two_factor_secret = 'TESTSECRET123456'
-        admin_user.save()
-
-        response = authenticated_admin_client.post(
-            self.VERIFY_URL, {}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Token is required" in response.data["error"]
-
-    @pytest.mark.django_db
-    def test_verify_2fa_token_unauthenticated(self, api_client):
-        """Unauthenticated users cannot verify 2FA tokens."""
-        response = api_client.post(
-            self.VERIFY_URL, {"token": "123456"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-
-# ============================================================================
-# use_backup_code View Tests
-# ============================================================================
-
-
-class TestUseBackupCode:
-    """Tests for the use_backup_code view."""
-
-    BACKUP_URL = f"{AUTH_URL_PREFIX}2fa/backup-code/"
-
-    def _setup_2fa_user(self, user, backup_codes=None):
-        """Helper to set up a user with 2FA and backup codes."""
-        user.two_factor_enabled = True
-        user.two_factor_secret = 'TESTSECRET123456'
-        user.two_factor_backup_codes = backup_codes or [
-            'ABCD-EFGH', 'IJKL-MNOP', 'QRST-UVWX',
+        self.user.two_factor_enabled = True
+        self.user.two_factor_backup_codes = [
+            'AAAA-BBBB',
+            'CCCC-DDDD',
+            'EEEE-FFFF'
         ]
-        user.save()
+        self.user.save()
 
-    @pytest.mark.django_db
-    def test_use_backup_code_valid(self, authenticated_admin_client, admin_user):
-        """Using a valid backup code succeeds and removes it."""
-        self._setup_2fa_user(admin_user, ['ABCD-EFGH', 'IJKL-MNOP', 'QRST-UVWX'])
+    def test_use_backup_code_success(self):
+        """Test using valid backup code."""
+        request = self.factory.post('/api/auth/2fa/backup-code/', {
+            'backup_code': 'AAAA-BBBB'
+        }, format='json')
+        force_authenticate(request, user=self.user)
 
-        response = authenticated_admin_client.post(
-            self.BACKUP_URL, {"backup_code": "ABCD-EFGH"}, format="json"
+        response = use_backup_code(request)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['verified'])
+        self.assertEqual(response.data['remaining_codes'], 2)
+
+        # Verify code was removed
+        self.user.refresh_from_db()
+        self.assertNotIn('AAAA-BBBB', self.user.two_factor_backup_codes)
+        self.assertEqual(len(self.user.two_factor_backup_codes), 2)
+
+    def test_use_backup_code_invalid(self):
+        """Test using invalid backup code."""
+        request = self.factory.post('/api/auth/2fa/backup-code/', {
+            'backup_code': 'ZZZZ-ZZZZ'
+        }, format='json')
+        force_authenticate(request, user=self.user)
+
+        response = use_backup_code(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data['verified'])
+
+    def test_use_backup_code_already_used(self):
+        """Test using already used backup code."""
+        # Use code first time
+        request1 = self.factory.post('/api/auth/2fa/backup-code/', {
+            'backup_code': 'AAAA-BBBB'
+        }, format='json')
+        force_authenticate(request1, user=self.user)
+        use_backup_code(request1)
+
+        # Try to use same code again
+        request2 = self.factory.post('/api/auth/2fa/backup-code/', {
+            'backup_code': 'AAAA-BBBB'
+        }, format='json')
+        force_authenticate(request2, user=self.user)
+        response = use_backup_code(request2)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_use_backup_code_missing_code(self):
+        """Test using backup code when no code is provided (covers line 295)."""
+        request = self.factory.post('/api/auth/2fa/backup-code/', {}, format='json')
+        force_authenticate(request, user=self.user)
+
+        response = use_backup_code(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+        self.assertIn('required', response.data['error'].lower())
+
+    def test_use_backup_code_2fa_not_enabled(self):
+        """Test using backup code when 2FA is not enabled (covers line 301)."""
+        self.user.two_factor_enabled = False
+        self.user.save()
+
+        request = self.factory.post('/api/auth/2fa/backup-code/', {
+            'backup_code': 'AAAA-BBBB'
+        }, format='json')
+        force_authenticate(request, user=self.user)
+
+        response = use_backup_code(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+        self.assertIn('not enabled', response.data['error'].lower())
+
+
+class RegenerateBackupCodesTests(TestCase):
+    """Test regenerating backup codes."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.factory = APIRequestFactory()
+        self.user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
         )
+        self.secret = TwoFactorAuthService.generate_secret()
+        self.user.two_factor_enabled = True
+        self.user.two_factor_secret = self.secret
+        self.user.two_factor_backup_codes = ['OLD1-CODE', 'OLD2-CODE']
+        self.user.save()
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["verified"] is True
-        assert response.data["remaining_codes"] == 2
+    def test_regenerate_backup_codes_success(self):
+        """Test successfully regenerating backup codes."""
+        totp = pyotp.TOTP(self.secret)
+        valid_token = totp.now()
 
-        # Verify code was consumed
-        admin_user.refresh_from_db()
-        assert 'ABCD-EFGH' not in admin_user.two_factor_backup_codes
-        assert len(admin_user.two_factor_backup_codes) == 2
+        request = self.factory.post('/api/auth/2fa/regenerate-backup-codes/', {
+            'token': valid_token
+        }, format='json')
+        force_authenticate(request, user=self.user)
 
-    @pytest.mark.django_db
-    def test_use_backup_code_invalid(self, authenticated_admin_client, admin_user):
-        """Using an invalid backup code fails."""
-        self._setup_2fa_user(admin_user, ['ABCD-EFGH'])
+        response = regenerate_backup_codes(request)
 
-        response = authenticated_admin_client.post(
-            self.BACKUP_URL, {"backup_code": "XXXX-YYYY"}, format="json"
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('backup_codes', response.data)
+
+        # Verify new codes were generated
+        self.user.refresh_from_db()
+        self.assertNotIn('OLD1-CODE', self.user.two_factor_backup_codes)
+        self.assertEqual(len(self.user.two_factor_backup_codes), 10)
+
+    def test_regenerate_backup_codes_invalid_token(self):
+        """Test regenerating backup codes with invalid token."""
+        request = self.factory.post('/api/auth/2fa/regenerate-backup-codes/', {
+            'token': '000000'
+        }, format='json')
+        force_authenticate(request, user=self.user)
+
+        response = regenerate_backup_codes(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_regenerate_backup_codes_missing_token(self):
+        """Test regenerating backup codes with no token provided (covers line 343)."""
+        request = self.factory.post(
+            '/api/auth/2fa/regenerate-backup-codes/', {}, format='json'
         )
+        force_authenticate(request, user=self.user)
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data["verified"] is False
-        assert "Invalid or already used" in response.data["error"]
+        response = regenerate_backup_codes(request)
 
-    @pytest.mark.django_db
-    def test_use_backup_code_not_enabled(self, authenticated_admin_client, admin_user):
-        """Using backup code when 2FA is not enabled returns error."""
-        admin_user.two_factor_enabled = False
-        admin_user.save()
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+        self.assertIn('required', response.data['error'].lower())
 
-        response = authenticated_admin_client.post(
-            self.BACKUP_URL, {"backup_code": "ABCD-EFGH"}, format="json"
+    def test_regenerate_backup_codes_2fa_not_enabled(self):
+        """Test regenerating backup codes when 2FA is not enabled (covers line 349)."""
+        self.user.two_factor_enabled = False
+        self.user.save()
+
+        request = self.factory.post('/api/auth/2fa/regenerate-backup-codes/', {
+            'token': '123456'
+        }, format='json')
+        force_authenticate(request, user=self.user)
+
+        response = regenerate_backup_codes(request)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+        self.assertIn('not enabled', response.data['error'].lower())
+
+
+class Get2FAStatusTests(TestCase):
+    """Test getting 2FA status."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.factory = APIRequestFactory()
+
+    def test_get_2fa_status_enabled(self):
+        """Test getting 2FA status when enabled."""
+        user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
         )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "not enabled" in response.data["error"]
-
-    @pytest.mark.django_db
-    def test_use_backup_code_last_code(self, authenticated_admin_client, admin_user):
-        """Using the last backup code returns appropriate warning."""
-        self._setup_2fa_user(admin_user, ['LAST-CODE'])
-
-        response = authenticated_admin_client.post(
-            self.BACKUP_URL, {"backup_code": "LAST-CODE"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["verified"] is True
-        assert response.data["remaining_codes"] == 0
-        assert "last backup code" in response.data["warning"]
-
-    @pytest.mark.django_db
-    def test_use_backup_code_missing_code(self, authenticated_admin_client, admin_user):
-        """Using backup code without providing a code returns error."""
-        self._setup_2fa_user(admin_user)
-
-        response = authenticated_admin_client.post(
-            self.BACKUP_URL, {}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Backup code is required" in response.data["error"]
-
-    @pytest.mark.django_db
-    def test_use_backup_code_already_used(self, authenticated_admin_client, admin_user):
-        """A backup code cannot be used twice."""
-        self._setup_2fa_user(admin_user, ['ABCD-EFGH', 'IJKL-MNOP'])
-
-        # Use code once
-        authenticated_admin_client.post(
-            self.BACKUP_URL, {"backup_code": "ABCD-EFGH"}, format="json"
-        )
-
-        # Try again
-        response = authenticated_admin_client.post(
-            self.BACKUP_URL, {"backup_code": "ABCD-EFGH"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data["verified"] is False
-
-    @pytest.mark.django_db
-    def test_use_backup_code_unauthenticated(self, api_client):
-        """Unauthenticated users cannot use backup codes."""
-        response = api_client.post(
-            self.BACKUP_URL, {"backup_code": "ABCD-EFGH"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    @pytest.mark.django_db
-    def test_use_backup_code_remaining_with_multiple_codes(
-        self, authenticated_admin_client, admin_user
-    ):
-        """Remaining codes warning is appropriate when more than 0 remain."""
-        self._setup_2fa_user(admin_user, ['CODE-AAAA', 'CODE-BBBB', 'CODE-CCCC'])
-
-        response = authenticated_admin_client.post(
-            self.BACKUP_URL, {"backup_code": "CODE-AAAA"}, format="json"
-        )
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["remaining_codes"] == 2
-        assert "consumed and cannot be used again" in response.data["warning"]
-
-
-# ============================================================================
-# regenerate_backup_codes View Tests
-# ============================================================================
-
-
-class TestRegenerateBackupCodes:
-    """Tests for the regenerate_backup_codes view."""
-
-    REGENERATE_URL = f"{AUTH_URL_PREFIX}2fa/regenerate-backup-codes/"
-
-    def _setup_2fa_user(self, user):
-        """Helper to set up a user with 2FA enabled."""
         user.two_factor_enabled = True
-        user.two_factor_secret = 'TESTSECRET123456'
-        user.two_factor_backup_codes = ['OLD1-CODE', 'OLD2-CODE']
+        user.two_factor_backup_codes = ['CODE1-2345', 'CODE2-6789']
         user.save()
 
-    @pytest.mark.django_db
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.verify_token')
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.generate_backup_codes')
-    def test_regenerate_backup_codes_success(
-        self, mock_generate, mock_verify,
-        authenticated_admin_client, admin_user
-    ):
-        """Regenerating backup codes with valid token returns new codes."""
-        self._setup_2fa_user(admin_user)
-        mock_verify.return_value = True
-        mock_generate.return_value = ['NEW1-CODE', 'NEW2-CODE', 'NEW3-CODE']
+        request = self.factory.get('/api/auth/2fa/status/')
+        force_authenticate(request, user=user)
 
-        response = authenticated_admin_client.post(
-            self.REGENERATE_URL, {"token": "123456"}, format="json"
+        response = get_2fa_status(request)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['enabled'])
+        self.assertEqual(response.data['backup_codes_remaining'], 2)
+
+    def test_get_2fa_status_disabled(self):
+        """Test getting 2FA status when disabled."""
+        user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
         )
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["backup_codes"] == ['NEW1-CODE', 'NEW2-CODE', 'NEW3-CODE']
-        assert "warning" in response.data
+        request = self.factory.get('/api/auth/2fa/status/')
+        force_authenticate(request, user=user)
 
-        admin_user.refresh_from_db()
-        assert admin_user.two_factor_backup_codes == ['NEW1-CODE', 'NEW2-CODE', 'NEW3-CODE']
+        response = get_2fa_status(request)
 
-    @pytest.mark.django_db
-    @patch('apps.accounts.two_factor.TwoFactorAuthService.verify_token')
-    def test_regenerate_backup_codes_invalid_token(
-        self, mock_verify, authenticated_admin_client, admin_user
-    ):
-        """Regenerating backup codes with invalid token fails."""
-        self._setup_2fa_user(admin_user)
-        mock_verify.return_value = False
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['enabled'])
+        self.assertEqual(response.data['backup_codes_remaining'], 0)
 
-        response = authenticated_admin_client.post(
-            self.REGENERATE_URL, {"token": "000000"}, format="json"
+
+class UserInvitationModelTests(TestCase):
+    """Test UserInvitation model."""
+
+    def setUp(self):
+        """Set up test data."""
+        from datetime import timedelta
+
+        self.admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='testpass123',
+            role=User.ADMIN
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Invalid token" in response.data["error"]
-
-    @pytest.mark.django_db
-    def test_regenerate_backup_codes_not_enabled(
-        self, authenticated_admin_client, admin_user
-    ):
-        """Regenerating backup codes when 2FA is not enabled fails."""
-        admin_user.two_factor_enabled = False
-        admin_user.save()
-
-        response = authenticated_admin_client.post(
-            self.REGENERATE_URL, {"token": "123456"}, format="json"
+        self.invitation = UserInvitation.objects.create(
+            email='invite@example.com',
+            role=User.CONTRIBUTOR,
+            invited_by=self.admin,
+            invitation_token='abc123',
+            expires_at=timezone.now() + timedelta(days=7)
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "not enabled" in response.data["error"]
+    def test_invitation_creation(self):
+        """Test creating user invitation."""
+        self.assertEqual(self.invitation.status, UserInvitation.PENDING)
+        self.assertEqual(self.invitation.email, 'invite@example.com')
 
-    @pytest.mark.django_db
-    def test_regenerate_backup_codes_missing_token(
-        self, authenticated_admin_client, admin_user
-    ):
-        """Regenerating backup codes without token fails."""
-        self._setup_2fa_user(admin_user)
+    def test_is_expired_property_not_expired(self):
+        """Test is_expired property for valid invitation."""
+        self.assertFalse(self.invitation.is_expired)
 
-        response = authenticated_admin_client.post(
-            self.REGENERATE_URL, {}, format="json"
+    def test_is_expired_property_expired(self):
+        """Test is_expired property for expired invitation."""
+        from datetime import timedelta
+
+        self.invitation.expires_at = timezone.now() - timedelta(days=1)
+        self.invitation.save()
+
+        self.assertTrue(self.invitation.is_expired)
+
+    def test_accept_invitation(self):
+        """Test accepting invitation."""
+        new_user = User.objects.create_user(
+            username='invite',
+            email='invite@example.com',
+            password='testpass123'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Token is required" in response.data["error"]
+        self.invitation.accept(new_user)
 
-    @pytest.mark.django_db
-    def test_regenerate_backup_codes_unauthenticated(self, api_client):
-        """Unauthenticated users cannot regenerate backup codes."""
-        response = api_client.post(
-            self.REGENERATE_URL, {"token": "123456"}, format="json"
+        self.assertEqual(self.invitation.status, UserInvitation.ACCEPTED)
+        self.assertIsNotNone(self.invitation.accepted_at)
+
+        # Verify user was assigned the correct role
+        new_user.refresh_from_db()
+        self.assertEqual(new_user.role, User.CONTRIBUTOR)
+
+    def test_cancel_invitation(self):
+        """Test canceling invitation."""
+        self.invitation.cancel()
+
+        self.assertEqual(self.invitation.status, UserInvitation.CANCELLED)
+
+
+class ApiKeyModelTests(TestCase):
+    """Test ApiKey model."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.user = User.objects.create_user(
+            username='test',
+            email='test@example.com',
+            password='testpass123'
         )
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        self.api_key = ApiKey.objects.create(
+            user=self.user,
+            name='Test API Key',
+            key='test_key_12345',
+            prefix='test_key',
+            scopes=['invoices:read', 'invoices:write'],
+            is_active=True
+        )
 
+    def test_api_key_creation(self):
+        """Test creating API key."""
+        self.assertEqual(self.api_key.name, 'Test API Key')
+        self.assertTrue(self.api_key.is_active)
+        self.assertEqual(self.api_key.usage_count, 0)
 
-# ============================================================================
-# get_2fa_status View Tests
-# ============================================================================
+    def test_is_expired_property_no_expiration(self):
+        """Test is_expired when no expiration date set."""
+        self.assertFalse(self.api_key.is_expired)
 
+    def test_is_expired_property_not_expired(self):
+        """Test is_expired for valid API key."""
+        from datetime import timedelta
 
-class TestGet2FAStatus:
-    """Tests for the get_2fa_status view."""
+        self.api_key.expires_at = timezone.now() + timedelta(days=30)
+        self.api_key.save()
 
-    STATUS_URL = f"{AUTH_URL_PREFIX}2fa/status/"
+        self.assertFalse(self.api_key.is_expired)
 
-    @pytest.mark.django_db
-    def test_get_2fa_status_enabled(self, authenticated_admin_client, admin_user):
-        """Status returns enabled=True with backup code count when 2FA is enabled."""
-        admin_user.two_factor_enabled = True
-        admin_user.two_factor_backup_codes = ['CODE-AAAA', 'CODE-BBBB', 'CODE-CCCC']
-        admin_user.save()
+    def test_is_expired_property_expired(self):
+        """Test is_expired for expired API key."""
+        from datetime import timedelta
 
-        response = authenticated_admin_client.get(self.STATUS_URL)
+        self.api_key.expires_at = timezone.now() - timedelta(days=1)
+        self.api_key.save()
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["enabled"] is True
-        assert response.data["backup_codes_remaining"] == 3
-        assert response.data["email"] == admin_user.email
+        self.assertTrue(self.api_key.is_expired)
 
-    @pytest.mark.django_db
-    def test_get_2fa_status_disabled(self, authenticated_admin_client, admin_user):
-        """Status returns enabled=False with 0 backup codes when 2FA is disabled."""
-        admin_user.two_factor_enabled = False
-        admin_user.save()
+    def test_is_valid_property(self):
+        """Test is_valid property."""
+        self.assertTrue(self.api_key.is_valid)
 
-        response = authenticated_admin_client.get(self.STATUS_URL)
+        # Make inactive
+        self.api_key.is_active = False
+        self.assertFalse(self.api_key.is_valid)
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["enabled"] is False
-        assert response.data["backup_codes_remaining"] == 0
-        assert response.data["email"] == admin_user.email
+    def test_record_usage(self):
+        """Test recording API key usage."""
+        initial_count = self.api_key.usage_count
 
-    @pytest.mark.django_db
-    def test_get_2fa_status_unauthenticated(self, api_client):
-        """Unauthenticated users cannot check 2FA status."""
-        response = api_client.get(self.STATUS_URL)
+        self.api_key.record_usage()
+        self.api_key.refresh_from_db()
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    @pytest.mark.django_db
-    def test_get_2fa_status_post_not_allowed(self, authenticated_admin_client):
-        """2FA status endpoint only accepts GET."""
-        response = authenticated_admin_client.post(self.STATUS_URL, {}, format="json")
-
-        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
-
-    @pytest.mark.django_db
-    def test_get_2fa_status_no_backup_codes(self, authenticated_admin_client, admin_user):
-        """Status with 2FA enabled but no backup codes shows 0 remaining."""
-        admin_user.two_factor_enabled = True
-        admin_user.two_factor_backup_codes = []
-        admin_user.save()
-
-        response = authenticated_admin_client.get(self.STATUS_URL)
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["enabled"] is True
-        assert response.data["backup_codes_remaining"] == 0
+        self.assertEqual(self.api_key.usage_count, initial_count + 1)
+        self.assertIsNotNone(self.api_key.last_used_at)

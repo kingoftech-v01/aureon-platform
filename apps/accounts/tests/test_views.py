@@ -11,9 +11,14 @@ Tests cover:
 """
 
 import pytest
+import secrets
+from datetime import timedelta
+from unittest.mock import patch
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from django.contrib.auth import get_user_model
+from apps.accounts.models import UserInvitation, ApiKey
 
 User = get_user_model()
 
@@ -443,3 +448,247 @@ class TestUserViewEdgeCases:
         response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
+
+
+# ============================================================================
+# Superuser Invitation Queryset Tests
+# ============================================================================
+
+@pytest.mark.django_db
+class TestUserInvitationSuperuser:
+    """Tests for superuser access to invitations (covers line 96)."""
+
+    def test_superuser_sees_all_invitations(
+        self, authenticated_superuser_client, user_invitation, admin_user
+    ):
+        """Test that superuser can see all invitations via get_queryset."""
+        # Create a second invitation from a different context
+        second_invitation = UserInvitation.objects.create(
+            email='second-invite@example.com',
+            role=User.MANAGER,
+            invited_by=admin_user,
+            invitation_token=secrets.token_urlsafe(32),
+            expires_at=timezone.now() + timedelta(days=7),
+            status=UserInvitation.PENDING,
+        )
+
+        response = authenticated_superuser_client.get('/api/auth/api/invitations/')
+
+        assert response.status_code == status.HTTP_200_OK
+        # Response is paginated: results are in response.data['results']
+        results = response.data.get('results', response.data)
+        returned_ids = {item['id'] for item in results}
+        assert str(user_invitation.id) in returned_ids
+        assert str(second_invitation.id) in returned_ids
+
+
+# ============================================================================
+# Invitation Email Failure Tests
+# ============================================================================
+
+@pytest.mark.django_db
+class TestUserInvitationEmailFailure:
+    """Tests for invitation creation when notification email fails (covers lines 126-127)."""
+
+    def test_create_invitation_email_failure_still_succeeds(
+        self, authenticated_admin_client
+    ):
+        """Test that invitation is still created even if notification email fails."""
+        with patch(
+            'apps.notifications.services.NotificationService.send_notification',
+            side_effect=Exception('SMTP connection refused'),
+        ):
+            data = {
+                'email': 'email-fail-invite@example.com',
+                'role': User.CONTRIBUTOR,
+                'message': 'Welcome!',
+            }
+
+            response = authenticated_admin_client.post(
+                '/api/auth/api/invitations/', data
+            )
+
+        # The invitation should still be created successfully despite email failure
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['email'] == 'email-fail-invite@example.com'
+        assert response.data['status'] == 'pending'
+
+    def test_create_invitation_notification_import_failure(
+        self, authenticated_admin_client
+    ):
+        """Test invitation creation when NotificationService import fails."""
+        with patch(
+            'apps.notifications.services.NotificationService.send_notification',
+            side_effect=ImportError('Module not found'),
+        ):
+            data = {
+                'email': 'import-fail-invite@example.com',
+                'role': User.CONTRIBUTOR,
+            }
+
+            response = authenticated_admin_client.post(
+                '/api/auth/api/invitations/', data
+            )
+
+        # The invitation should still be created
+        assert response.status_code == status.HTTP_201_CREATED
+
+
+# ============================================================================
+# Invitation Accept Flow Tests
+# ============================================================================
+
+@pytest.mark.django_db
+class TestUserInvitationAcceptFlow:
+    """Tests for accepting invitations (covers lines 162-179)."""
+
+    def test_accept_invitation_missing_token(self, api_client):
+        """Test accepting invitation without providing token."""
+        response = api_client.post('/api/auth/api/invitations/accept/', {})
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'token' in response.data.get('error', '').lower()
+
+    def test_accept_invitation_invalid_token(self, authenticated_contributor_client):
+        """Test accepting invitation with a non-existent token."""
+        response = authenticated_contributor_client.post(
+            '/api/auth/api/invitations/accept/',
+            {'token': 'completely-invalid-token-xyz'}
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert 'Invalid or expired' in response.data['error']
+
+    def test_accept_expired_invitation(
+        self, authenticated_contributor_client, admin_user
+    ):
+        """Test accepting an invitation that has expired (covers lines 162-168)."""
+        # Create an expired invitation (expires_at in the past)
+        expired_invitation = UserInvitation.objects.create(
+            email='expired@example.com',
+            role=User.CONTRIBUTOR,
+            invited_by=admin_user,
+            invitation_token=secrets.token_urlsafe(32),
+            expires_at=timezone.now() - timedelta(days=1),
+            status=UserInvitation.PENDING,
+        )
+
+        response = authenticated_contributor_client.post(
+            '/api/auth/api/invitations/accept/',
+            {'token': expired_invitation.invitation_token}
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'expired' in response.data['error'].lower()
+
+        # Verify the invitation status was updated to EXPIRED
+        expired_invitation.refresh_from_db()
+        assert expired_invitation.status == UserInvitation.EXPIRED
+
+    def test_accept_invitation_unauthenticated(self, api_client, admin_user):
+        """Test accepting invitation when user is not authenticated (covers lines 171-175)."""
+        invitation = UserInvitation.objects.create(
+            email='unauth-accept@example.com',
+            role=User.CONTRIBUTOR,
+            invited_by=admin_user,
+            invitation_token=secrets.token_urlsafe(32),
+            expires_at=timezone.now() + timedelta(days=7),
+            status=UserInvitation.PENDING,
+        )
+
+        # Use unauthenticated client
+        response = api_client.post(
+            '/api/auth/api/invitations/accept/',
+            {'token': invitation.invitation_token}
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert 'logged in' in response.data['error'].lower()
+
+    def test_accept_invitation_success(
+        self, authenticated_contributor_client, contributor_user, admin_user
+    ):
+        """Test successfully accepting a valid invitation (covers lines 177-182)."""
+        invitation = UserInvitation.objects.create(
+            email='success-accept@example.com',
+            role=User.MANAGER,
+            invited_by=admin_user,
+            invitation_token=secrets.token_urlsafe(32),
+            expires_at=timezone.now() + timedelta(days=7),
+            status=UserInvitation.PENDING,
+        )
+
+        response = authenticated_contributor_client.post(
+            '/api/auth/api/invitations/accept/',
+            {'token': invitation.invitation_token}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['message'] == 'Invitation accepted successfully.'
+        assert response.data['role'] == User.MANAGER
+
+        # Verify invitation status was updated
+        invitation.refresh_from_db()
+        assert invitation.status == UserInvitation.ACCEPTED
+        assert invitation.accepted_at is not None
+
+        # Verify user role was updated
+        contributor_user.refresh_from_db()
+        assert contributor_user.role == User.MANAGER
+
+
+# ============================================================================
+# Superuser API Key Queryset Tests
+# ============================================================================
+
+@pytest.mark.django_db
+class TestApiKeySuperuser:
+    """Tests for superuser access to API keys (covers line 195)."""
+
+    def test_superuser_sees_all_api_keys(
+        self, authenticated_superuser_client, api_key, contributor_user
+    ):
+        """Test that superuser can see all API keys from all users."""
+        # Create an API key for a different user
+        other_key = ApiKey.objects.create(
+            user=contributor_user,
+            name='Contributor API Key',
+            key=secrets.token_urlsafe(32),
+            prefix='contrib_',
+            scopes=['read'],
+            is_active=True,
+        )
+
+        response = authenticated_superuser_client.get('/api/auth/api/api-keys/')
+
+        assert response.status_code == status.HTTP_200_OK
+        # Response is paginated: results are in response.data['results']
+        results = response.data.get('results', response.data)
+        returned_ids = {item['id'] for item in results}
+        assert str(api_key.id) in returned_ids
+        assert str(other_key.id) in returned_ids
+
+    def test_regular_user_sees_only_own_api_keys(
+        self, authenticated_contributor_client, api_key, contributor_user
+    ):
+        """Test that a regular user only sees their own API keys."""
+        # Create an API key for the contributor user
+        own_key = ApiKey.objects.create(
+            user=contributor_user,
+            name='My Key',
+            key=secrets.token_urlsafe(32),
+            prefix='mykey___',
+            scopes=['read'],
+            is_active=True,
+        )
+
+        response = authenticated_contributor_client.get('/api/auth/api/api-keys/')
+
+        assert response.status_code == status.HTTP_200_OK
+        # Response is paginated: results are in response.data['results']
+        results = response.data.get('results', response.data)
+        returned_ids = {item['id'] for item in results}
+        # Should see own key
+        assert str(own_key.id) in returned_ids
+        # Should NOT see admin's key
+        assert str(api_key.id) not in returned_ids

@@ -145,6 +145,7 @@ class UserInvitationSerializer(serializers.ModelSerializer):
             'invitation_token',
             'invited_by',
             'created_at',
+            'expires_at',
             'accepted_at',
         ]
 

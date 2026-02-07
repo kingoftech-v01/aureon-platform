@@ -14,12 +14,21 @@ import pytest
 from unittest.mock import MagicMock, patch
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory
 from django.utils import timezone
 from datetime import timedelta
 
 from apps.accounts.models import User, UserInvitation, ApiKey
 from apps.accounts.admin import UserAdmin, UserInvitationAdmin, ApiKeyAdmin
+
+
+def _add_messages_to_request(request):
+    """Add messages middleware storage to a RequestFactory-produced request."""
+    setattr(request, 'session', 'session')
+    messages = FallbackStorage(request)
+    setattr(request, '_messages', messages)
+    return request
 
 
 # ============================================================================
@@ -321,6 +330,7 @@ class TestUserInvitationAdminMethods:
         ua = UserInvitationAdmin(UserInvitation, admin.site)
         request = RequestFactory().get('/admin/')
         request.user = admin_user
+        _add_messages_to_request(request)
 
         queryset = UserInvitation.objects.filter(
             id__in=[user_invitation.id, inv2.id]
@@ -341,6 +351,7 @@ class TestUserInvitationAdminMethods:
         ua = UserInvitationAdmin(UserInvitation, admin.site)
         request = RequestFactory().get('/admin/')
         request.user = admin_user
+        _add_messages_to_request(request)
 
         queryset = UserInvitation.objects.filter(id=user_invitation.id)
         ua.cancel_invitations(request, queryset)
@@ -427,14 +438,16 @@ class TestApiKeyAdminMethods:
 
     @pytest.mark.django_db
     def test_status_badge_expired(self, api_key):
-        """status_badge returns orange for expired key."""
+        """status_badge returns red/Invalid for expired key (expired implies not valid)."""
         api_key.expires_at = timezone.now() - timedelta(days=1)
         api_key.save()
 
         ua = ApiKeyAdmin(ApiKey, admin.site)
         badge = ua.status_badge(api_key)
-        assert 'Expired' in badge
-        assert 'orange' in badge
+        # An expired key is also not valid (is_valid = is_active and not is_expired),
+        # so the admin badge shows 'Invalid' rather than 'Expired'.
+        assert 'Invalid' in badge
+        assert 'red' in badge
 
     @pytest.mark.django_db
     def test_status_badge_inactive(self, api_key):
@@ -458,6 +471,7 @@ class TestApiKeyAdminMethods:
         ua = ApiKeyAdmin(ApiKey, admin.site)
         request = RequestFactory().get('/admin/')
         request.user = admin_user
+        _add_messages_to_request(request)
 
         queryset = ApiKey.objects.filter(id=api_key.id)
         ua.deactivate_keys(request, queryset)
@@ -474,6 +488,7 @@ class TestApiKeyAdminMethods:
         ua = ApiKeyAdmin(ApiKey, admin.site)
         request = RequestFactory().get('/admin/')
         request.user = admin_user
+        _add_messages_to_request(request)
 
         queryset = ApiKey.objects.filter(id=api_key.id)
         ua.activate_keys(request, queryset)

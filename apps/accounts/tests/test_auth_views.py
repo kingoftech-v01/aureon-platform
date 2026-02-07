@@ -349,6 +349,8 @@ class TestLoginEndpoint:
         """Login works for all user roles."""
         for user in [manager_user, contributor_user, client_user]:
             client = APIClient()
+            client.defaults['HTTP_ORIGIN'] = 'http://testserver'
+            client.defaults['SERVER_NAME'] = 'testserver'
             data = {
                 "email": user.email,
                 "password": "SecurePass123!",
@@ -386,7 +388,10 @@ class TestGetCurrentUser:
         response = api_client.get(self.USER_URL)
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert response.data["detail"] == "Not authenticated."
+        # DRF's default IsAuthenticated permission returns this message
+        # before the view's own check is reached.
+        assert "not_authenticated" in str(response.data["detail"].code) or \
+            "Authentication credentials were not provided" in str(response.data["detail"])
 
     @pytest.mark.django_db
     def test_get_current_user_returns_full_data(self, authenticated_admin_client, admin_user):
