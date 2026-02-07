@@ -28,20 +28,20 @@ class TestUserViewSet:
 
     def test_list_users_authenticated(self, authenticated_admin_client, admin_user, manager_user):
         """Test listing users as authenticated user."""
-        response = authenticated_admin_client.get('/api/users/')
+        response = authenticated_admin_client.get('/api/auth/api/users/')
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
     def test_list_users_unauthenticated(self, api_client):
         """Test listing users as unauthenticated user."""
-        response = api_client.get('/api/users/')
+        response = api_client.get('/api/auth/api/users/')
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_retrieve_user(self, authenticated_admin_client, admin_user):
         """Test retrieving a specific user."""
-        response = authenticated_admin_client.get(f'/api/users/{admin_user.id}/')
+        response = authenticated_admin_client.get(f'/api/auth/api/users/{admin_user.id}/')
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['email'] == admin_user.email
@@ -57,7 +57,7 @@ class TestUserViewSet:
             'role': User.CONTRIBUTOR,
         }
 
-        response = authenticated_admin_client.post('/api/users/', data)
+        response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['email'] == 'newuser@test.com'
@@ -72,7 +72,7 @@ class TestUserViewSet:
             'last_name': 'User',
         }
 
-        response = authenticated_admin_client.post('/api/users/', data)
+        response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'password' in response.data or 'password_confirm' in str(response.data)
@@ -87,7 +87,7 @@ class TestUserViewSet:
             'last_name': 'User',
         }
 
-        response = authenticated_admin_client.post('/api/users/', data)
+        response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -100,7 +100,7 @@ class TestUserViewSet:
         }
 
         response = authenticated_admin_client.patch(
-            f'/api/users/{contributor_user.id}/',
+            f'/api/auth/api/users/{contributor_user.id}/',
             data
         )
 
@@ -110,7 +110,7 @@ class TestUserViewSet:
     def test_delete_user(self, authenticated_admin_client, contributor_user):
         """Test deleting a user."""
         response = authenticated_admin_client.delete(
-            f'/api/users/{contributor_user.id}/'
+            f'/api/auth/api/users/{contributor_user.id}/'
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -118,7 +118,7 @@ class TestUserViewSet:
 
     def test_me_endpoint(self, authenticated_admin_client, admin_user):
         """Test the /me endpoint returns current user."""
-        response = authenticated_admin_client.get('/api/users/me/')
+        response = authenticated_admin_client.get('/api/auth/api/users/me/')
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['email'] == admin_user.email
@@ -126,7 +126,7 @@ class TestUserViewSet:
 
     def test_users_filtered_by_tenant(self, authenticated_admin_client, admin_user, tenant):
         """Test users are filtered by tenant."""
-        response = authenticated_admin_client.get('/api/users/')
+        response = authenticated_admin_client.get('/api/auth/api/users/')
 
         # All returned users should belong to the same tenant
         assert response.status_code == status.HTTP_200_OK
@@ -152,7 +152,7 @@ class TestPasswordChange:
         }
 
         response = authenticated_admin_client.post(
-            f'/api/users/{admin_user.id}/change_password/',
+            f'/api/auth/api/users/{admin_user.id}/change_password/',
             data
         )
 
@@ -169,7 +169,7 @@ class TestPasswordChange:
         }
 
         response = authenticated_admin_client.post(
-            f'/api/users/{admin_user.id}/change_password/',
+            f'/api/auth/api/users/{admin_user.id}/change_password/',
             data
         )
 
@@ -185,7 +185,7 @@ class TestPasswordChange:
         }
 
         response = authenticated_admin_client.post(
-            f'/api/users/{admin_user.id}/change_password/',
+            f'/api/auth/api/users/{admin_user.id}/change_password/',
             data
         )
 
@@ -202,7 +202,7 @@ class TestPasswordChange:
         }
 
         response = authenticated_contributor_client.post(
-            f'/api/users/{admin_user.id}/change_password/',
+            f'/api/auth/api/users/{admin_user.id}/change_password/',
             data
         )
 
@@ -341,7 +341,7 @@ class TestUserAuthorization:
             'last_name': 'User',
         }
 
-        response = authenticated_contributor_client.post('/api/users/', data)
+        response = authenticated_contributor_client.post('/api/auth/api/users/', data)
 
         # Should either be forbidden or the user creation is allowed
         # but user is assigned to same tenant
@@ -352,7 +352,7 @@ class TestUserAuthorization:
 
     def test_client_user_limited_access(self, authenticated_client_user):
         """Test client user has limited access."""
-        response = authenticated_client_user.get('/api/users/')
+        response = authenticated_client_user.get('/api/auth/api/users/')
 
         assert response.status_code in [
             status.HTTP_200_OK,
@@ -361,7 +361,7 @@ class TestUserAuthorization:
 
     def test_superuser_sees_all_users(self, authenticated_superuser_client, admin_user, tenant):
         """Test superuser can see all users."""
-        response = authenticated_superuser_client.get('/api/users/')
+        response = authenticated_superuser_client.get('/api/auth/api/users/')
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -398,7 +398,7 @@ class TestUserViewEdgeCases:
             'last_name': 'User',
         }
 
-        response = authenticated_admin_client.post('/api/users/', data)
+        response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -407,7 +407,7 @@ class TestUserViewEdgeCases:
         import uuid
         fake_id = uuid.uuid4()
 
-        response = authenticated_admin_client.get(f'/api/users/{fake_id}/')
+        response = authenticated_admin_client.get(f'/api/auth/api/users/{fake_id}/')
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -416,7 +416,7 @@ class TestUserViewEdgeCases:
         data = {'email': contributor_user.email}
 
         response = authenticated_admin_client.patch(
-            f'/api/users/{admin_user.id}/',
+            f'/api/auth/api/users/{admin_user.id}/',
             data
         )
 
@@ -436,7 +436,7 @@ class TestUserViewEdgeCases:
             'last_name': 'Smith-Jones',
         }
 
-        response = authenticated_admin_client.post('/api/users/', data)
+        response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
 
@@ -450,6 +450,6 @@ class TestUserViewEdgeCases:
             'last_name': 'Garcia',
         }
 
-        response = authenticated_admin_client.post('/api/users/', data)
+        response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
