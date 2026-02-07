@@ -26,20 +26,20 @@ class TestClientViewSet:
 
     def test_list_clients(self, authenticated_admin_client, client_company, client_individual):
         """Test listing clients."""
-        response = authenticated_admin_client.get('/api/clients/')
+        response = authenticated_admin_client.get('/api/api/clients/')
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 2
 
     def test_list_clients_unauthenticated(self, api_client):
         """Test listing clients without authentication."""
-        response = api_client.get('/api/clients/')
+        response = api_client.get('/api/api/clients/')
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_retrieve_client(self, authenticated_admin_client, client_company):
         """Test retrieving a specific client."""
-        response = authenticated_admin_client.get(f'/api/clients/{client_company.id}/')
+        response = authenticated_admin_client.get(f'/api/api/clients/{client_company.id}/')
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['email'] == client_company.email
@@ -57,7 +57,7 @@ class TestClientViewSet:
             'lifecycle_stage': Client.PROSPECT,
         }
 
-        response = authenticated_admin_client.post('/api/clients/', data)
+        response = authenticated_admin_client.post('/api/api/clients/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['company_name'] == 'New Company'
@@ -73,7 +73,7 @@ class TestClientViewSet:
             'lifecycle_stage': Client.LEAD,
         }
 
-        response = authenticated_admin_client.post('/api/clients/', data)
+        response = authenticated_admin_client.post('/api/api/clients/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['client_type'] == Client.INDIVIDUAL
@@ -87,7 +87,7 @@ class TestClientViewSet:
             'email': 'john@nocompany.com',
         }
 
-        response = authenticated_admin_client.post('/api/clients/', data)
+        response = authenticated_admin_client.post('/api/api/clients/', data)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'company_name' in response.data
@@ -100,7 +100,7 @@ class TestClientViewSet:
         }
 
         response = authenticated_admin_client.patch(
-            f'/api/clients/{client_company.id}/',
+            f'/api/api/clients/{client_company.id}/',
             data
         )
 
@@ -111,7 +111,7 @@ class TestClientViewSet:
     def test_delete_client(self, authenticated_admin_client, client_lead):
         """Test deleting a client."""
         response = authenticated_admin_client.delete(
-            f'/api/clients/{client_lead.id}/'
+            f'/api/api/clients/{client_lead.id}/'
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -129,7 +129,7 @@ class TestClientSearchFilter:
     def test_search_by_name(self, authenticated_admin_client, client_company):
         """Test searching clients by name."""
         response = authenticated_admin_client.get(
-            f'/api/clients/?search={client_company.first_name}'
+            f'/api/api/clients/?search={client_company.first_name}'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -138,7 +138,7 @@ class TestClientSearchFilter:
     def test_search_by_email(self, authenticated_admin_client, client_company):
         """Test searching clients by email."""
         response = authenticated_admin_client.get(
-            f'/api/clients/?search={client_company.email}'
+            f'/api/api/clients/?search={client_company.email}'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -147,7 +147,7 @@ class TestClientSearchFilter:
     def test_search_by_company_name(self, authenticated_admin_client, client_company):
         """Test searching clients by company name."""
         response = authenticated_admin_client.get(
-            f'/api/clients/?search={client_company.company_name}'
+            f'/api/api/clients/?search={client_company.company_name}'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -156,7 +156,7 @@ class TestClientSearchFilter:
     def test_filter_by_lifecycle_stage(self, authenticated_admin_client, client_company, client_lead):
         """Test filtering clients by lifecycle stage."""
         response = authenticated_admin_client.get(
-            f'/api/clients/?lifecycle_stage={Client.ACTIVE}'
+            f'/api/api/clients/?lifecycle_stage={Client.ACTIVE}'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -166,7 +166,7 @@ class TestClientSearchFilter:
     def test_filter_by_client_type(self, authenticated_admin_client, client_company, client_individual):
         """Test filtering clients by type."""
         response = authenticated_admin_client.get(
-            f'/api/clients/?client_type={Client.COMPANY}'
+            f'/api/api/clients/?client_type={Client.COMPANY}'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -176,7 +176,7 @@ class TestClientSearchFilter:
     def test_filter_by_is_active(self, authenticated_admin_client, client_company):
         """Test filtering clients by active status."""
         response = authenticated_admin_client.get(
-            '/api/clients/?is_active=true'
+            '/api/api/clients/?is_active=true'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -186,7 +186,7 @@ class TestClientSearchFilter:
     def test_ordering_by_created_at(self, authenticated_admin_client, client_company, client_individual):
         """Test ordering clients by created_at."""
         response = authenticated_admin_client.get(
-            '/api/clients/?ordering=-created_at'
+            '/api/api/clients/?ordering=-created_at'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -202,7 +202,7 @@ class TestClientStatistics:
 
     def test_stats_endpoint(self, authenticated_admin_client, client_company, client_lead, client_individual):
         """Test the stats endpoint returns correct data."""
-        response = authenticated_admin_client.get('/api/clients/stats/')
+        response = authenticated_admin_client.get('/api/api/clients/stats/')
 
         assert response.status_code == status.HTTP_200_OK
         assert 'total_clients' in response.data
@@ -215,7 +215,7 @@ class TestClientStatistics:
 
     def test_stats_counts_correct(self, authenticated_admin_client, client_company, client_lead):
         """Test stats endpoint has correct counts."""
-        response = authenticated_admin_client.get('/api/clients/stats/')
+        response = authenticated_admin_client.get('/api/api/clients/stats/')
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['total_clients'] >= 2
@@ -233,7 +233,7 @@ class TestClientPortalAccess:
     def test_create_portal_access(self, authenticated_admin_client, client_lead):
         """Test creating portal access for a client."""
         response = authenticated_admin_client.post(
-            f'/api/clients/{client_lead.id}/create_portal_access/'
+            f'/api/api/clients/{client_lead.id}/create_portal_access/'
         )
 
         # Should succeed or fail based on whether email is unique
@@ -251,7 +251,7 @@ class TestClientPortalAccess:
         client_company.save()
 
         response = authenticated_admin_client.post(
-            f'/api/clients/{client_company.id}/create_portal_access/'
+            f'/api/api/clients/{client_company.id}/create_portal_access/'
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -267,7 +267,7 @@ class TestClientNoteViewSet:
 
     def test_list_notes(self, authenticated_admin_client, client_note):
         """Test listing client notes."""
-        response = authenticated_admin_client.get('/api/client-notes/')
+        response = authenticated_admin_client.get('/api/api/notes/')
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -280,7 +280,7 @@ class TestClientNoteViewSet:
             'content': 'Discussed next steps with client.',
         }
 
-        response = authenticated_admin_client.post('/api/client-notes/', data)
+        response = authenticated_admin_client.post('/api/api/notes/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['note_type'] == 'call'
@@ -288,7 +288,7 @@ class TestClientNoteViewSet:
     def test_get_client_notes_action(self, authenticated_admin_client, client_company, client_note):
         """Test getting notes for a specific client."""
         response = authenticated_admin_client.get(
-            f'/api/clients/{client_company.id}/notes/'
+            f'/api/api/clients/{client_company.id}/notes/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -300,7 +300,7 @@ class TestClientNoteViewSet:
         }
 
         response = authenticated_admin_client.patch(
-            f'/api/client-notes/{client_note.id}/',
+            f'/api/api/notes/{client_note.id}/',
             data
         )
 
@@ -312,7 +312,7 @@ class TestClientNoteViewSet:
         from apps.clients.models import ClientNote
 
         response = authenticated_admin_client.delete(
-            f'/api/client-notes/{client_note.id}/'
+            f'/api/api/notes/{client_note.id}/'
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -329,14 +329,14 @@ class TestClientDocumentViewSet:
 
     def test_list_documents(self, authenticated_admin_client):
         """Test listing client documents."""
-        response = authenticated_admin_client.get('/api/client-documents/')
+        response = authenticated_admin_client.get('/api/api/documents/')
 
         assert response.status_code == status.HTTP_200_OK
 
     def test_get_client_documents_action(self, authenticated_admin_client, client_company):
         """Test getting documents for a specific client."""
         response = authenticated_admin_client.get(
-            f'/api/clients/{client_company.id}/documents/'
+            f'/api/api/clients/{client_company.id}/documents/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -358,7 +358,7 @@ class TestClientAuthorization:
         client_company.owner = contributor_user
         client_company.save()
 
-        response = authenticated_contributor_client.get('/api/clients/')
+        response = authenticated_contributor_client.get('/api/api/clients/')
 
         assert response.status_code == status.HTTP_200_OK
         # Should see clients owned by them or unassigned
@@ -367,7 +367,7 @@ class TestClientAuthorization:
         self, authenticated_admin_client, client_company, client_individual
     ):
         """Test staff users see all clients."""
-        response = authenticated_admin_client.get('/api/clients/')
+        response = authenticated_admin_client.get('/api/api/clients/')
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -391,7 +391,7 @@ class TestClientViewEdgeCases:
         }
 
         response = authenticated_admin_client.post(
-            '/api/clients/',
+            '/api/api/clients/',
             data,
             format='json'
         )
@@ -410,7 +410,7 @@ class TestClientViewEdgeCases:
         }
 
         response = authenticated_admin_client.post(
-            '/api/clients/',
+            '/api/api/clients/',
             data,
             format='json'
         )
@@ -423,7 +423,7 @@ class TestClientViewEdgeCases:
         import uuid
         fake_id = uuid.uuid4()
 
-        response = authenticated_admin_client.get(f'/api/clients/{fake_id}/')
+        response = authenticated_admin_client.get(f'/api/api/clients/{fake_id}/')
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -432,7 +432,7 @@ class TestClientViewEdgeCases:
     ):
         """Test update_financial_summary action."""
         response = authenticated_admin_client.post(
-            f'/api/clients/{client_company.id}/update_financial_summary/'
+            f'/api/api/clients/{client_company.id}/update_financial_summary/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -446,6 +446,6 @@ class TestClientViewEdgeCases:
             'email': 'user+tag@example.com',
         }
 
-        response = authenticated_admin_client.post('/api/clients/', data)
+        response = authenticated_admin_client.post('/api/api/clients/', data)
 
         assert response.status_code == status.HTTP_201_CREATED

@@ -219,7 +219,7 @@ class TestUserInvitationViewSet:
 
     def test_list_invitations(self, authenticated_admin_client, user_invitation):
         """Test listing user invitations."""
-        response = authenticated_admin_client.get('/api/invitations/')
+        response = authenticated_admin_client.get('/api/auth/api/invitations/')
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -231,7 +231,7 @@ class TestUserInvitationViewSet:
             'message': 'Welcome to the team!',
         }
 
-        response = authenticated_admin_client.post('/api/invitations/', data)
+        response = authenticated_admin_client.post('/api/auth/api/invitations/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['email'] == 'newinvite@example.com'
@@ -240,7 +240,7 @@ class TestUserInvitationViewSet:
     def test_cancel_invitation(self, authenticated_admin_client, user_invitation):
         """Test cancelling an invitation."""
         response = authenticated_admin_client.post(
-            f'/api/invitations/{user_invitation.id}/cancel/'
+            f'/api/auth/api/invitations/{user_invitation.id}/cancel/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -249,14 +249,14 @@ class TestUserInvitationViewSet:
 
     def test_accept_invitation_requires_token(self, api_client):
         """Test accepting invitation requires token."""
-        response = api_client.post('/api/invitations/accept/', {})
+        response = api_client.post('/api/auth/api/invitations/accept/', {})
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_accept_invitation_invalid_token(self, authenticated_contributor_client):
         """Test accepting invitation with invalid token."""
         response = authenticated_contributor_client.post(
-            '/api/invitations/accept/',
+            '/api/auth/api/invitations/accept/',
             {'token': 'invalid-token-12345'}
         )
 
@@ -273,7 +273,7 @@ class TestApiKeyViewSet:
 
     def test_list_api_keys(self, authenticated_admin_client, api_key):
         """Test listing API keys."""
-        response = authenticated_admin_client.get('/api/api-keys/')
+        response = authenticated_admin_client.get('/api/auth/api/api-keys/')
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -284,7 +284,7 @@ class TestApiKeyViewSet:
             'scopes': ['read'],
         }
 
-        response = authenticated_admin_client.post('/api/api-keys/', data, format='json')
+        response = authenticated_admin_client.post('/api/auth/api/api-keys/', data, format='json')
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['name'] == 'New API Key'
@@ -294,7 +294,7 @@ class TestApiKeyViewSet:
     def test_deactivate_api_key(self, authenticated_admin_client, api_key):
         """Test deactivating an API key."""
         response = authenticated_admin_client.post(
-            f'/api/api-keys/{api_key.id}/deactivate/'
+            f'/api/auth/api/api-keys/{api_key.id}/deactivate/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -307,7 +307,7 @@ class TestApiKeyViewSet:
         api_key.save()
 
         response = authenticated_admin_client.post(
-            f'/api/api-keys/{api_key.id}/activate/'
+            f'/api/auth/api/api-keys/{api_key.id}/activate/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -317,7 +317,7 @@ class TestApiKeyViewSet:
     def test_delete_api_key(self, authenticated_admin_client, api_key):
         """Test deleting an API key."""
         response = authenticated_admin_client.delete(
-            f'/api/api-keys/{api_key.id}/'
+            f'/api/auth/api/api-keys/{api_key.id}/'
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT

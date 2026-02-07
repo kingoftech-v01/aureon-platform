@@ -27,20 +27,20 @@ class TestContractViewSet:
 
     def test_list_contracts(self, authenticated_admin_client, contract_fixed, contract_hourly):
         """Test listing contracts."""
-        response = authenticated_admin_client.get('/api/contracts/')
+        response = authenticated_admin_client.get('/api/api/contracts/')
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 2
 
     def test_list_contracts_unauthenticated(self, api_client):
         """Test listing contracts without authentication."""
-        response = api_client.get('/api/contracts/')
+        response = api_client.get('/api/api/contracts/')
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_retrieve_contract(self, authenticated_admin_client, contract_fixed):
         """Test retrieving a specific contract."""
-        response = authenticated_admin_client.get(f'/api/contracts/{contract_fixed.id}/')
+        response = authenticated_admin_client.get(f'/api/api/contracts/{contract_fixed.id}/')
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['title'] == contract_fixed.title
@@ -60,7 +60,7 @@ class TestContractViewSet:
             'currency': 'USD',
         }
 
-        response = authenticated_admin_client.post('/api/contracts/', data)
+        response = authenticated_admin_client.post('/api/api/contracts/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['title'] == 'New Contract'
@@ -81,7 +81,7 @@ class TestContractViewSet:
             'currency': 'USD',
         }
 
-        response = authenticated_admin_client.post('/api/contracts/', data)
+        response = authenticated_admin_client.post('/api/api/contracts/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['hourly_rate'] == '150.00'
@@ -101,7 +101,7 @@ class TestContractViewSet:
             'currency': 'USD',
         }
 
-        response = authenticated_admin_client.post('/api/contracts/', data)
+        response = authenticated_admin_client.post('/api/api/contracts/', data)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'hourly_rate' in response.data
@@ -114,7 +114,7 @@ class TestContractViewSet:
         }
 
         response = authenticated_admin_client.patch(
-            f'/api/contracts/{contract_draft.id}/',
+            f'/api/api/contracts/{contract_draft.id}/',
             data
         )
 
@@ -125,7 +125,7 @@ class TestContractViewSet:
     def test_delete_contract(self, authenticated_admin_client, contract_draft):
         """Test deleting a contract."""
         response = authenticated_admin_client.delete(
-            f'/api/contracts/{contract_draft.id}/'
+            f'/api/api/contracts/{contract_draft.id}/'
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -145,7 +145,7 @@ class TestContractViewSet:
             'value': '1000.00',
         }
 
-        response = authenticated_admin_client.post('/api/contracts/', data)
+        response = authenticated_admin_client.post('/api/api/contracts/', data)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'end_date' in response.data
@@ -162,7 +162,7 @@ class TestContractSearchFilter:
     def test_search_by_title(self, authenticated_admin_client, contract_fixed):
         """Test searching contracts by title."""
         response = authenticated_admin_client.get(
-            f'/api/contracts/?search={contract_fixed.title}'
+            f'/api/api/contracts/?search={contract_fixed.title}'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -170,7 +170,7 @@ class TestContractSearchFilter:
     def test_search_by_contract_number(self, authenticated_admin_client, contract_fixed):
         """Test searching contracts by contract number."""
         response = authenticated_admin_client.get(
-            f'/api/contracts/?search={contract_fixed.contract_number}'
+            f'/api/api/contracts/?search={contract_fixed.contract_number}'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -178,7 +178,7 @@ class TestContractSearchFilter:
     def test_filter_by_status(self, authenticated_admin_client, contract_fixed, contract_draft):
         """Test filtering contracts by status."""
         response = authenticated_admin_client.get(
-            f'/api/contracts/?status={Contract.ACTIVE}'
+            f'/api/api/contracts/?status={Contract.ACTIVE}'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -190,7 +190,7 @@ class TestContractSearchFilter:
     ):
         """Test filtering contracts by type."""
         response = authenticated_admin_client.get(
-            f'/api/contracts/?contract_type={Contract.HOURLY}'
+            f'/api/api/contracts/?contract_type={Contract.HOURLY}'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -200,7 +200,7 @@ class TestContractSearchFilter:
     def test_ordering_by_value(self, authenticated_admin_client, contract_fixed, contract_hourly):
         """Test ordering contracts by value."""
         response = authenticated_admin_client.get(
-            '/api/contracts/?ordering=-value'
+            '/api/api/contracts/?ordering=-value'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -218,7 +218,7 @@ class TestContractStatistics:
         self, authenticated_admin_client, contract_fixed, contract_draft, contract_hourly
     ):
         """Test the stats endpoint returns correct data."""
-        response = authenticated_admin_client.get('/api/contracts/stats/')
+        response = authenticated_admin_client.get('/api/api/contracts/stats/')
 
         assert response.status_code == status.HTTP_200_OK
         assert 'total_contracts' in response.data
@@ -234,7 +234,7 @@ class TestContractStatistics:
         self, authenticated_admin_client, contract_fixed, contract_draft
     ):
         """Test stats endpoint has correct counts."""
-        response = authenticated_admin_client.get('/api/contracts/stats/')
+        response = authenticated_admin_client.get('/api/api/contracts/stats/')
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['total_contracts'] >= 2
@@ -258,7 +258,7 @@ class TestContractSigning:
         }
 
         response = authenticated_admin_client.post(
-            f'/api/contracts/{contract_draft.id}/sign/',
+            f'/api/api/contracts/{contract_draft.id}/sign/',
             data
         )
 
@@ -273,7 +273,7 @@ class TestContractSigning:
         }
 
         response = authenticated_admin_client.post(
-            f'/api/contracts/{contract_draft.id}/sign/',
+            f'/api/api/contracts/{contract_draft.id}/sign/',
             data
         )
 
@@ -288,7 +288,7 @@ class TestContractSigning:
         }
 
         response = authenticated_admin_client.post(
-            f'/api/contracts/{contract_draft.id}/sign/',
+            f'/api/api/contracts/{contract_draft.id}/sign/',
             data
         )
 
@@ -301,7 +301,7 @@ class TestContractSigning:
         }
 
         response = authenticated_admin_client.post(
-            f'/api/contracts/{contract_draft.id}/sign/',
+            f'/api/api/contracts/{contract_draft.id}/sign/',
             data
         )
 
@@ -318,7 +318,7 @@ class TestContractMilestoneViewSet:
 
     def test_list_milestones(self, authenticated_admin_client, contract_milestone):
         """Test listing milestones."""
-        response = authenticated_admin_client.get('/api/milestones/')
+        response = authenticated_admin_client.get('/api/api/milestones/')
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -334,7 +334,7 @@ class TestContractMilestoneViewSet:
             'order': 1,
         }
 
-        response = authenticated_admin_client.post('/api/milestones/', data)
+        response = authenticated_admin_client.post('/api/api/milestones/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['title'] == 'New Milestone'
@@ -344,7 +344,7 @@ class TestContractMilestoneViewSet:
     ):
         """Test getting milestones for a specific contract."""
         response = authenticated_admin_client.get(
-            f'/api/contracts/{contract_fixed.id}/milestones/'
+            f'/api/api/contracts/{contract_fixed.id}/milestones/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -354,7 +354,7 @@ class TestContractMilestoneViewSet:
     ):
         """Test marking milestone as complete."""
         response = authenticated_admin_client.post(
-            f'/api/milestones/{contract_milestone.id}/mark_complete/'
+            f'/api/api/milestones/{contract_milestone.id}/mark_complete/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -365,7 +365,7 @@ class TestContractMilestoneViewSet:
     ):
         """Test marking already completed milestone fails."""
         response = authenticated_admin_client.post(
-            f'/api/milestones/{contract_milestone_completed.id}/mark_complete/'
+            f'/api/api/milestones/{contract_milestone_completed.id}/mark_complete/'
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -375,7 +375,7 @@ class TestContractMilestoneViewSet:
     ):
         """Test generating invoice for milestone."""
         response = authenticated_admin_client.post(
-            f'/api/milestones/{contract_milestone.id}/generate_invoice/'
+            f'/api/api/milestones/{contract_milestone.id}/generate_invoice/'
         )
 
         # Should succeed or fail based on implementation
@@ -392,7 +392,7 @@ class TestContractMilestoneViewSet:
         contract_milestone.save()
 
         response = authenticated_admin_client.post(
-            f'/api/milestones/{contract_milestone.id}/generate_invoice/'
+            f'/api/api/milestones/{contract_milestone.id}/generate_invoice/'
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -409,7 +409,7 @@ class TestContractFinancialActions:
     def test_update_financial_summary(self, authenticated_admin_client, contract_fixed):
         """Test update_financial_summary action."""
         response = authenticated_admin_client.post(
-            f'/api/contracts/{contract_fixed.id}/update_financial_summary/'
+            f'/api/api/contracts/{contract_fixed.id}/update_financial_summary/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -417,7 +417,7 @@ class TestContractFinancialActions:
     def test_update_completion(self, authenticated_admin_client, contract_fixed):
         """Test update_completion action."""
         response = authenticated_admin_client.post(
-            f'/api/contracts/{contract_fixed.id}/update_completion/'
+            f'/api/api/contracts/{contract_fixed.id}/update_completion/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -438,7 +438,7 @@ class TestContractAuthorization:
         contract_fixed.owner = contributor_user
         contract_fixed.save()
 
-        response = authenticated_contributor_client.get('/api/contracts/')
+        response = authenticated_contributor_client.get('/api/api/contracts/')
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -446,7 +446,7 @@ class TestContractAuthorization:
         self, authenticated_admin_client, contract_fixed, contract_draft
     ):
         """Test staff users see all contracts."""
-        response = authenticated_admin_client.get('/api/contracts/')
+        response = authenticated_admin_client.get('/api/api/contracts/')
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -487,7 +487,7 @@ class TestContractViewEdgeCases:
         }
 
         response = authenticated_admin_client.post(
-            '/api/contracts/',
+            '/api/api/contracts/',
             data,
             format='json'
         )
@@ -499,7 +499,7 @@ class TestContractViewEdgeCases:
         import uuid
         fake_id = uuid.uuid4()
 
-        response = authenticated_admin_client.get(f'/api/contracts/{fake_id}/')
+        response = authenticated_admin_client.get(f'/api/api/contracts/{fake_id}/')
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -516,7 +516,7 @@ class TestContractViewEdgeCases:
         }
 
         response = authenticated_admin_client.post(
-            '/api/contracts/',
+            '/api/api/contracts/',
             data,
             format='json'
         )
