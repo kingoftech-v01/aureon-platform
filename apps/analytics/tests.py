@@ -25,19 +25,12 @@ class RevenueMetricsCalculatorTests(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        from apps.tenants.models import Tenant
         from apps.clients.models import Client
         from apps.invoicing.models import Invoice
         from apps.payments.models import Payment
         from apps.contracts.models import Contract
 
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
-
         self.client = Client.objects.create(
-            tenant=self.tenant,
             email='client@example.com',
             first_name='Test',
             last_name='Client',
@@ -71,7 +64,6 @@ class RevenueMetricsCalculatorTests(TestCase):
         # Create invoices for the test month
         for i in range(5):
             Invoice.objects.create(
-                tenant=self.tenant,
                 client=self.client,
                 invoice_number=f'INV-{i:03d}',
                 issue_date=self.start_date + timedelta(days=i),
@@ -157,7 +149,6 @@ class RevenueMetricsCalculatorTests(TestCase):
         # Create contracts
         for i in range(3):
             contract = Contract.objects.create(
-                tenant=self.tenant,
                 client=self.client,
                 title=f'Contract {i}',
                 contract_type=Contract.PROJECT,
@@ -186,7 +177,6 @@ class RevenueMetricsCalculatorTests(TestCase):
         # Create retainer contracts
         for i in range(2):
             Contract.objects.create(
-                tenant=self.tenant,
                 client=self.client,
                 title=f'Retainer {i}',
                 contract_type=Contract.RETAINER,
@@ -211,7 +201,6 @@ class RevenueMetricsCalculatorTests(TestCase):
         # Create new clients
         for i in range(3):
             Client.objects.create(
-                tenant=self.tenant,
                 email=f'new{i}@example.com',
                 first_name='New',
                 last_name=f'Client {i}',
@@ -220,7 +209,6 @@ class RevenueMetricsCalculatorTests(TestCase):
 
         # Create churned client
         churned = Client.objects.create(
-            tenant=self.tenant,
             email='churned@example.com',
             first_name='Churned',
             last_name='Client',
@@ -243,7 +231,6 @@ class RevenueMetricsCalculatorTests(TestCase):
         # Create active clients
         for i in range(10):
             Client.objects.create(
-                tenant=self.tenant,
                 email=f'active{i}@example.com',
                 first_name='Active',
                 last_name=f'Client {i}',
@@ -253,7 +240,6 @@ class RevenueMetricsCalculatorTests(TestCase):
         # Create churned clients
         for i in range(2):
             Client.objects.create(
-                tenant=self.tenant,
                 email=f'churned{i}@example.com',
                 first_name='Churned',
                 last_name=f'Client {i}',
@@ -305,16 +291,9 @@ class ClientMetricsCalculatorTests(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        from apps.tenants.models import Tenant
         from apps.clients.models import Client
 
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
-
         self.client = Client.objects.create(
-            tenant=self.tenant,
             email='client@example.com',
             first_name='Test',
             last_name='Client'
@@ -337,7 +316,6 @@ class ClientMetricsCalculatorTests(TestCase):
         # Create invoices
         for i in range(5):
             Invoice.objects.create(
-                tenant=self.tenant,
                 client=self.client,
                 invoice_number=f'INV-{i:03d}',
                 issue_date=date.today() - timedelta(days=30),
@@ -361,7 +339,6 @@ class ClientMetricsCalculatorTests(TestCase):
 
         # Create overdue invoice
         Invoice.objects.create(
-            tenant=self.tenant,
             client=self.client,
             invoice_number='INV-OVERDUE',
             issue_date=date.today() - timedelta(days=60),
@@ -433,7 +410,6 @@ class ClientMetricsCalculatorTests(TestCase):
         # Create active contracts
         for i in range(3):
             Contract.objects.create(
-                tenant=self.tenant,
                 client=self.client,
                 title=f'Contract {i}',
                 contract_type=Contract.PROJECT,
@@ -445,7 +421,6 @@ class ClientMetricsCalculatorTests(TestCase):
 
         # Create completed contract
         Contract.objects.create(
-            tenant=self.tenant,
             client=self.client,
             title='Completed Contract',
             contract_type=Contract.PROJECT,
@@ -528,7 +503,6 @@ class ClientMetricsCalculatorTests(TestCase):
         # Create overdue invoices (penalty of 5 points each)
         for i in range(3):
             Invoice.objects.create(
-                tenant=self.tenant,
                 client=self.client,
                 invoice_number=f'INV-OVERDUE-{i}',
                 issue_date=date.today() - timedelta(days=60),
@@ -653,16 +627,9 @@ class DashboardDataServiceTests(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        from apps.tenants.models import Tenant
         from apps.clients.models import Client
 
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
-
         self.client = Client.objects.create(
-            tenant=self.tenant,
             email='client@example.com',
             first_name='Test',
             last_name='Client',
@@ -701,7 +668,6 @@ class DashboardDataServiceTests(TestCase):
 
         # Create invoices
         Invoice.objects.create(
-            tenant=self.tenant,
             client=self.client,
             invoice_number='INV-001',
             issue_date=date.today(),
@@ -745,7 +711,6 @@ class DashboardDataServiceTests(TestCase):
         # Create clients with metrics
         for i in range(7):
             client = Client.objects.create(
-                tenant=self.tenant,
                 email=f'client{i}@example.com',
                 first_name=f'Client',
                 last_name=f'{i}'
@@ -828,16 +793,9 @@ class ClientMetricModelTests(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        from apps.tenants.models import Tenant
         from apps.clients.models import Client
 
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
-
         self.client = Client.objects.create(
-            tenant=self.tenant,
             email='client@example.com',
             first_name='Test',
             last_name='Client'

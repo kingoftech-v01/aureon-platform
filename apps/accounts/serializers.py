@@ -32,7 +32,6 @@ class UserSerializer(serializers.ModelSerializer):
             'role',
             'is_admin',
             'is_manager',
-            'tenant',
             'timezone',
             'language',
             'email_notifications',

@@ -5,11 +5,16 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from config.views import HomeView, TenantLoginView, TenantLogoutView, TenantDashboardView
+from config.views import HomeView, DashboardView
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
     SpectacularSwaggerView,
+)
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenVerifyView,
 )
 
 # Import health check views
@@ -19,7 +24,7 @@ urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
-    # Homepage - Tenant-aware home view
+    # Homepage
     path('', HomeView.as_view(), name='home'),
 
     # Public Website (for namespace resolution in templates)
@@ -28,33 +33,40 @@ urlpatterns = [
     # Django Allauth (for account_login, account_logout, etc.)
     path('accounts/', include('allauth.urls')),
 
-    # Tenant Authentication
-    path('login/', TenantLoginView.as_view(), name='tenant_login'),
-    path('logout/', TenantLogoutView.as_view(), name='tenant_logout'),
-
     # React Dashboard Routes (catch-all for SPA)
-    path('dashboard/', TenantDashboardView.as_view(), name='tenant_dashboard'),
-    path('dashboard/<path:path>', TenantDashboardView.as_view(), name='tenant_dashboard_path'),
-    path('clients/', TenantDashboardView.as_view(), name='tenant_clients'),
-    path('clients/<path:path>', TenantDashboardView.as_view(), name='tenant_clients_path'),
-    path('contracts/', TenantDashboardView.as_view(), name='tenant_contracts'),
-    path('contracts/<path:path>', TenantDashboardView.as_view(), name='tenant_contracts_path'),
-    path('invoices/', TenantDashboardView.as_view(), name='tenant_invoices'),
-    path('invoices/<path:path>', TenantDashboardView.as_view(), name='tenant_invoices_path'),
-    path('payments/', TenantDashboardView.as_view(), name='tenant_payments'),
-    path('payments/<path:path>', TenantDashboardView.as_view(), name='tenant_payments_path'),
-    path('analytics/', TenantDashboardView.as_view(), name='tenant_analytics'),
-    path('documents/', TenantDashboardView.as_view(), name='tenant_documents'),
-    path('documents/<path:path>', TenantDashboardView.as_view(), name='tenant_documents_path'),
-    path('settings/', TenantDashboardView.as_view(), name='tenant_settings'),
-    path('settings/<path:path>', TenantDashboardView.as_view(), name='tenant_settings_path'),
-    path('auth/<path:path>', TenantDashboardView.as_view(), name='tenant_auth'),
+    path('dashboard/', DashboardView.as_view(), name='dashboard'),
+    path('dashboard/<path:path>', DashboardView.as_view(), name='dashboard_path'),
+    path('clients/', DashboardView.as_view(), name='clients'),
+    path('clients/<path:path>', DashboardView.as_view(), name='clients_path'),
+    path('contracts/', DashboardView.as_view(), name='contracts'),
+    path('contracts/<path:path>', DashboardView.as_view(), name='contracts_path'),
+    path('invoices/', DashboardView.as_view(), name='invoices'),
+    path('invoices/<path:path>', DashboardView.as_view(), name='invoices_path'),
+    path('payments/', DashboardView.as_view(), name='payments'),
+    path('payments/<path:path>', DashboardView.as_view(), name='payments_path'),
+    path('analytics/', DashboardView.as_view(), name='analytics'),
+    path('documents/', DashboardView.as_view(), name='documents'),
+    path('documents/<path:path>', DashboardView.as_view(), name='documents_path'),
+    path('settings/', DashboardView.as_view(), name='settings'),
+    path('settings/<path:path>', DashboardView.as_view(), name='settings_path'),
+    path('auth/<path:path>', DashboardView.as_view(), name='auth'),
 
     # Health Check Endpoints (Rhematek Production Shield)
     *get_health_urls(),
 
+    # API Documentation (DRF Spectacular) - must be before app API includes
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+
+    # JWT Token Endpoints
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+
     # Authentication API
     path('api/auth/', include('apps.accounts.urls')),
+    path('api/auth/', include('rest_framework.urls')),
 
     # Website Marketing API (for React frontend)
     path('api/v1/website/', include('apps.website.api_urls')),
@@ -64,6 +76,9 @@ urlpatterns = [
     path('api/', include('apps.contracts.urls')),
     path('api/', include('apps.invoicing.urls')),
     path('api/', include('apps.payments.urls')),
+    path('api/', include('apps.notifications.urls')),
+    path('api/', include('apps.documents.urls')),
+    path('api/', include('apps.integrations.urls')),
 
     # Analytics API
     path('api/analytics/', include('apps.analytics.urls')),
@@ -71,10 +86,11 @@ urlpatterns = [
     # Webhooks (must be before API docs for proper routing)
     path('webhooks/', include('apps.webhooks.urls')),
 
-    # API Documentation (DRF Spectacular)
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    # Stripe Webhooks
+    path('webhooks/stripe/', include('djstripe.urls', namespace='djstripe')),
+
+    # Prometheus Metrics
+    path('', include('django_prometheus.urls')),
 ]
 
 # Serve media and static files in development

@@ -178,15 +178,9 @@ class StripeWebhookHandlerTests(TestCase):
         from apps.payments.models import Payment
         from apps.invoicing.models import Invoice
         from apps.clients.models import Client
-        from apps.tenants.models import Tenant
 
-        # Create test tenant and client
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
+        # Create test client
         self.client = Client.objects.create(
-            tenant=self.tenant,
             email='client@example.com',
             first_name='Test',
             last_name='Client'

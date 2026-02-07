@@ -1,6 +1,6 @@
 """
 Django settings for Aureon by Rhematek Solutions.
-Multi-tenant SaaS Platform for Automated Financial Management.
+SaaS Platform for Automated Financial Management.
 
 CEO: Stéphane Arthur Victor (stephane@rhematek-solutions.com)
 Domain: aureon.rhematek-solutions.com
@@ -23,18 +23,17 @@ DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'aureon.rhematek-solutions.com', '*.aureon.rhematek-solutions.com'])
 
 # Application definition
-SHARED_APPS = [
-    'django_tenants',  # Must be first
-    'django.contrib.contenttypes',
+INSTALLED_APPS = [
+    'django.contrib.admin',
     'django.contrib.auth',
+    'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.admin',
     'django.contrib.sitemaps',
 
-    # Third-party shared apps
+    # Third-party apps
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
@@ -44,14 +43,14 @@ SHARED_APPS = [
     'django_filters',
     'drf_spectacular',
 
-    # Authentication (shared across tenants)
+    # Authentication
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.github',
 
-    # Stripe (shared)
+    # Stripe
     'djstripe',
 
     # Celery
@@ -65,41 +64,26 @@ SHARED_APPS = [
     # Monitoring
     'django_prometheus',
 
-    # Core shared apps
-    'apps.tenants',  # Tenant management
-    'apps.accounts',  # User accounts
-    'apps.website',  # Public marketing website, blog, store
+    # Local apps
+    'apps.accounts',
+    'apps.website',
+    'apps.clients',
+    'apps.contracts',
+    'apps.invoicing',
+    'apps.payments',
+    'apps.notifications',
+    'apps.analytics',
+    'apps.documents',
+    'apps.webhooks',
+    'apps.integrations',
+
+    # Additional apps
+    'guardian',
+    'auditlog',
 ]
-
-TENANT_APPS = [
-    'django.contrib.contenttypes',
-    'django.contrib.auth',
-
-    # Tenant-specific apps
-    'apps.clients',  # CRM and client management
-    'apps.contracts',  # Contracts and e-signatures
-    'apps.invoicing',  # Invoice generation
-    'apps.payments',  # Payment processing
-    'apps.notifications',  # Email, SMS, in-app notifications
-    'apps.analytics',  # Dashboards and reporting
-    'apps.documents',  # Document storage and management
-    'apps.webhooks',  # Webhook management
-    'apps.integrations',  # Third-party integrations
-
-    # Additional tenant apps
-    'guardian',  # Object-level permissions
-    'auditlog',  # Audit logging
-]
-
-INSTALLED_APPS = list(SHARED_APPS) + [app for app in TENANT_APPS if app not in SHARED_APPS]
-
-# Tenant Model
-TENANT_MODEL = "tenants.Tenant"
-TENANT_DOMAIN_MODEL = "tenants.Domain"
 
 # Middleware
 MIDDLEWARE = [
-    'django_tenants.middleware.main.TenantMainMiddleware',  # Must be first
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -117,8 +101,7 @@ MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
-ROOT_URLCONF = 'config.urls_tenants'
-PUBLIC_SCHEMA_URLCONF = 'config.urls_public'
+ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
     {
@@ -144,10 +127,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database with Django-Tenants
+# Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django_tenants.postgresql_backend',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': env('DB_NAME', default='aureon_db'),
         'USER': env('DB_USER', default='aureon_user'),
         'PASSWORD': env('DB_PASSWORD', default='change_me_in_production'),
@@ -155,10 +138,6 @@ DATABASES = {
         'PORT': env('DB_PORT', default='5432'),
     }
 }
-
-DATABASE_ROUTERS = (
-    'django_tenants.routers.TenantSyncRouter',
-)
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

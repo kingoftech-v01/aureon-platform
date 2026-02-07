@@ -25,7 +25,7 @@ User = get_user_model()
 class TestUserModel:
     """Tests for the User model."""
 
-    def test_create_user_with_email(self, tenant):
+    def test_create_user_with_email(self):
         """Test creating a user with email as primary identifier."""
         user = User.objects.create_user(
             username='test',
@@ -33,19 +33,17 @@ class TestUserModel:
             password='SecurePass123!',
             first_name='Test',
             last_name='User',
-            tenant=tenant,
         )
 
         assert user.email == 'test@example.com'
         assert user.check_password('SecurePass123!')
         assert user.first_name == 'Test'
         assert user.last_name == 'User'
-        assert user.tenant == tenant
         assert user.is_active is True
         assert user.is_staff is False
         assert user.is_superuser is False
 
-    def test_create_user_without_email_raises_error(self, tenant):
+    def test_create_user_without_email_raises_error(self):
         """Test that creating a user without email raises an error."""
         with pytest.raises(ValueError):
             User.objects.create_user(
@@ -67,7 +65,6 @@ class TestUserModel:
         assert superuser.is_superuser is True
         assert superuser.is_staff is True
         assert superuser.is_active is True
-        assert superuser.tenant is None
 
     def test_user_string_representation(self, admin_user):
         """Test user string representation."""
@@ -92,7 +89,7 @@ class TestUserModel:
         """Test get_short_name returns first name."""
         assert admin_user.get_short_name() == admin_user.first_name
 
-    def test_get_short_name_fallback_to_email(self, tenant):
+    def test_get_short_name_fallback_to_email(self):
         """Test get_short_name falls back to email prefix."""
         user = User.objects.create_user(
             username='testuser',
@@ -100,18 +97,16 @@ class TestUserModel:
             password='SecurePass123!',
             first_name='',
             last_name='',
-            tenant=tenant,
         )
 
         assert user.get_short_name() == 'testuser'
 
-    def test_auto_generate_username_from_email(self, tenant):
+    def test_auto_generate_username_from_email(self):
         """Test username is auto-generated from email."""
         user = User.objects.create_user(
             username='newuser',
             email='newuser@example.com',
             password='SecurePass123!',
-            tenant=tenant,
         )
 
         assert user.username is not None
@@ -162,18 +157,6 @@ class TestUserRoles:
     def test_is_client_user_for_admin(self, admin_user):
         """Test is_client_user for admin is False."""
         assert admin_user.is_client_user is False
-
-    def test_has_tenant_permission(self, admin_user, tenant):
-        """Test has_tenant_permission method."""
-        assert admin_user.has_tenant_permission(tenant) is True
-
-    def test_has_tenant_permission_different_tenant(self, admin_user, tenant_with_trial):
-        """Test has_tenant_permission with different tenant."""
-        assert admin_user.has_tenant_permission(tenant_with_trial) is False
-
-    def test_superuser_has_all_tenant_permissions(self, superuser, tenant):
-        """Test superuser has all tenant permissions."""
-        assert superuser.has_tenant_permission(tenant) is True
 
     def test_can_manage_contracts(self, admin_user, manager_user, contributor_user):
         """Test can_manage_contracts permission."""
@@ -241,13 +224,12 @@ class TestUserTwoFactor:
 class TestUserInvitationModel:
     """Tests for the UserInvitation model."""
 
-    def test_create_invitation(self, tenant, admin_user):
+    def test_create_invitation(self, admin_user):
         """Test creating a user invitation."""
         from apps.accounts.models import UserInvitation
         import secrets
 
         invitation = UserInvitation.objects.create(
-            tenant=tenant,
             email='newinvite@example.com',
             role=User.CONTRIBUTOR,
             invited_by=admin_user,
@@ -258,7 +240,6 @@ class TestUserInvitationModel:
         assert invitation.email == 'newinvite@example.com'
         assert invitation.role == User.CONTRIBUTOR
         assert invitation.status == UserInvitation.PENDING
-        assert invitation.tenant == tenant
 
     def test_invitation_string_representation(self, user_invitation):
         """Test invitation string representation."""
@@ -293,7 +274,6 @@ class TestUserInvitationModel:
 
         assert user_invitation.status == UserInvitation.ACCEPTED
         assert user_invitation.accepted_at is not None
-        assert contributor_user.tenant == user_invitation.tenant
         assert contributor_user.role == user_invitation.role
 
     def test_cancel_invitation(self, user_invitation):
@@ -313,7 +293,7 @@ class TestUserInvitationModel:
 class TestApiKeyModel:
     """Tests for the ApiKey model."""
 
-    def test_create_api_key(self, tenant, admin_user):
+    def test_create_api_key(self, admin_user):
         """Test creating an API key."""
         from apps.accounts.models import ApiKey
         import secrets
@@ -321,7 +301,6 @@ class TestApiKeyModel:
         key = secrets.token_urlsafe(32)
         api_key = ApiKey.objects.create(
             user=admin_user,
-            tenant=tenant,
             name='Test Key',
             key=key,
             prefix=key[:8],
@@ -416,33 +395,30 @@ class TestUserModelEdgeCases:
         assert admin_user.metadata['custom'] == 'data'
         assert admin_user.metadata['nested']['key'] == 'value'
 
-    def test_user_timezone_default(self, tenant):
+    def test_user_timezone_default(self):
         """Test user timezone default value."""
         user = User.objects.create_user(
             username='timezone',
             email='timezone@test.com',
             password='Pass123!',
-            tenant=tenant,
         )
         assert user.timezone == 'UTC'
 
-    def test_user_language_default(self, tenant):
+    def test_user_language_default(self):
         """Test user language default value."""
         user = User.objects.create_user(
             username='lang',
             email='lang@test.com',
             password='Pass123!',
-            tenant=tenant,
         )
         assert user.language == 'en'
 
-    def test_user_notification_preferences_defaults(self, tenant):
+    def test_user_notification_preferences_defaults(self):
         """Test user notification preferences defaults."""
         user = User.objects.create_user(
             username='notif',
             email='notif@test.com',
             password='Pass123!',
-            tenant=tenant,
         )
         assert user.email_notifications is True
         assert user.sms_notifications is False
@@ -453,13 +429,12 @@ class TestUserModelEdgeCases:
         for role in valid_roles:
             assert role in dict(User.ROLE_CHOICES)
 
-    def test_user_verified_status(self, tenant):
+    def test_user_verified_status(self):
         """Test user verified status fields."""
         user = User.objects.create_user(
             username='unverified',
             email='unverified@test.com',
             password='Pass123!',
-            tenant=tenant,
         )
         assert user.is_verified is False
         assert user.verified_at is None

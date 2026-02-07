@@ -341,7 +341,6 @@ class Client(models.Model):
             first_name=self.first_name,
             last_name=self.last_name,
             role=User.CLIENT,
-            # Note: tenant will be set in signal
         )
 
         self.portal_user = user

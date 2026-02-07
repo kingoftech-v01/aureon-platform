@@ -31,7 +31,7 @@ class TestRegisterEndpoint:
     REGISTER_URL = f"{AUTH_URL_PREFIX}register/"
 
     @pytest.mark.django_db
-    def test_register_success(self, api_client, tenant):
+    def test_register_success(self, api_client):
         """Registration with valid data creates user and returns tokens."""
         data = {
             "email": "newuser@example.com",
@@ -54,7 +54,7 @@ class TestRegisterEndpoint:
         assert User.objects.filter(email="newuser@example.com").exists()
 
     @pytest.mark.django_db
-    def test_register_success_minimal_fields(self, api_client, tenant):
+    def test_register_success_minimal_fields(self, api_client):
         """Registration succeeds with only required fields (email, passwords)."""
         data = {
             "email": "minimal@example.com",
@@ -69,7 +69,7 @@ class TestRegisterEndpoint:
         assert response.data["user"]["role"] == User.CONTRIBUTOR
 
     @pytest.mark.django_db
-    def test_register_with_role(self, api_client, tenant):
+    def test_register_with_role(self, api_client):
         """Registration with explicit role sets the role correctly."""
         data = {
             "email": "manager@example.com",
@@ -190,7 +190,7 @@ class TestRegisterEndpoint:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     @pytest.mark.django_db
-    def test_register_returns_jwt_tokens(self, api_client, tenant):
+    def test_register_returns_jwt_tokens(self, api_client):
         """Registration returns valid JWT access and refresh tokens."""
         data = {
             "email": "jwt@example.com",
@@ -214,7 +214,7 @@ class TestRegisterEndpoint:
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
     @pytest.mark.django_db
-    def test_register_user_data_in_response(self, api_client, tenant):
+    def test_register_user_data_in_response(self, api_client):
         """Registration response includes serialized user data."""
         data = {
             "email": "userdata@example.com",

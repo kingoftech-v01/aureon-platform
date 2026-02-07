@@ -251,16 +251,9 @@ class NotificationServiceTests(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        from apps.tenants.models import Tenant
         from apps.clients.models import Client
 
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
-
         self.client = Client.objects.create(
-            tenant=self.tenant,
             email='client@example.com',
             first_name='Test',
             last_name='Client'
@@ -322,7 +315,6 @@ class NotificationServiceTests(TestCase):
         from datetime import date
 
         invoice = Invoice.objects.create(
-            tenant=self.tenant,
             client=self.client,
             invoice_number='INV-001',
             issue_date=date.today(),
@@ -350,7 +342,6 @@ class NotificationServiceTests(TestCase):
         from datetime import date
 
         invoice = Invoice.objects.create(
-            tenant=self.tenant,
             client=self.client,
             invoice_number='INV-002',
             issue_date=date.today(),
@@ -391,16 +382,9 @@ class NotificationTasksTests(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        from apps.tenants.models import Tenant
         from apps.clients.models import Client
 
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
-
         self.client = Client.objects.create(
-            tenant=self.tenant,
             email='client@example.com',
             first_name='Test',
             last_name='Client'
@@ -452,7 +436,6 @@ class NotificationTasksTests(TestCase):
 
         # Create overdue invoice
         overdue_invoice = Invoice.objects.create(
-            tenant=self.tenant,
             client=self.client,
             invoice_number='INV-OVERDUE',
             issue_date=date.today() - timedelta(days=40),
@@ -485,7 +468,6 @@ class NotificationTasksTests(TestCase):
 
         # Create overdue invoice
         overdue_invoice = Invoice.objects.create(
-            tenant=self.tenant,
             client=self.client,
             invoice_number='INV-OVERDUE-2',
             issue_date=date.today() - timedelta(days=40),
@@ -528,7 +510,6 @@ class NotificationTasksTests(TestCase):
 
         # Create invoice due in 3 days
         upcoming_invoice = Invoice.objects.create(
-            tenant=self.tenant,
             client=self.client,
             invoice_number='INV-UPCOMING',
             issue_date=date.today(),

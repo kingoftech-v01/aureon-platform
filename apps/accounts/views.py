@@ -45,8 +45,8 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_superuser:
             return User.objects.all()
-        # Return users from same tenant
-        return User.objects.filter(tenant=user.tenant) if user.tenant else User.objects.none()
+        # Return active users
+        return User.objects.filter(is_active=True)
 
     @action(detail=False, methods=['get'])
     def me(self, request):
@@ -94,8 +94,8 @@ class UserInvitationViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_superuser:
             return UserInvitation.objects.all()
-        # Return invitations for user's tenant
-        return UserInvitation.objects.filter(tenant=user.tenant) if user.tenant else UserInvitation.objects.none()
+        # Return all invitations
+        return UserInvitation.objects.all()
 
     def create(self, request, *args, **kwargs):
         """Create a new invitation."""
@@ -107,7 +107,6 @@ class UserInvitationViewSet(viewsets.ModelViewSet):
 
         # Create invitation
         invitation = serializer.save(
-            tenant=request.user.tenant,
             invited_by=request.user,
             invitation_token=token,
             expires_at=timezone.now() + timedelta(days=7),
@@ -179,7 +178,6 @@ class UserInvitationViewSet(viewsets.ModelViewSet):
 
         return Response({
             'message': 'Invitation accepted successfully.',
-            'tenant': invitation.tenant.name,
             'role': invitation.role,
         })
 
@@ -195,8 +193,8 @@ class ApiKeyViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_superuser:
             return ApiKey.objects.all()
-        # Return API keys for user's tenant
-        return ApiKey.objects.filter(tenant=user.tenant) if user.tenant else ApiKey.objects.none()
+        # Return API keys for the current user
+        return ApiKey.objects.filter(user=user)
 
     def create(self, request, *args, **kwargs):
         """Create a new API key."""
@@ -210,7 +208,6 @@ class ApiKeyViewSet(viewsets.ModelViewSet):
         # Create API key
         api_key = serializer.save(
             user=request.user,
-            tenant=request.user.tenant,
             key=key,
             prefix=prefix,
         )

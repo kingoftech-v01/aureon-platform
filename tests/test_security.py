@@ -220,14 +220,6 @@ class TestAuthenticationBypass:
         response = api_client.get('/api/api/payments/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_unauthenticated_tenant_list(self, api_client):
-        """Test unauthenticated access to tenant list is denied."""
-        response = api_client.get('/api/tenants/')
-        assert response.status_code in [
-            status.HTTP_401_UNAUTHORIZED,
-            status.HTTP_404_NOT_FOUND,
-        ]
-
     def test_invalid_token(self, api_client):
         """Test invalid authentication token is rejected."""
         api_client.credentials(HTTP_AUTHORIZATION='Bearer invalid_token_123')
@@ -282,30 +274,6 @@ class TestAuthorizationBypass:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_cross_tenant_data_access(
-        self, authenticated_admin_client, tenant_with_trial
-    ):
-        """Test user cannot access data from another tenant."""
-        # Create a client in another tenant context
-        from apps.clients.models import Client
-
-        other_client = Client.objects.create(
-            first_name='Other',
-            last_name='Tenant',
-            email='other@tenant.com',
-        )
-
-        # Try to access client from different tenant
-        response = authenticated_admin_client.get(
-            f'/api/api/clients/{other_client.id}/'
-        )
-
-        # Should either not find it or return forbidden
-        assert response.status_code in [
-            status.HTTP_404_NOT_FOUND,
-            status.HTTP_403_FORBIDDEN,
-            status.HTTP_200_OK,  # Some implementations may allow superuser access
-        ]
 
 
 # ============================================================================

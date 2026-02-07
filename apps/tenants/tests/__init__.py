@@ -1,1 +1,0 @@
-# Tenants tests package

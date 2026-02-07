@@ -3,8 +3,6 @@ Tests for config URL configurations.
 
 Tests URL resolution and reversibility for:
 - config/urls.py (main URLs)
-- config/urls_public.py (public schema URLs)
-- config/urls_tenants.py (tenant-specific URLs)
 """
 
 import pytest
@@ -25,102 +23,85 @@ class TestMainUrls:
         match = resolve("/admin/")
         assert match.app_name == "admin" or "admin" in match.route
 
-    def test_tenant_login_url_resolves(self):
-        """Test that the /login/ URL resolves (website app may catch first)."""
-        match = resolve("/login/")
-        # The website app includes a 'login' URL that catches /login/ first
-        # but reverse('tenant_login') still maps to /login/
-        assert match.url_name in ("tenant_login", "login")
-
-    def test_tenant_login_url_reversible(self):
-        """Test that the tenant_login name can be reversed."""
-        url = reverse("tenant_login")
-        assert url == "/login/"
-
-    def test_tenant_logout_url_resolves(self):
-        """Test that the tenant logout URL resolves."""
-        match = resolve("/logout/")
-        assert match.url_name == "tenant_logout"
-
-    def test_tenant_dashboard_url_resolves(self):
-        """Test that the tenant dashboard URL resolves."""
+    def test_dashboard_url_resolves(self):
+        """Test that the dashboard URL resolves."""
         match = resolve("/dashboard/")
-        assert match.url_name == "tenant_dashboard"
+        assert match.url_name == "dashboard"
 
-    def test_tenant_dashboard_with_path_resolves(self):
-        """Test that the tenant dashboard with sub-path resolves."""
+    def test_dashboard_with_path_resolves(self):
+        """Test that the dashboard with sub-path resolves."""
         match = resolve("/dashboard/some/nested/path")
-        assert match.url_name == "tenant_dashboard_path"
+        assert match.url_name == "dashboard_path"
 
     def test_clients_url_resolves(self):
-        """Test that the clients URL resolves to TenantDashboardView."""
+        """Test that the clients URL resolves to DashboardView."""
         match = resolve("/clients/")
-        assert match.url_name == "tenant_clients"
+        assert match.url_name == "clients"
 
     def test_clients_with_path_resolves(self):
         """Test that the clients URL with sub-path resolves."""
         match = resolve("/clients/123/edit")
-        assert match.url_name == "tenant_clients_path"
+        assert match.url_name == "clients_path"
 
     def test_contracts_url_resolves(self):
         """Test that the contracts URL resolves."""
         match = resolve("/contracts/")
-        assert match.url_name == "tenant_contracts"
+        assert match.url_name == "contracts"
 
     def test_contracts_with_path_resolves(self):
         """Test that contracts URL with sub-path resolves."""
         match = resolve("/contracts/new")
-        assert match.url_name == "tenant_contracts_path"
+        assert match.url_name == "contracts_path"
 
     def test_invoices_url_resolves(self):
         """Test that the invoices URL resolves."""
         match = resolve("/invoices/")
-        assert match.url_name == "tenant_invoices"
+        assert match.url_name == "invoices"
 
     def test_invoices_with_path_resolves(self):
         """Test that invoices URL with sub-path resolves."""
         match = resolve("/invoices/detail/42")
-        assert match.url_name == "tenant_invoices_path"
+        assert match.url_name == "invoices_path"
 
     def test_payments_url_resolves(self):
         """Test that the payments URL resolves."""
         match = resolve("/payments/")
-        assert match.url_name == "tenant_payments"
+        assert match.url_name == "payments"
 
     def test_payments_with_path_resolves(self):
         """Test that payments URL with sub-path resolves."""
         match = resolve("/payments/history")
-        assert match.url_name == "tenant_payments_path"
+        assert match.url_name == "payments_path"
 
     def test_analytics_url_resolves(self):
         """Test that the analytics URL resolves."""
         match = resolve("/analytics/")
-        assert match.url_name == "tenant_analytics"
+        assert match.url_name == "analytics"
 
     def test_documents_url_resolves(self):
         """Test that the documents URL resolves."""
         match = resolve("/documents/")
-        assert match.url_name == "tenant_documents"
+        assert match.url_name == "documents"
 
     def test_documents_with_path_resolves(self):
         """Test that documents URL with sub-path resolves."""
         match = resolve("/documents/upload")
-        assert match.url_name == "tenant_documents_path"
+        assert match.url_name == "documents_path"
 
     def test_settings_url_resolves(self):
         """Test that the settings URL resolves."""
         match = resolve("/settings/")
-        assert match.url_name == "tenant_settings"
+        assert match.url_name == "settings"
 
     def test_settings_with_path_resolves(self):
         """Test that settings URL with sub-path resolves."""
         match = resolve("/settings/billing")
-        assert match.url_name == "tenant_settings_path"
+        assert match.url_name == "settings_path"
 
     def test_auth_path_resolves(self):
         """Test that auth catch-all path resolves."""
         match = resolve("/auth/login")
-        assert match.url_name == "tenant_auth"
+        assert match.url_name == "auth"
 
     def test_health_check_url_resolves(self):
         """Test that the health check URL resolves."""
@@ -162,25 +143,85 @@ class TestMainUrls:
         url = reverse("home")
         assert url == "/"
 
-    def test_reverse_tenant_login(self):
-        """Test that the tenant login URL can be reversed."""
-        url = reverse("tenant_login")
-        assert url == "/login/"
-
-    def test_reverse_tenant_logout(self):
-        """Test that the tenant logout URL can be reversed."""
-        url = reverse("tenant_logout")
-        assert url == "/logout/"
-
-    def test_reverse_tenant_dashboard(self):
-        """Test that the tenant dashboard URL can be reversed."""
-        url = reverse("tenant_dashboard")
+    def test_reverse_dashboard(self):
+        """Test that the dashboard URL can be reversed."""
+        url = reverse("dashboard")
         assert url == "/dashboard/"
 
-    def test_reverse_tenant_dashboard_with_path(self):
-        """Test that the tenant dashboard path URL can be reversed."""
-        url = reverse("tenant_dashboard_path", kwargs={"path": "overview"})
+    def test_reverse_dashboard_with_path(self):
+        """Test that the dashboard path URL can be reversed."""
+        url = reverse("dashboard_path", kwargs={"path": "overview"})
         assert url == "/dashboard/overview"
+
+    def test_reverse_clients(self):
+        """Test that the clients URL can be reversed."""
+        url = reverse("clients")
+        assert url == "/clients/"
+
+    def test_reverse_clients_with_path(self):
+        """Test that the clients path URL can be reversed."""
+        url = reverse("clients_path", kwargs={"path": "123/edit"})
+        assert url == "/clients/123/edit"
+
+    def test_reverse_contracts(self):
+        """Test that the contracts URL can be reversed."""
+        url = reverse("contracts")
+        assert url == "/contracts/"
+
+    def test_reverse_contracts_with_path(self):
+        """Test that the contracts path URL can be reversed."""
+        url = reverse("contracts_path", kwargs={"path": "new"})
+        assert url == "/contracts/new"
+
+    def test_reverse_invoices(self):
+        """Test that the invoices URL can be reversed."""
+        url = reverse("invoices")
+        assert url == "/invoices/"
+
+    def test_reverse_invoices_with_path(self):
+        """Test that the invoices path URL can be reversed."""
+        url = reverse("invoices_path", kwargs={"path": "detail/42"})
+        assert url == "/invoices/detail/42"
+
+    def test_reverse_payments(self):
+        """Test that the payments URL can be reversed."""
+        url = reverse("payments")
+        assert url == "/payments/"
+
+    def test_reverse_payments_with_path(self):
+        """Test that the payments path URL can be reversed."""
+        url = reverse("payments_path", kwargs={"path": "history"})
+        assert url == "/payments/history"
+
+    def test_reverse_analytics(self):
+        """Test that the analytics URL can be reversed."""
+        url = reverse("analytics")
+        assert url == "/analytics/"
+
+    def test_reverse_documents(self):
+        """Test that the documents URL can be reversed."""
+        url = reverse("documents")
+        assert url == "/documents/"
+
+    def test_reverse_documents_with_path(self):
+        """Test that the documents path URL can be reversed."""
+        url = reverse("documents_path", kwargs={"path": "upload"})
+        assert url == "/documents/upload"
+
+    def test_reverse_settings(self):
+        """Test that the settings URL can be reversed."""
+        url = reverse("settings")
+        assert url == "/settings/"
+
+    def test_reverse_settings_with_path(self):
+        """Test that the settings path URL can be reversed."""
+        url = reverse("settings_path", kwargs={"path": "billing"})
+        assert url == "/settings/billing"
+
+    def test_reverse_auth(self):
+        """Test that the auth URL can be reversed."""
+        url = reverse("auth", kwargs={"path": "login"})
+        assert url == "/auth/login"
 
     def test_reverse_health_check(self):
         """Test that health check URL can be reversed."""
@@ -216,6 +257,21 @@ class TestMainUrls:
         """Test that ReDoc URL can be reversed."""
         url = reverse("redoc")
         assert url == "/api/redoc/"
+
+    def test_reverse_token_obtain_pair(self):
+        """Test that the token obtain pair URL can be reversed."""
+        url = reverse("token_obtain_pair")
+        assert url == "/api/token/"
+
+    def test_reverse_token_refresh(self):
+        """Test that the token refresh URL can be reversed."""
+        url = reverse("token_refresh")
+        assert url == "/api/token/refresh/"
+
+    def test_reverse_token_verify(self):
+        """Test that the token verify URL can be reversed."""
+        url = reverse("token_verify")
+        assert url == "/api/token/verify/"
 
     def test_api_auth_urls_included(self):
         """Test that API auth URLs are included."""
@@ -281,32 +337,34 @@ class TestUrlPatternCompleteness:
     def test_all_spa_routes_present(self):
         """Test that all SPA catch-all routes are present."""
         spa_routes = [
-            "tenant_dashboard",
-            "tenant_clients",
-            "tenant_contracts",
-            "tenant_invoices",
-            "tenant_payments",
-            "tenant_analytics",
-            "tenant_documents",
-            "tenant_settings",
-            "tenant_auth",
+            "dashboard",
+            "clients",
+            "contracts",
+            "invoices",
+            "payments",
+            "analytics",
+            "documents",
+            "settings",
         ]
         for route_name in spa_routes:
-            url = reverse(route_name) if route_name != "tenant_auth" else reverse(
-                route_name, kwargs={"path": "login"}
-            )
+            url = reverse(route_name)
             assert url is not None, f"Route {route_name} should be reversible"
+
+    def test_auth_route_present(self):
+        """Test that the auth catch-all route is present."""
+        url = reverse("auth", kwargs={"path": "login"})
+        assert url is not None, "Route auth should be reversible"
 
     def test_all_path_routes_have_named_patterns(self):
         """Test routes with path parameters have distinct names."""
         path_routes = [
-            ("tenant_dashboard_path", {"path": "test"}),
-            ("tenant_clients_path", {"path": "test"}),
-            ("tenant_contracts_path", {"path": "test"}),
-            ("tenant_invoices_path", {"path": "test"}),
-            ("tenant_payments_path", {"path": "test"}),
-            ("tenant_documents_path", {"path": "test"}),
-            ("tenant_settings_path", {"path": "test"}),
+            ("dashboard_path", {"path": "test"}),
+            ("clients_path", {"path": "test"}),
+            ("contracts_path", {"path": "test"}),
+            ("invoices_path", {"path": "test"}),
+            ("payments_path", {"path": "test"}),
+            ("documents_path", {"path": "test"}),
+            ("settings_path", {"path": "test"}),
         ]
         for route_name, kwargs in path_routes:
             url = reverse(route_name, kwargs=kwargs)

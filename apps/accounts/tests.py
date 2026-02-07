@@ -30,15 +30,6 @@ User = get_user_model()
 class UserModelTests(TestCase):
     """Test User model."""
 
-    def setUp(self):
-        """Set up test data."""
-        from apps.tenants.models import Tenant
-
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
-
     def test_user_creation_with_email(self):
         """Test creating user with email."""
         user = User.objects.create_user(
@@ -163,23 +154,6 @@ class UserModelTests(TestCase):
 
         self.assertTrue(client_user.is_client_user)
         self.assertFalse(regular_user.is_client_user)
-
-    def test_has_tenant_permission(self):
-        """Test has_tenant_permission method."""
-        user = User.objects.create_user(
-            username='test',
-            email='test@example.com',
-            password='testpass123',
-            tenant=self.tenant
-        )
-
-        other_tenant = self.tenant.__class__.objects.create(
-            name='Other Tenant',
-            slug='other-tenant'
-        )
-
-        self.assertTrue(user.has_tenant_permission(self.tenant))
-        self.assertFalse(user.has_tenant_permission(other_tenant))
 
     def test_superuser_has_all_permissions(self):
         """Test that superuser has all permissions."""
@@ -726,13 +700,7 @@ class UserInvitationModelTests(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        from apps.tenants.models import Tenant
         from datetime import timedelta
-
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
 
         self.admin = User.objects.create_user(
             username='admin',
@@ -742,7 +710,6 @@ class UserInvitationModelTests(TestCase):
         )
 
         self.invitation = UserInvitation.objects.create(
-            tenant=self.tenant,
             email='invite@example.com',
             role=User.CONTRIBUTOR,
             invited_by=self.admin,
@@ -781,9 +748,8 @@ class UserInvitationModelTests(TestCase):
         self.assertEqual(self.invitation.status, UserInvitation.ACCEPTED)
         self.assertIsNotNone(self.invitation.accepted_at)
 
-        # Verify user was assigned to tenant and role
+        # Verify user was assigned the correct role
         new_user.refresh_from_db()
-        self.assertEqual(new_user.tenant, self.tenant)
         self.assertEqual(new_user.role, User.CONTRIBUTOR)
 
     def test_cancel_invitation(self):
@@ -798,23 +764,14 @@ class ApiKeyModelTests(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        from apps.tenants.models import Tenant
-
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
-
         self.user = User.objects.create_user(
             username='test',
             email='test@example.com',
-            password='testpass123',
-            tenant=self.tenant
+            password='testpass123'
         )
 
         self.api_key = ApiKey.objects.create(
             user=self.user,
-            tenant=self.tenant,
             name='Test API Key',
             key='test_key_12345',
             prefix='test_key',

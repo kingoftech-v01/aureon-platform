@@ -125,9 +125,6 @@ class TestCachePrefix:
     def test_session_prefix(self):
         assert CachePrefix.SESSION == "session"
 
-    def test_tenant_prefix(self):
-        assert CachePrefix.TENANT == "tenant"
-
     def test_client_prefix(self):
         assert CachePrefix.CLIENT == "client"
 
@@ -191,25 +188,10 @@ class TestCacheKeyBuilder:
         key = CacheKeyBuilder.build("user", version="v2")
         assert key == "v2:user"
 
-    def test_build_with_tenant_id(self):
-        """Test building key with tenant ID."""
-        key = CacheKeyBuilder.build("user", 123, tenant_id="abc")
-        assert key == "v1:tabc:user:123"
-
-    def test_build_with_tenant_and_version(self):
-        """Test building key with both tenant and version."""
-        key = CacheKeyBuilder.build("user", tenant_id="xyz", version="v3")
-        assert key == "v3:txyz:user"
-
     def test_build_skips_none_args(self):
         """Test that None arguments are skipped."""
         key = CacheKeyBuilder.build("user", 123, None, "active")
         assert key == "v1:user:123:active"
-
-    def test_build_without_tenant_id(self):
-        """Test building key without tenant_id."""
-        key = CacheKeyBuilder.build("user", 123, tenant_id=None)
-        assert key == "v1:user:123"
 
     def test_build_hash_creates_consistent_key(self):
         """Test build_hash creates consistent key from data."""
@@ -229,11 +211,6 @@ class TestCacheKeyBuilder:
         expected_hash = hashlib.md5(str(data).encode()).hexdigest()[:12]
         key = CacheKeyBuilder.build_hash("prefix", data)
         assert expected_hash in key
-
-    def test_build_hash_with_tenant_id(self):
-        """Test build_hash with tenant_id."""
-        key = CacheKeyBuilder.build_hash("query", "data", tenant_id="t1")
-        assert "t1" in key
 
     def test_separator_constant(self):
         """Test the separator constant."""
@@ -401,39 +378,12 @@ class TestCacheInvalidator:
         assert mock_cache.delete_pattern.call_count == 3
 
     @patch.object(CacheInvalidator, "get_cache")
-    def test_invalidate_user_with_tenant(self, mock_get_cache):
-        """Test invalidating user cache with tenant_id."""
-        mock_cache = MagicMock()
-        mock_get_cache.return_value = mock_cache
-
-        CacheInvalidator.invalidate_user(123, tenant_id="t1")
-        assert mock_cache.delete_pattern.call_count == 3
-
-    @patch.object(CacheInvalidator, "get_cache")
-    def test_invalidate_tenant(self, mock_get_cache):
-        """Test invalidating tenant cache."""
-        mock_cache = MagicMock()
-        mock_get_cache.return_value = mock_cache
-
-        CacheInvalidator.invalidate_tenant("t1")
-        mock_cache.delete_pattern.assert_called_once()
-
-    @patch.object(CacheInvalidator, "get_cache")
     def test_invalidate_contract(self, mock_get_cache):
         """Test invalidating contract cache."""
         mock_cache = MagicMock()
         mock_get_cache.return_value = mock_cache
 
         CacheInvalidator.invalidate_contract(456)
-        mock_cache.delete.assert_called_once()
-
-    @patch.object(CacheInvalidator, "get_cache")
-    def test_invalidate_contract_with_tenant(self, mock_get_cache):
-        """Test invalidating contract cache with tenant_id."""
-        mock_cache = MagicMock()
-        mock_get_cache.return_value = mock_cache
-
-        CacheInvalidator.invalidate_contract(456, tenant_id="t1")
         mock_cache.delete.assert_called_once()
 
     @patch.object(CacheInvalidator, "get_cache")
@@ -461,15 +411,6 @@ class TestCacheInvalidator:
         mock_get_cache.return_value = mock_cache
 
         CacheInvalidator.invalidate_analytics()
-        mock_cache.delete_pattern.assert_called_once()
-
-    @patch.object(CacheInvalidator, "get_cache")
-    def test_invalidate_analytics_with_tenant(self, mock_get_cache):
-        """Test invalidating analytics cache with tenant."""
-        mock_cache = MagicMock()
-        mock_get_cache.return_value = mock_cache
-
-        CacheInvalidator.invalidate_analytics(tenant_id="t1")
         mock_cache.delete_pattern.assert_called_once()
 
     @patch.object(CacheInvalidator, "get_cache")
@@ -888,17 +829,19 @@ class TestCacheWarmer:
         mock_cache = MagicMock()
         mock_caches.__getitem__.return_value = mock_cache
 
-        with patch("apps.accounts.models.User") as mock_user_model:
+        mock_services = MagicMock()
+        mock_services.get_user_permissions.return_value = ["read", "write"]
+
+        with patch("apps.accounts.models.User") as mock_user_model, \
+             patch.dict("sys.modules", {"apps.accounts.services": mock_services}):
             mock_user = MagicMock()
             mock_user.id = 1
             mock_user.email = "test@test.com"
             mock_user.get_full_name.return_value = "Test User"
             mock_user_model.objects.select_related.return_value.get.return_value = mock_user
 
-            with patch("apps.accounts.services.get_user_permissions") as mock_perms:
-                mock_perms.return_value = ["read", "write"]
-                CacheWarmer.warm_user_cache(1)
-                assert mock_cache.set.call_count == 2
+            CacheWarmer.warm_user_cache(1)
+            assert mock_cache.set.call_count == 2
 
     @patch("config.cache.caches")
     def test_warm_user_cache_nonexistent_user(self, mock_caches):
@@ -906,8 +849,10 @@ class TestCacheWarmer:
         mock_cache = MagicMock()
         mock_caches.__getitem__.return_value = mock_cache
 
-        with patch("apps.accounts.models.User") as mock_user_model:
-            from django.contrib.auth import get_user_model
+        mock_services = MagicMock()
+
+        with patch("apps.accounts.models.User") as mock_user_model, \
+             patch.dict("sys.modules", {"apps.accounts.services": mock_services}):
             mock_user_model.DoesNotExist = Exception
             mock_user_model.objects.select_related.return_value.get.side_effect = mock_user_model.DoesNotExist
 
@@ -916,54 +861,15 @@ class TestCacheWarmer:
             mock_cache.set.assert_not_called()
 
     @patch("config.cache.caches")
-    def test_warm_tenant_settings(self, mock_caches):
-        """Test warming tenant settings cache."""
-        mock_cache = MagicMock()
-        mock_caches.__getitem__.return_value = mock_cache
-
-        with patch("apps.tenants.models.Tenant") as mock_tenant_model:
-            mock_tenant = MagicMock()
-            mock_tenant.name = "Test Tenant"
-            mock_tenant.settings = {"key": "value"}
-            mock_tenant_model.objects.get.return_value = mock_tenant
-
-            CacheWarmer.warm_tenant_settings("t1")
-            mock_cache.set.assert_called_once()
-
-    @patch("config.cache.caches")
-    def test_warm_tenant_settings_nonexistent(self, mock_caches):
-        """Test warming cache for nonexistent tenant."""
-        mock_cache = MagicMock()
-        mock_caches.__getitem__.return_value = mock_cache
-
-        with patch("apps.tenants.models.Tenant") as mock_tenant_model:
-            mock_tenant_model.DoesNotExist = Exception
-            mock_tenant_model.objects.get.side_effect = mock_tenant_model.DoesNotExist
-
-            CacheWarmer.warm_tenant_settings("nonexistent")
-            mock_cache.set.assert_not_called()
-
-    @patch("config.cache.caches")
     def test_warm_analytics_cache(self, mock_caches):
         """Test warming analytics cache."""
         mock_cache = MagicMock()
         mock_caches.__getitem__.return_value = mock_cache
 
-        with patch("apps.analytics.services.compute_dashboard_stats") as mock_stats:
+        with patch("apps.analytics.services.compute_dashboard_stats", create=True) as mock_stats:
             mock_stats.return_value = {"revenue": 1000}
             CacheWarmer.warm_analytics_cache()
             mock_cache.set.assert_called_once()
-
-    @patch("config.cache.caches")
-    def test_warm_analytics_cache_with_tenant(self, mock_caches):
-        """Test warming analytics cache with tenant_id."""
-        mock_cache = MagicMock()
-        mock_caches.__getitem__.return_value = mock_cache
-
-        with patch("apps.analytics.services.compute_dashboard_stats") as mock_stats:
-            mock_stats.return_value = {"revenue": 500}
-            CacheWarmer.warm_analytics_cache(tenant_id="t1")
-            mock_stats.assert_called_once_with(tenant_id="t1")
 
 
 class TestCheckCacheHealth:

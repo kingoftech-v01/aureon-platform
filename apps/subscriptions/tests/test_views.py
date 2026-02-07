@@ -115,14 +115,13 @@ class TestUserSubscriptionView:
         )
 
     @pytest.fixture
-    def user(self, tenant):
+    def user(self):
         return User.objects.create_user(
             username='subuser',
             email='subuser@test.com',
             password='TestPass123!',
             first_name='Sub',
             last_name='User',
-            tenant=tenant,
         )
 
     def test_view_returns_active_subscription(self, factory, user, plan):
@@ -222,7 +221,7 @@ class TestUserSubscriptionView:
         from django.contrib.auth.mixins import LoginRequiredMixin
         assert issubclass(UserSubscriptionView, LoginRequiredMixin)
 
-    def test_view_ignores_other_users_subscriptions(self, factory, user, plan, tenant):
+    def test_view_ignores_other_users_subscriptions(self, factory, user, plan):
         """Test that view only returns subscriptions for the requesting user."""
         other_user = User.objects.create_user(
             username='other',
@@ -230,7 +229,6 @@ class TestUserSubscriptionView:
             password='TestPass123!',
             first_name='Other',
             last_name='User',
-            tenant=tenant,
         )
         Subscription.objects.create(
             user=other_user,

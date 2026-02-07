@@ -2,42 +2,27 @@
 Tests for config/views.py.
 
 Tests the view layer including:
-- HomeView (domain-based routing)
-- TenantDashboardView
-- TenantLoginView (GET and POST)
-- TenantLogoutView (GET and POST)
-- ReactCatchAllView
+- HomeView (serves marketing site)
+- DashboardView (serves React SPA)
+- ReactCatchAllView (serves React SPA)
 - serve_marketing_site helper function
 - serve_react_app helper function
 """
 
-import json
 import os
-import pytest
 import tempfile
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from django.test import RequestFactory, override_settings
-from django.http import HttpResponse, JsonResponse
-from django.contrib.sessions.middleware import SessionMiddleware
-from django.contrib.auth.models import AnonymousUser
+from django.test import override_settings
+from django.http import HttpResponse
 
 from config.views import (
     HomeView,
-    TenantDashboardView,
-    TenantLoginView,
-    TenantLogoutView,
+    DashboardView,
     ReactCatchAllView,
     serve_marketing_site,
     serve_react_app,
 )
-
-
-def _add_session(request):
-    """Add session support to a RequestFactory request."""
-    middleware = SessionMiddleware(lambda req: HttpResponse())
-    middleware.process_request(request)
-    request.session.save()
 
 
 class TestServeMarketingSite:
@@ -252,89 +237,24 @@ class TestServeReactApp:
 class TestHomeView:
     """Test the HomeView class."""
 
-    def test_main_domain_serves_marketing_site(self, rf):
-        """Test that main domain serves the marketing site."""
+    def test_get_serves_marketing_site(self, rf):
+        """Test that GET request serves the marketing site."""
         request = rf.get("/")
-        request.META["HTTP_HOST"] = "localhost"
 
         with patch("config.views.serve_marketing_site") as mock_serve:
             mock_serve.return_value = HttpResponse("Marketing")
             response = HomeView.as_view()(request)
             mock_serve.assert_called_once_with(request, "")
 
-    def test_main_domain_with_port_serves_marketing_site(self, rf):
-        """Test that main domain with port serves marketing site."""
+    def test_get_returns_200(self, rf):
+        """Test that GET request returns 200 status code."""
         request = rf.get("/")
-        request.META["HTTP_HOST"] = "localhost:8000"
-
-        with patch("config.views.serve_marketing_site") as mock_serve:
-            mock_serve.return_value = HttpResponse("Marketing")
-            response = HomeView.as_view()(request)
-            mock_serve.assert_called_once()
-
-    def test_www_domain_serves_marketing_site(self, rf):
-        """Test that www domain serves marketing site."""
-        request = rf.get("/")
-        request.META["HTTP_HOST"] = "www.aureon.rhematek-solutions.com"
-
-        with patch("config.views.serve_marketing_site") as mock_serve:
-            mock_serve.return_value = HttpResponse("Marketing")
-            response = HomeView.as_view()(request)
-            mock_serve.assert_called_once()
-
-    def test_aureon_domain_serves_marketing_site(self, rf):
-        """Test that the main aureon domain serves marketing site."""
-        request = rf.get("/")
-        request.META["HTTP_HOST"] = "aureon.rhematek-solutions.com"
-
-        with patch("config.views.serve_marketing_site") as mock_serve:
-            mock_serve.return_value = HttpResponse("Marketing")
-            response = HomeView.as_view()(request)
-            mock_serve.assert_called_once()
-
-    def test_127_0_0_1_serves_marketing_site(self, rf):
-        """Test that 127.0.0.1 serves marketing site."""
-        request = rf.get("/")
-        request.META["HTTP_HOST"] = "127.0.0.1"
-
-        with patch("config.views.serve_marketing_site") as mock_serve:
-            mock_serve.return_value = HttpResponse("Marketing")
-            response = HomeView.as_view()(request)
-            mock_serve.assert_called_once()
-
-    def test_tenant_subdomain_serves_react_app(self, rf):
-        """Test that tenant subdomain serves the React dashboard."""
-        request = rf.get("/")
-        request.META["HTTP_HOST"] = "testorg.aureon.local"
-
-        with patch("config.views.serve_react_app") as mock_serve:
-            mock_serve.return_value = HttpResponse("React")
-            response = HomeView.as_view()(request)
-            mock_serve.assert_called_once_with(request)
-
-    def test_unknown_domain_serves_react_app(self, rf):
-        """Test that unknown domain falls through to React app."""
-        request = rf.get("/")
-        request.META["HTTP_HOST"] = "unknown-host.example.com"
-
-        with patch("config.views.serve_react_app") as mock_serve:
-            mock_serve.return_value = HttpResponse("React")
-            response = HomeView.as_view()(request)
-            mock_serve.assert_called_once()
-
-    def test_main_domains_constant(self):
-        """Test that MAIN_DOMAINS contains expected values."""
-        expected = [
-            "aureon.rhematek-solutions.com",
-            "www.aureon.rhematek-solutions.com",
-            "localhost",
-            "127.0.0.1",
-        ]
-        assert HomeView.MAIN_DOMAINS == expected
+        response = HomeView.as_view()(request)
+        assert response.status_code == 200
 
 
-class TestTenantDashboardView:
-    """Test the TenantDashboardView class."""
+class TestDashboardView:
+    """Test the DashboardView class."""
 
     def test_get_without_path(self, rf):
         """Test GET request to dashboard root."""
@@ -342,7 +262,7 @@ class TestTenantDashboardView:
 
         with patch("config.views.serve_react_app") as mock_serve:
             mock_serve.return_value = HttpResponse("Dashboard")
-            response = TenantDashboardView.as_view()(request)
+            response = DashboardView.as_view()(request)
             mock_serve.assert_called_once_with(request)
 
     def test_get_with_nested_path(self, rf):
@@ -351,7 +271,7 @@ class TestTenantDashboardView:
 
         with patch("config.views.serve_react_app") as mock_serve:
             mock_serve.return_value = HttpResponse("Dashboard")
-            response = TenantDashboardView.as_view()(request, path="settings/billing")
+            response = DashboardView.as_view()(request, path="settings/billing")
             mock_serve.assert_called_once_with(request)
 
     def test_get_with_empty_path(self, rf):
@@ -360,204 +280,13 @@ class TestTenantDashboardView:
 
         with patch("config.views.serve_react_app") as mock_serve:
             mock_serve.return_value = HttpResponse("Dashboard")
-            response = TenantDashboardView.as_view()(request, path="")
+            response = DashboardView.as_view()(request, path="")
             mock_serve.assert_called_once()
 
-
-@pytest.mark.django_db
-class TestTenantLoginView:
-    """Test the TenantLoginView class."""
-
-    def test_get_serves_react_app(self, rf):
-        """Test that GET request serves React SPA."""
-        request = rf.get("/login/")
-
-        with patch("config.views.serve_react_app") as mock_serve:
-            mock_serve.return_value = HttpResponse("Login Page")
-            response = TenantLoginView.as_view()(request)
-            mock_serve.assert_called_once_with(request)
-
-    def test_post_missing_credentials(self, rf):
-        """Test POST with missing credentials returns 400."""
-        request = rf.post("/login/", {"email": "", "password": ""})
-        request.META["HTTP_HOST"] = "localhost:8000"
-        _add_session(request)
-
-        response = TenantLoginView.as_view()(request)
-        assert response.status_code == 400
-        data = json.loads(response.content)
-        assert data["success"] is False
-        assert "email and password" in data["error"]
-
-    def test_post_missing_email(self, rf):
-        """Test POST with missing email returns 400."""
-        request = rf.post("/login/", {"email": "", "password": "somepass"})
-        request.META["HTTP_HOST"] = "localhost:8000"
-        _add_session(request)
-
-        response = TenantLoginView.as_view()(request)
-        assert response.status_code == 400
-
-    def test_post_missing_password(self, rf):
-        """Test POST with missing password returns 400."""
-        request = rf.post("/login/", {"email": "user@test.com", "password": ""})
-        request.META["HTTP_HOST"] = "localhost:8000"
-        _add_session(request)
-
-        response = TenantLoginView.as_view()(request)
-        assert response.status_code == 400
-
-    def test_post_invalid_credentials(self, rf):
-        """Test POST with invalid credentials returns 401."""
-        request = rf.post("/login/", {"email": "bad@test.com", "password": "wrong"})
-        request.META["HTTP_HOST"] = "localhost:8000"
-        _add_session(request)
-
-        response = TenantLoginView.as_view()(request)
-        assert response.status_code == 401
-        data = json.loads(response.content)
-        assert data["success"] is False
-        assert "Invalid" in data["error"]
-
-    def test_post_successful_login_superuser(self, rf, superuser):
-        """Test successful login for superuser."""
-        request = rf.post(
-            "/login/",
-            {"email": "superadmin@aureon.com", "password": "SuperSecurePass123!"},
-        )
-        request.META["HTTP_HOST"] = "localhost:8000"
-        _add_session(request)
-
-        response = TenantLoginView.as_view()(request)
-        assert response.status_code == 200
-        data = json.loads(response.content)
-        assert data["success"] is True
-        assert data["redirect"] == "/dashboard"
-
-    def test_post_custom_next_url(self, rf, superuser):
-        """Test login with custom next URL."""
-        request = rf.post(
-            "/login/",
-            {
-                "email": "superadmin@aureon.com",
-                "password": "SuperSecurePass123!",
-                "next": "/invoices/",
-            },
-        )
-        request.META["HTTP_HOST"] = "localhost:8000"
-        _add_session(request)
-
-        response = TenantLoginView.as_view()(request)
-        assert response.status_code == 200
-        data = json.loads(response.content)
-        assert data["redirect"] == "/invoices/"
-
-    def test_post_tenant_mismatch(self, rf, admin_user, tenant, domain):
-        """Test that a user from a different tenant is rejected."""
-        from apps.tenants.models import Tenant, Domain
-
-        # Create a second tenant
-        other_tenant = Tenant(
-            name="Other Organization",
-            slug="other-org",
-            schema_name="other_org",
-            tenant_type=Tenant.FREELANCER,
-            plan=Tenant.FREE,
-            contact_email="other@testorg.com",
-            is_active=True,
-        )
-        other_tenant.save()
-        other_domain = Domain.objects.create(
-            tenant=other_tenant,
-            domain="other-org.aureon.local",
-            is_primary=True,
-        )
-
-        request = rf.post(
-            "/login/",
-            {"email": "admin@testorg.com", "password": "SecurePass123!"},
-        )
-        # Use the other tenant's domain so tenant lookup finds other_tenant
-        request.META["HTTP_HOST"] = "other-org.aureon.local"
-        _add_session(request)
-
-        response = TenantLoginView.as_view()(request)
-        assert response.status_code == 403
-        data = json.loads(response.content)
-        assert "access" in data["error"].lower()
-
-    def test_get_tenant_returns_none_for_unknown_domain(self, rf):
-        """Test that get_tenant returns None for unknown domain."""
-        view = TenantLoginView()
-        request = rf.get("/login/")
-        request.META["HTTP_HOST"] = "nonexistent.aureon.local"
-        tenant = view.get_tenant(request)
-        assert tenant is None
-
-    def test_get_tenant_returns_tenant_for_valid_domain(self, rf, tenant, domain):
-        """Test that get_tenant returns correct tenant for valid domain."""
-        view = TenantLoginView()
-        request = rf.get("/login/")
-        request.META["HTTP_HOST"] = "test-org.aureon.local"
-        result = view.get_tenant(request)
-        assert result is not None
-        assert result.id == tenant.id
-
-    def test_login_with_no_tenant_domain(self, rf, superuser):
-        """Test login when no tenant domain exists (tenant=None scenario)."""
-        request = rf.post(
-            "/login/",
-            {"email": "superadmin@aureon.com", "password": "SuperSecurePass123!"},
-        )
-        request.META["HTTP_HOST"] = "nonexistent.aureon.local"
-        _add_session(request)
-
-        response = TenantLoginView.as_view()(request)
-        # Superuser should still be able to login even when tenant is None
-        assert response.status_code == 200
-
-
-@pytest.mark.django_db
-class TestTenantLogoutView:
-    """Test the TenantLogoutView class."""
-
-    def test_get_logout_redirects(self, rf, admin_user):
-        """Test that GET logout redirects to /auth/login."""
-        request = rf.get("/logout/")
-        request.user = admin_user
-        _add_session(request)
-
-        response = TenantLogoutView.as_view()(request)
-        assert response.status_code == 302
-        assert response.url == "/auth/login"
-
-    def test_post_logout_returns_json(self, rf, admin_user):
-        """Test that POST logout returns JSON success response."""
-        request = rf.post("/logout/")
-        request.user = admin_user
-        _add_session(request)
-
-        response = TenantLogoutView.as_view()(request)
-        assert response.status_code == 200
-        data = json.loads(response.content)
-        assert data["success"] is True
-
-    def test_get_logout_anonymous_user(self, rf):
-        """Test GET logout for anonymous user."""
-        request = rf.get("/logout/")
-        request.user = AnonymousUser()
-        _add_session(request)
-
-        response = TenantLogoutView.as_view()(request)
-        assert response.status_code == 302
-
-    def test_post_logout_anonymous_user(self, rf):
-        """Test POST logout for anonymous user."""
-        request = rf.post("/logout/")
-        request.user = AnonymousUser()
-        _add_session(request)
-
-        response = TenantLogoutView.as_view()(request)
+    def test_get_returns_200(self, rf):
+        """Test that GET request returns 200 status code."""
+        request = rf.get("/dashboard/")
+        response = DashboardView.as_view()(request)
         assert response.status_code == 200
 
 

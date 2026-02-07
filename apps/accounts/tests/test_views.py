@@ -46,7 +46,7 @@ class TestUserViewSet:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['email'] == admin_user.email
 
-    def test_create_user(self, authenticated_admin_client, tenant):
+    def test_create_user(self, authenticated_admin_client):
         """Test creating a new user."""
         data = {
             'email': 'newuser@test.com',
@@ -124,15 +124,6 @@ class TestUserViewSet:
         assert response.data['email'] == admin_user.email
         assert response.data['id'] == str(admin_user.id)
 
-    def test_users_filtered_by_tenant(self, authenticated_admin_client, admin_user, tenant):
-        """Test users are filtered by tenant."""
-        response = authenticated_admin_client.get('/api/auth/api/users/')
-
-        # All returned users should belong to the same tenant
-        assert response.status_code == status.HTTP_200_OK
-        for user_data in response.data:
-            if user_data.get('tenant'):
-                assert user_data['tenant'] == str(tenant.id)
 
 
 # ============================================================================
@@ -223,7 +214,7 @@ class TestUserInvitationViewSet:
 
         assert response.status_code == status.HTTP_200_OK
 
-    def test_create_invitation(self, authenticated_admin_client, tenant):
+    def test_create_invitation(self, authenticated_admin_client):
         """Test creating a user invitation."""
         data = {
             'email': 'newinvite@example.com',
@@ -277,7 +268,7 @@ class TestApiKeyViewSet:
 
         assert response.status_code == status.HTTP_200_OK
 
-    def test_create_api_key(self, authenticated_admin_client, tenant):
+    def test_create_api_key(self, authenticated_admin_client):
         """Test creating an API key."""
         data = {
             'name': 'New API Key',
@@ -344,7 +335,6 @@ class TestUserAuthorization:
         response = authenticated_contributor_client.post('/api/auth/api/users/', data)
 
         # Should either be forbidden or the user creation is allowed
-        # but user is assigned to same tenant
         assert response.status_code in [
             status.HTTP_201_CREATED,
             status.HTTP_403_FORBIDDEN
@@ -359,7 +349,7 @@ class TestUserAuthorization:
             status.HTTP_403_FORBIDDEN
         ]
 
-    def test_superuser_sees_all_users(self, authenticated_superuser_client, admin_user, tenant):
+    def test_superuser_sees_all_users(self, authenticated_superuser_client, admin_user):
         """Test superuser can see all users."""
         response = authenticated_superuser_client.get('/api/auth/api/users/')
 

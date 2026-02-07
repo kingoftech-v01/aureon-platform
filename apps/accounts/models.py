@@ -14,7 +14,7 @@ class User(AbstractUser):
     """
     Custom user model extending Django's AbstractUser.
 
-    Supports role-based permissions and multi-tenant access.
+    Supports role-based permissions.
     """
 
     # User Roles
@@ -52,16 +52,6 @@ class User(AbstractUser):
         _('Email Address'),
         unique=True,
         help_text=_('Primary email address for authentication')
-    )
-
-    # Tenant relationship (can be null for superusers)
-    tenant = models.ForeignKey(
-        'tenants.Tenant',
-        on_delete=models.CASCADE,
-        related_name='users',
-        blank=True,
-        null=True,
-        help_text=_('The tenant organization this user belongs to')
     )
 
     # Role & Permissions
@@ -191,7 +181,7 @@ class User(AbstractUser):
         ordering = ['-date_joined']
         indexes = [
             models.Index(fields=['email']),
-            models.Index(fields=['tenant', 'role']),
+            models.Index(fields=['role']),
             models.Index(fields=['is_active']),
         ]
 
@@ -228,12 +218,6 @@ class User(AbstractUser):
     def is_client_user(self):
         """Check if user is a client (external user)."""
         return self.role == self.CLIENT
-
-    def has_tenant_permission(self, tenant):
-        """Check if user belongs to the specified tenant."""
-        if self.is_superuser:
-            return True
-        return self.tenant_id == tenant.id if tenant else False
 
     def can_manage_contracts(self):
         """Check if user can manage contracts."""
@@ -274,13 +258,6 @@ class UserInvitation(models.Model):
         primary_key=True,
         default=uuid.uuid4,
         editable=False
-    )
-
-    tenant = models.ForeignKey(
-        'tenants.Tenant',
-        on_delete=models.CASCADE,
-        related_name='invitations',
-        help_text=_('Tenant organization')
     )
 
     email = models.EmailField(
@@ -335,7 +312,6 @@ class UserInvitation(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['email', 'status']),
-            models.Index(fields=['tenant', 'status']),
             models.Index(fields=['invitation_token']),
         ]
 
@@ -357,8 +333,7 @@ class UserInvitation(models.Model):
         self.accepted_at = timezone.now()
         self.save()
 
-        # Assign user to tenant and role
-        user.tenant = self.tenant
+        # Assign role to user
         user.role = self.role
         user.save()
 
@@ -384,13 +359,6 @@ class ApiKey(models.Model):
         on_delete=models.CASCADE,
         related_name='api_keys',
         help_text=_('User who owns this API key')
-    )
-
-    tenant = models.ForeignKey(
-        'tenants.Tenant',
-        on_delete=models.CASCADE,
-        related_name='api_keys',
-        help_text=_('Tenant organization')
     )
 
     name = models.CharField(
@@ -455,7 +423,7 @@ class ApiKey(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['key']),
-            models.Index(fields=['tenant', 'is_active']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):

@@ -20,14 +20,13 @@ User = get_user_model()
 
 
 @pytest.fixture
-def user(db, tenant):
+def user(db):
     return User.objects.create_user(
         username='docuser',
         email='docuser@example.com',
         password='SecurePass123!',
         first_name='Doc',
         last_name='Owner',
-        tenant=tenant,
         is_active=True,
     )
 

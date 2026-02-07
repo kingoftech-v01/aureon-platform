@@ -156,7 +156,7 @@ class TestSubscription:
         )
 
     @pytest.fixture
-    def user(self, tenant):
+    def user(self):
         """Create a user for testing."""
         return User.objects.create_user(
             username='subscriber',
@@ -164,7 +164,6 @@ class TestSubscription:
             password='TestPass123!',
             first_name='Sub',
             last_name='Scriber',
-            tenant=tenant,
         )
 
     def _create_subscription(self, user, plan, **kwargs):

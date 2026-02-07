@@ -15,4 +15,4 @@ def log_user_creation(sender, instance, created, **kwargs):
     if created:
         import logging
         logger = logging.getLogger('aureon.accounts')
-        logger.info(f"New user created: {instance.email} - Tenant: {instance.tenant}")
+        logger.info(f"New user created: {instance.email}")

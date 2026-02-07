@@ -65,7 +65,7 @@ class TestUserAdminConfiguration:
 
     def test_list_display(self):
         """UserAdmin list_display includes expected fields."""
-        expected = ['email', 'full_name', 'tenant', 'role_badge', 'status_badge', 'last_login']
+        expected = ['email', 'full_name', 'role_badge', 'status_badge', 'last_login']
         ua = UserAdmin(User, admin.site)
         assert ua.list_display == expected
 
@@ -109,7 +109,6 @@ class TestUserAdminConfiguration:
         assert 'email' in add_fields
         assert 'password1' in add_fields
         assert 'password2' in add_fields
-        assert 'tenant' in add_fields
         assert 'role' in add_fields
 
     def test_fieldsets_count(self):
@@ -227,7 +226,7 @@ class TestUserInvitationAdminConfiguration:
         """UserInvitationAdmin list_display has expected fields."""
         ua = UserInvitationAdmin(UserInvitation, admin.site)
         expected = [
-            'email', 'tenant', 'role', 'status_badge',
+            'email', 'role', 'status_badge',
             'invited_by', 'created_at', 'expires_at',
         ]
         assert ua.list_display == expected
@@ -238,13 +237,11 @@ class TestUserInvitationAdminConfiguration:
         assert 'status' in ua.list_filter
         assert 'role' in ua.list_filter
         assert 'created_at' in ua.list_filter
-        assert 'tenant' in ua.list_filter
 
     def test_search_fields(self):
         """UserInvitationAdmin search_fields has expected fields."""
         ua = UserInvitationAdmin(UserInvitation, admin.site)
         assert 'email' in ua.search_fields
-        assert 'tenant__name' in ua.search_fields
         assert 'invited_by__email' in ua.search_fields
 
     def test_readonly_fields(self):
@@ -307,13 +304,12 @@ class TestUserInvitationAdminMethods:
         assert ua.status_badge.short_description == 'Status'
 
     @pytest.mark.django_db
-    def test_cancel_invitations_action(self, user_invitation, tenant, admin_user):
+    def test_cancel_invitations_action(self, user_invitation, admin_user):
         """cancel_invitations action cancels pending invitations."""
         import secrets as secrets_mod
 
         # Create additional pending invitations
         inv2 = UserInvitation.objects.create(
-            tenant=tenant,
             email='inv2@example.com',
             role=User.CONTRIBUTOR,
             invited_by=admin_user,
@@ -371,7 +367,7 @@ class TestApiKeyAdminConfiguration:
         """ApiKeyAdmin list_display has expected fields."""
         ua = ApiKeyAdmin(ApiKey, admin.site)
         expected = [
-            'name', 'prefix_display', 'user', 'tenant',
+            'name', 'prefix_display', 'user',
             'status_badge', 'usage_count', 'last_used_at', 'created_at',
         ]
         assert ua.list_display == expected
@@ -381,7 +377,6 @@ class TestApiKeyAdminConfiguration:
         ua = ApiKeyAdmin(ApiKey, admin.site)
         assert 'is_active' in ua.list_filter
         assert 'created_at' in ua.list_filter
-        assert 'tenant' in ua.list_filter
 
     def test_search_fields(self):
         """ApiKeyAdmin search_fields has expected fields."""
@@ -389,7 +384,6 @@ class TestApiKeyAdminConfiguration:
         assert 'name' in ua.search_fields
         assert 'prefix' in ua.search_fields
         assert 'user__email' in ua.search_fields
-        assert 'tenant__name' in ua.search_fields
 
     def test_readonly_fields(self):
         """ApiKeyAdmin readonly_fields has expected fields."""

@@ -98,20 +98,6 @@ class MockAxesModel:
         model_name = "accessattempt"
 
 
-class MockTenantModel:
-    """Mock Tenant model."""
-    class _meta:
-        app_label = "tenants"
-        model_name = "Tenant"
-
-
-class MockDomainModel:
-    """Mock Domain model."""
-    class _meta:
-        app_label = "tenants"
-        model_name = "Domain"
-
-
 class MockSubscriptionModel:
     """Mock Subscription model."""
     class _meta:
@@ -191,8 +177,6 @@ class TestReadWriteRouter:
         assert self.router._should_use_master(MockAuthModel) is True
         assert self.router._should_use_master(MockPaymentModel) is True
         assert self.router._should_use_master(MockContractModel) is True
-        assert self.router._should_use_master(MockTenantModel) is True
-        assert self.router._should_use_master(MockDomainModel) is True
         assert self.router._should_use_master(MockSubscriptionModel) is True
         assert self.router._should_use_master(MockContractSignatureModel) is True
         assert self.router._should_use_master(MockInvoiceModel) is True
@@ -446,6 +430,7 @@ class TestTransactionAwareRouter:
 # use_master decorator Tests
 # ============================================================================
 
+@pytest.mark.django_db
 class TestUseMasterDecorator:
     """Test the use_master decorator."""
 
@@ -647,10 +632,6 @@ class TestMasterOnlyConstants:
     def test_master_only_models_contains_accounts_user(self):
         """Test that accounts.User is in master-only models."""
         assert "accounts.User" in ReadWriteRouter.MASTER_ONLY_MODELS
-
-    def test_master_only_models_contains_tenant(self):
-        """Test that tenants.Tenant is in master-only models."""
-        assert "tenants.Tenant" in ReadWriteRouter.MASTER_ONLY_MODELS
 
     def test_master_only_models_contains_payment(self):
         """Test that payments.Payment is in master-only models."""
