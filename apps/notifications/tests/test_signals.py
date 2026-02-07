@@ -145,7 +145,7 @@ class TestPaymentNotificationHandler:
     @patch('apps.notifications.signals.NotificationService')
     def test_new_successful_payment_triggers_receipt(self, mock_service, mock_payment_class):
         """Test that a new successful payment triggers receipt notification."""
-        mock_payment_class.SUCCESS = 'succeeded'
+        mock_payment_class.SUCCEEDED = 'succeeded'
         mock_instance = MagicMock()
         mock_instance.status = 'succeeded'
         mock_instance.id = 'test-payment-id'
@@ -160,7 +160,7 @@ class TestPaymentNotificationHandler:
     @patch('apps.notifications.signals.NotificationService')
     def test_status_changed_to_success_triggers_receipt(self, mock_service, mock_payment_class):
         """Test that payment status changed to success triggers receipt."""
-        mock_payment_class.SUCCESS = 'succeeded'
+        mock_payment_class.SUCCEEDED = 'succeeded'
         mock_instance = MagicMock()
         mock_instance.status = 'succeeded'
         mock_instance._status_changed = True
@@ -176,7 +176,7 @@ class TestPaymentNotificationHandler:
     @patch('apps.notifications.signals.NotificationService')
     def test_not_created_and_no_status_change_no_receipt(self, mock_service, mock_payment_class):
         """Test that unchanged payment does not trigger receipt."""
-        mock_payment_class.SUCCESS = 'succeeded'
+        mock_payment_class.SUCCEEDED = 'succeeded'
         mock_instance = MagicMock()
         mock_instance.status = 'succeeded'
         mock_instance._status_changed = False
@@ -191,7 +191,7 @@ class TestPaymentNotificationHandler:
     @patch('apps.notifications.signals.NotificationService')
     def test_exception_handling(self, mock_service, mock_payment_class):
         """Test that exceptions are caught and logged."""
-        mock_payment_class.SUCCESS = 'succeeded'
+        mock_payment_class.SUCCEEDED = 'succeeded'
         mock_service.send_payment_receipt.side_effect = Exception('Service error')
         mock_instance = MagicMock()
         mock_instance.status = 'succeeded'
@@ -425,11 +425,14 @@ class TestTrackInvoiceStatusChange:
 
     def test_track_deleted_invoice(self):
         """Test tracking when invoice has pk but was deleted from DB."""
+        from apps.invoicing.models import Invoice
+
         mock_instance = MagicMock()
         mock_instance.pk = 'non-existent-pk'
 
         with patch('apps.notifications.signals.Invoice') as mock_invoice:
-            mock_invoice.objects.get.side_effect = mock_invoice.DoesNotExist
+            mock_invoice.DoesNotExist = Invoice.DoesNotExist
+            mock_invoice.objects.get.side_effect = Invoice.DoesNotExist
             track_invoice_status_change(mock_instance)
 
         assert mock_instance._status_changed is False
@@ -465,11 +468,14 @@ class TestTrackPaymentStatusChange:
 
     def test_track_deleted_payment(self):
         """Test tracking when payment has pk but was deleted."""
+        from apps.payments.models import Payment
+
         mock_instance = MagicMock()
         mock_instance.pk = 'non-existent-pk'
 
         with patch('apps.notifications.signals.Payment') as mock_payment:
-            mock_payment.objects.get.side_effect = mock_payment.DoesNotExist
+            mock_payment.DoesNotExist = Payment.DoesNotExist
+            mock_payment.objects.get.side_effect = Payment.DoesNotExist
             track_payment_status_change(mock_instance)
 
         assert mock_instance._status_changed is False
@@ -513,11 +519,14 @@ class TestTrackContractSignature:
 
     def test_track_deleted_contract(self):
         """Test tracking when contract has pk but was deleted."""
+        from apps.contracts.models import Contract
+
         mock_instance = MagicMock()
         mock_instance.pk = 'non-existent-pk'
 
         with patch('apps.notifications.signals.Contract') as mock_contract:
-            mock_contract.objects.get.side_effect = mock_contract.DoesNotExist
+            mock_contract.DoesNotExist = Contract.DoesNotExist
+            mock_contract.objects.get.side_effect = Contract.DoesNotExist
             track_contract_signature(mock_instance)
 
         assert mock_instance._signature_added is False

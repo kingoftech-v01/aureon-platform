@@ -5,10 +5,22 @@ import pytest
 from unittest.mock import MagicMock, patch
 from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
+from django.contrib.messages.storage.fallback import FallbackStorage
+from django.contrib.sessions.backends.db import SessionStore
 from django.test import RequestFactory
 
 from apps.notifications.models import NotificationTemplate, Notification
 from apps.notifications.admin import NotificationTemplateAdmin, NotificationAdmin
+
+
+def _make_request(method='post'):
+    """Create a request with messages middleware support."""
+    factory = RequestFactory()
+    request = factory.post('/') if method == 'post' else factory.get('/')
+    request.user = MagicMock()
+    request.session = SessionStore()
+    request._messages = FallbackStorage(request)
+    return request
 
 
 @pytest.mark.django_db
@@ -124,8 +136,7 @@ class TestNotificationTemplateAdmin:
 
     def test_duplicate_template_action(self, template_admin, template):
         """Test duplicate_template admin action."""
-        request = RequestFactory().post('/')
-        request.user = MagicMock()
+        request = _make_request()
         queryset = NotificationTemplate.objects.filter(pk=template.pk)
 
         template_admin.duplicate_template(request, queryset)
@@ -142,8 +153,7 @@ class TestNotificationTemplateAdmin:
             body_text='Test',
             is_active=False,
         )
-        request = RequestFactory().post('/')
-        request.user = MagicMock()
+        request = _make_request()
         queryset = NotificationTemplate.objects.filter(pk=template.pk)
 
         template_admin.activate_templates(request, queryset)
@@ -153,8 +163,7 @@ class TestNotificationTemplateAdmin:
 
     def test_deactivate_templates_action(self, template_admin, template):
         """Test deactivate_templates admin action."""
-        request = RequestFactory().post('/')
-        request.user = MagicMock()
+        request = _make_request()
         queryset = NotificationTemplate.objects.filter(pk=template.pk)
 
         template_admin.deactivate_templates(request, queryset)
@@ -370,7 +379,7 @@ class TestNotificationAdmin:
         result = notification_admin.message_html_display(notification)
         assert result == '-'
 
-    @patch('apps.notifications.admin.send_notification_async')
+    @patch('apps.notifications.tasks.send_notification_async')
     def test_resend_notifications_action(self, mock_task, notification_admin):
         """Test resend_notifications admin action."""
         failed = Notification.objects.create(
@@ -391,8 +400,7 @@ class TestNotificationAdmin:
             message_text='Test',
             status=Notification.SENT,
         )
-        request = RequestFactory().post('/')
-        request.user = MagicMock()
+        request = _make_request()
         queryset = Notification.objects.all()
 
         notification_admin.resend_notifications(request, queryset)
@@ -402,8 +410,7 @@ class TestNotificationAdmin:
 
     def test_mark_as_read_action(self, notification_admin, notification):
         """Test mark_as_read admin action."""
-        request = RequestFactory().post('/')
-        request.user = MagicMock()
+        request = _make_request()
         queryset = Notification.objects.filter(pk=notification.pk)
 
         notification_admin.mark_as_read(request, queryset)

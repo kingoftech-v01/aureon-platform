@@ -287,6 +287,51 @@ class TestNotificationServiceSms:
             assert notification is not None
             mock_sns.publish.assert_called_once()
 
+    @patch('boto3.client')
+    def test_sms_sending_failure_marks_notification_failed(self, mock_boto, sms_template):
+        """Test that SMS sending failure marks notification as failed."""
+        mock_sns = MagicMock()
+        mock_sns.publish.side_effect = Exception('SNS publish error')
+        mock_boto.return_value = mock_sns
+
+        with patch.object(settings, 'AWS_SNS_ENABLED', True, create=True):
+            context = {
+                'invoice_number': 'INV-001',
+                'amount': '$500.00',
+                'due_date': 'January 15, 2025',
+            }
+
+            notification = NotificationService.send_notification(
+                template_type='reminder_payment_due',
+                recipient_email='+1234567890',
+                context=context,
+            )
+
+            assert notification is not None
+            notification.refresh_from_db()
+            assert notification.status == Notification.FAILED
+            assert 'SNS publish error' in notification.error_message
+
+    def test_sms_boto3_import_failure_falls_back_to_delivered(self, sms_template):
+        """Test that SMS gracefully handles boto3 import failure."""
+        context = {
+            'invoice_number': 'INV-002',
+            'amount': '$750.00',
+            'due_date': 'February 1, 2025',
+        }
+
+        with patch.dict('sys.modules', {'boto3': None}):
+            notification = NotificationService.send_notification(
+                template_type='reminder_payment_due',
+                recipient_email='+1234567890',
+                context=context,
+            )
+
+        assert notification is not None
+        notification.refresh_from_db()
+        # Without boto3, sns_client stays None, so it falls through to delivered
+        assert notification.status == Notification.DELIVERED
+
 
 @pytest.mark.django_db
 class TestNotificationServiceInApp:
@@ -323,9 +368,6 @@ class TestSendInvoiceNotification:
         """Test that invoice notification passes the correct context."""
         mock_send.return_value = MagicMock()
 
-        # Monkeypatch full_name since Client model lacks this property
-        invoice_sent.client.full_name = invoice_sent.client.get_full_name()
-
         NotificationService.send_invoice_notification(invoice_sent, 'invoice_sent')
 
         mock_send.assert_called_once()
@@ -340,7 +382,6 @@ class TestSendInvoiceNotification:
     def test_sends_to_client_email(self, mock_send, invoice_sent):
         """Test that the notification is sent to the client's email."""
         mock_send.return_value = MagicMock()
-        invoice_sent.client.full_name = invoice_sent.client.get_full_name()
 
         NotificationService.send_invoice_notification(invoice_sent, 'invoice_sent')
 
@@ -352,7 +393,6 @@ class TestSendInvoiceNotification:
     def test_passes_related_invoice(self, mock_send, invoice_sent):
         """Test that the invoice is passed as a related object."""
         mock_send.return_value = MagicMock()
-        invoice_sent.client.full_name = invoice_sent.client.get_full_name()
 
         NotificationService.send_invoice_notification(invoice_sent, 'invoice_sent')
 
@@ -371,21 +411,13 @@ class TestSendPaymentReceipt:
         """Test that payment receipt passes the correct context."""
         mock_send.return_value = MagicMock()
 
-        # Payment has invoice, and invoice has client
-        invoice = payment_successful.invoice
-        client = invoice.client
-        client.full_name = client.get_full_name()
-        # The code accesses payment.client, which doesn't exist on Payment model.
-        # We add it as an attribute for testing.
-        payment_successful.client = client
-
         NotificationService.send_payment_receipt(payment_successful)
 
         mock_send.assert_called_once()
         call_kwargs = mock_send.call_args
         context = call_kwargs[1]['context'] if 'context' in call_kwargs[1] else call_kwargs[0][2]
 
-        assert context['invoice_number'] == invoice.invoice_number
+        assert context['invoice_number'] == payment_successful.invoice.invoice_number
         assert str(payment_successful.id) in context['payment_id']
 
 
@@ -399,10 +431,6 @@ class TestSendContractNotification:
     ):
         """Test that contract notification passes the correct context."""
         mock_send.return_value = MagicMock()
-
-        # Monkeypatch missing attributes
-        contract_fixed.client.full_name = contract_fixed.client.get_full_name()
-        contract_fixed.total_value = contract_fixed.value
 
         NotificationService.send_contract_notification(
             contract_fixed, 'contract_signature_request'
@@ -434,8 +462,6 @@ class TestSendContractNotification:
         )
 
         mock_send.return_value = MagicMock()
-        contract.client.full_name = contract.client.get_full_name()
-        contract.total_value = contract.value
 
         NotificationService.send_contract_notification(contract, 'contract_expiring')
 
@@ -452,7 +478,6 @@ class TestSendClientWelcome:
     def test_sends_welcome_email(self, mock_send, client_company):
         """Test that a welcome notification is sent to a new client."""
         mock_send.return_value = MagicMock()
-        client_company.full_name = client_company.get_full_name()
 
         NotificationService.send_client_welcome(client_company)
 
@@ -465,7 +490,6 @@ class TestSendClientWelcome:
     def test_welcome_email_sent_to_client_email(self, mock_send, client_company):
         """Test that the welcome email is sent to the client's email address."""
         mock_send.return_value = MagicMock()
-        client_company.full_name = client_company.get_full_name()
 
         NotificationService.send_client_welcome(client_company)
 
@@ -518,3 +542,105 @@ class TestTemplateNotFound:
         )
 
         assert result is None
+
+
+@pytest.mark.django_db
+class TestNotificationModel:
+    """Tests for Notification model methods and properties."""
+
+    def test_is_read_property_true(self):
+        """Test is_read returns True when status is READ."""
+        notification = Notification.objects.create(
+            email='test@example.com',
+            subject='Test',
+            message_text='Test',
+            status=Notification.READ,
+        )
+        assert notification.is_read is True
+
+    def test_is_read_property_false(self):
+        """Test is_read returns False when status is not READ."""
+        notification = Notification.objects.create(
+            email='test@example.com',
+            subject='Test',
+            message_text='Test',
+            status=Notification.PENDING,
+        )
+        assert notification.is_read is False
+
+    def test_recipient_returns_user_email(self, admin_user):
+        """Test recipient property returns user email when user is set."""
+        notification = Notification.objects.create(
+            user=admin_user,
+            email='fallback@example.com',
+            subject='Test',
+            message_text='Test',
+        )
+        assert notification.recipient == admin_user.email
+
+    def test_recipient_returns_email_when_no_user(self):
+        """Test recipient property returns email when no user is set."""
+        notification = Notification.objects.create(
+            email='test@example.com',
+            subject='Test',
+            message_text='Test',
+        )
+        assert notification.recipient == 'test@example.com'
+
+    def test_recipient_returns_phone_when_no_user_or_email(self):
+        """Test recipient property returns phone when no user or email."""
+        notification = Notification.objects.create(
+            email='',
+            phone='+1234567890',
+            subject='Test',
+            message_text='Test',
+        )
+        assert notification.recipient == '+1234567890'
+
+    def test_mark_as_sent_with_external_id(self):
+        """Test mark_as_sent stores external_id when provided."""
+        notification = Notification.objects.create(
+            email='test@example.com',
+            subject='Test',
+            message_text='Test',
+            status=Notification.PENDING,
+        )
+        notification.mark_as_sent(external_id='ext-123')
+
+        notification.refresh_from_db()
+        assert notification.status == Notification.SENT
+        assert notification.external_id == 'ext-123'
+        assert notification.sent_at is not None
+
+
+@pytest.mark.django_db
+class TestTemplateRender:
+    """Tests for NotificationTemplate.render method edge cases."""
+
+    def test_render_with_empty_subject(self):
+        """Test render handles empty subject gracefully."""
+        template = NotificationTemplate.objects.create(
+            name='No Subject Template',
+            template_type='invoice_overdue',
+            channel=NotificationTemplate.EMAIL,
+            subject='',
+            body_text='Reminder for {{client_name}}.',
+            is_active=True,
+        )
+        rendered = template.render({'client_name': 'John'})
+        assert rendered['subject'] == ''
+        assert 'John' in rendered['body_text']
+
+    def test_render_with_missing_variable(self):
+        """Test render preserves placeholder for missing variables."""
+        template = NotificationTemplate.objects.create(
+            name='Missing Var Template',
+            template_type='payment_failed',
+            channel=NotificationTemplate.EMAIL,
+            subject='Invoice {{invoice_number}}',
+            body_text='Amount: {{amount}}',
+            is_active=True,
+        )
+        rendered = template.render({})
+        assert '{{invoice_number}}' in rendered['subject']
+        assert '{{amount}}' in rendered['body_text']
