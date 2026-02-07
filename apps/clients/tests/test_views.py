@@ -12,6 +12,7 @@ Tests cover:
 
 import pytest
 from decimal import Decimal
+from unittest.mock import patch
 from rest_framework import status
 from apps.clients.models import Client
 
@@ -53,7 +54,7 @@ class TestClientViewSet:
             'first_name': 'John',
             'last_name': 'Doe',
             'email': 'john@newcompany.com',
-            'phone': '+1234567890',
+            'phone': '+12125551234',
             'lifecycle_stage': Client.PROSPECT,
         }
 
@@ -160,7 +161,8 @@ class TestClientSearchFilter:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        for client in response.data:
+        results = response.data.get('results', response.data)
+        for client in results:
             assert client['lifecycle_stage'] == Client.ACTIVE
 
     def test_filter_by_client_type(self, authenticated_admin_client, client_company, client_individual):
@@ -170,7 +172,8 @@ class TestClientSearchFilter:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        for client in response.data:
+        results = response.data.get('results', response.data)
+        for client in results:
             assert client['client_type'] == Client.COMPANY
 
     def test_filter_by_is_active(self, authenticated_admin_client, client_company):
@@ -180,7 +183,8 @@ class TestClientSearchFilter:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        for client in response.data:
+        results = response.data.get('results', response.data)
+        for client in results:
             assert client['is_active'] is True
 
     def test_ordering_by_created_at(self, authenticated_admin_client, client_company, client_individual):
@@ -449,3 +453,58 @@ class TestClientViewEdgeCases:
         response = authenticated_admin_client.post('/api/api/clients/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
+
+    def test_create_portal_access_error(self, authenticated_admin_client, client_lead):
+        """Test create_portal_access handles exceptions gracefully."""
+        with patch.object(
+            Client, 'create_portal_access', side_effect=Exception('DB error')
+        ):
+            response = authenticated_admin_client.post(
+                f'/api/api/clients/{client_lead.id}/create_portal_access/'
+            )
+            assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+            assert 'DB error' in response.data['detail']
+
+    def test_update_financial_summary_error(self, authenticated_admin_client, client_company):
+        """Test update_financial_summary handles exceptions gracefully."""
+        with patch.object(
+            Client, 'update_financial_summary', side_effect=Exception('Invoice error')
+        ):
+            response = authenticated_admin_client.post(
+                f'/api/api/clients/{client_company.id}/update_financial_summary/'
+            )
+            assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+            assert 'Invoice error' in response.data['detail']
+
+
+# ============================================================================
+# Client Document Upload Tests
+# ============================================================================
+
+@pytest.mark.django_db
+class TestClientDocumentUpload:
+    """Tests for client document upload via API."""
+
+    def test_upload_document(self, authenticated_admin_client, client_company):
+        """Test uploading a document via the API triggers perform_create."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        doc_file = SimpleUploadedFile(
+            'test_upload.pdf',
+            b'PDF file content',
+            content_type='application/pdf'
+        )
+        data = {
+            'client': str(client_company.id),
+            'name': 'Uploaded Doc',
+            'file': doc_file,
+        }
+
+        response = authenticated_admin_client.post(
+            '/api/api/documents/',
+            data,
+            format='multipart'
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['name'] == 'Uploaded Doc'

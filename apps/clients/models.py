@@ -319,9 +319,9 @@ class Client(models.Model):
             status__in=[Invoice.SENT, Invoice.VIEWED, Invoice.PARTIALLY_PAID]
         ).aggregate(total=Sum('total'))['total'] or 0
 
-        self.total_revenue = paid_total
+        self.total_paid = paid_total
         self.outstanding_balance = outstanding
-        self.save(update_fields=['total_revenue', 'outstanding_balance', 'updated_at'])
+        self.save(update_fields=['total_paid', 'outstanding_balance', 'updated_at'])
 
     def create_portal_access(self):
         """Create portal user account for client."""
@@ -334,8 +334,10 @@ class Client(models.Model):
         # Generate random password
         password = secrets.token_urlsafe(16)
 
-        # Create user account
+        # Create user account with auto-generated username
+        username = self.email.split('@')[0] + str(uuid.uuid4())[:8]
         user = User.objects.create_user(
+            username=username,
             email=self.email,
             password=password,
             first_name=self.first_name,

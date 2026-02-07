@@ -4,6 +4,8 @@ Tests for clients app admin configuration.
 
 import pytest
 from django.contrib.admin.sites import AdminSite
+from django.contrib.messages.storage.fallback import FallbackStorage
+from django.contrib.sessions.backends.db import SessionStore
 from django.test import RequestFactory
 from apps.clients.models import Client, ClientNote, ClientDocument
 from apps.clients.admin import ClientAdmin, ClientNoteAdmin, ClientDocumentAdmin
@@ -18,6 +20,14 @@ class TestClientAdmin:
         self.site = AdminSite()
         self.admin = ClientAdmin(Client, self.site)
         self.request_factory = RequestFactory()
+
+    def _make_request(self, user):
+        """Create a request with messages support."""
+        request = self.request_factory.get('/admin/')
+        request.user = user
+        request.session = SessionStore()
+        request._messages = FallbackStorage(request)
+        return request
 
     def test_client_admin_is_registered(self):
         """Test Client model is registered in admin."""
@@ -105,8 +115,7 @@ class TestClientAdmin:
 
     def test_move_to_active_action(self, admin_user, client_lead, client_individual):
         """Test move_to_active admin action."""
-        request = self.request_factory.get('/admin/')
-        request.user = admin_user
+        request = self._make_request(admin_user)
         queryset = Client.objects.filter(pk__in=[client_lead.pk, client_individual.pk])
         self.admin.move_to_active(request, queryset)
         client_lead.refresh_from_db()
@@ -120,8 +129,7 @@ class TestClientAdmin:
 
     def test_create_portal_access_action(self, admin_user, client_company):
         """Test create_portal_access admin action."""
-        request = self.request_factory.get('/admin/')
-        request.user = admin_user
+        request = self._make_request(admin_user)
         # Client already doesn't have portal user by default
         assert client_company.portal_user is None
         queryset = Client.objects.filter(pk=client_company.pk)
@@ -133,8 +141,7 @@ class TestClientAdmin:
         """Test create_portal_access skips clients with existing portal user."""
         client_company.portal_user = client_user
         client_company.save()
-        request = self.request_factory.get('/admin/')
-        request.user = admin_user
+        request = self._make_request(admin_user)
         queryset = Client.objects.filter(pk=client_company.pk)
         # Should not create a new portal user
         self.admin.create_portal_access(request, queryset)

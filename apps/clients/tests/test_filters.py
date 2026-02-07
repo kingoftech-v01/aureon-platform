@@ -115,6 +115,13 @@ class TestClientFilter:
         result = f.qs
         assert result.count() == qs.count()
 
+    def test_filter_by_tags_empty_value_direct(self, client_company, client_individual, client_lead):
+        """Test filter_by_tags method directly with empty value."""
+        qs = Client.objects.all()
+        f = ClientFilter(queryset=qs)
+        result = f.filter_by_tags(qs, 'tags', '')
+        assert result.count() == qs.count()
+
     def test_filter_min_total_value(self, client_company, client_lead):
         """Test min_total_value filter."""
         client_company.total_value = Decimal('5000.00')
