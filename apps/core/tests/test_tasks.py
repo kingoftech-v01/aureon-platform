@@ -172,3 +172,52 @@ class TestHealthCheckExternalServices:
         result = health_check_external_services()
 
         assert 'timestamp' in result
+
+    @patch('apps.core.tasks.settings')
+    def test_stripe_with_real_key_failure(self, mock_settings):
+        """Test Stripe health check when API call fails."""
+        mock_settings.CELERY_BROKER_URL = 'redis://localhost:6379/0'
+        mock_settings.STRIPE_SECRET_KEY = 'sk_live_realkey123'
+        mock_settings.STRIPE_LIVE_SECRET_KEY = 'sk_live_realkey123'
+
+        with patch('stripe.Account.retrieve', side_effect=Exception("API error")):
+            result = health_check_external_services()
+
+        assert result['services']['stripe']['status'] == 'unhealthy'
+        assert 'error' in result['services']['stripe']
+
+    @patch('apps.core.tasks.settings')
+    def test_stripe_with_real_key_success(self, mock_settings):
+        """Test Stripe health check when API call succeeds."""
+        mock_settings.CELERY_BROKER_URL = 'redis://localhost:6379/0'
+        mock_settings.STRIPE_SECRET_KEY = 'sk_live_realkey123'
+        mock_settings.STRIPE_LIVE_SECRET_KEY = 'sk_live_realkey123'
+
+        with patch('stripe.Account.retrieve', return_value=MagicMock()):
+            result = health_check_external_services()
+
+        assert result['services']['stripe']['status'] == 'healthy'
+
+
+@pytest.mark.django_db
+class TestCleanupExpiredSessionsRetry:
+    """Tests for cleanup_expired_sessions retry behavior."""
+
+    @patch('apps.core.tasks.Session')
+    def test_retries_on_exception(self, mock_session_cls):
+        """Test that the task retries on database error."""
+        mock_session_cls.objects.filter.return_value.delete.side_effect = Exception("DB error")
+
+        with pytest.raises(Exception):
+            cleanup_expired_sessions()
+
+
+@pytest.mark.django_db
+class TestBackupCriticalDataRetry:
+    """Tests for backup_critical_data retry behavior."""
+
+    @patch('os.makedirs', side_effect=Exception("Permission denied"))
+    def test_retries_on_exception(self, mock_makedirs):
+        """Test that the task retries on failure."""
+        with pytest.raises(Exception):
+            backup_critical_data()
