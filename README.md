@@ -42,6 +42,7 @@ For Dockploy, simply add this as your start command and configure environment va
 - [Environment Variables](#environment-variables)
 - [Architecture](#architecture)
 - [API Documentation](#api-documentation)
+- [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
 - [Support](#support)
@@ -301,7 +302,7 @@ sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d aureon.yourdomain.com
 ```
 
-For detailed instructions, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
+For detailed instructions, see [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md).
 
 ---
 
@@ -408,17 +409,18 @@ aureon/
 |   |-- contracts/        # Contract creation, templates, e-signatures
 |   |-- invoicing/        # Invoice generation, PDF creation
 |   |-- payments/         # Stripe payment processing
-|   |-- subscriptions/   # Recurring billing and subscriptions
+|   |-- subscriptions/    # Recurring billing and subscriptions
 |   |-- notifications/    # Email templates and automation
 |   |-- analytics/        # Dashboards, MRR tracking, metrics
 |   |-- documents/        # Document storage and management
 |   |-- webhooks/         # Stripe and external webhook handling
 |   |-- integrations/     # Third-party integrations
 |-- config/               # Django settings and configuration
+|-- docs/                 # Project documentation (guides, reports, audits)
 |-- docker/               # Docker configuration files
 |-- frontend/             # React dashboard application
+|-- scripts/              # Deployment, load testing, and utility scripts
 |-- static/               # Static assets
-|-- templates/            # Django templates
 +-- tests/                # Test suite
 ```
 
@@ -459,7 +461,24 @@ aureon/
 | Analytics | `/api/analytics/` | Dashboard metrics, reports |
 | Webhooks | `/webhooks/stripe/` | Stripe webhook endpoint |
 
-For detailed API documentation with request/response examples, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md).
+For detailed API documentation with request/response examples, see [API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md).
+
+---
+
+## Documentation
+
+All detailed documentation lives in the [`docs/`](docs/) directory:
+
+| Document | Description |
+|----------|-------------|
+| [API Documentation](docs/API_DOCUMENTATION.md) | Complete API reference with request/response examples |
+| [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Production deployment instructions, Nginx, SSL, backups |
+| [Security Audit Report](docs/SECURITY_AUDIT_REPORT.md) | 15 security protections, compliance status |
+| [Test Coverage Report](docs/TEST_COVERAGE_REPORT.md) | 2711 tests, 99.83% coverage, testing guidelines |
+| [Production Shield Compliance](docs/PRODUCTION_SHIELD_COMPLIANCE_REPORT.md) | 97% compliance score, scalability audit |
+| [Project Roadmap](docs/PROJECT_ROADMAP.md) | Phased development strategy and current status |
+| [Code Review](docs/CODE_REVIEW_INCOMPLETE.md) | Tracked issues: 9 resolved, 31 remaining (frontend) |
+| [Security Policy](docs/SECURITY.md) | Vulnerability reporting policy |
 
 ---
 
