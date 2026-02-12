@@ -90,12 +90,35 @@ def get_current_user(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def logout(request):
     """
-    Logout user (client-side should delete tokens).
+    Logout user by blacklisting the provided refresh token.
 
-    This is mostly a placeholder - JWT logout is typically handled client-side.
-    For blacklisting tokens, additional setup would be needed.
+    Expects:
+    {
+        "refresh": "<refresh_token>"
+    }
+
+    The refresh token is added to a blacklist so it can no longer be used
+    to obtain new access tokens. The client should also discard the access
+    token locally.
     """
-    return Response({'detail': 'Successfully logged out.'}, status=status.HTTP_200_OK)
+    refresh_token = request.data.get('refresh')
+    if not refresh_token:
+        return Response(
+            {'detail': 'Refresh token is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        token = RefreshToken(refresh_token)
+        token.blacklist()
+        return Response(
+            {'detail': 'Successfully logged out.'},
+            status=status.HTTP_200_OK,
+        )
+    except Exception:
+        return Response(
+            {'detail': 'Token is invalid or already blacklisted.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
