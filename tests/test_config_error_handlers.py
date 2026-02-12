@@ -15,7 +15,6 @@ import json
 from unittest.mock import patch, MagicMock
 
 from django.test import RequestFactory
-from django.http import HttpResponse
 
 from config.error_handlers import (
     is_api_request,
@@ -97,15 +96,14 @@ class TestHandler404:
         assert data["status_code"] == 404
         assert "message" in data
 
-    def test_html_request_serves_react_app(self, rf):
-        """Test that HTML requests serve React SPA."""
+    def test_html_request_returns_plain_text(self, rf):
+        """Test that HTML requests return plain text response."""
         request = rf.get("/nonexistent/")
         request.META["CSRF_COOKIE"] = "test"
 
-        with patch("config.error_handlers.serve_react_app") as mock_serve:
-            mock_serve.return_value = HttpResponse("React")
-            response = handler404(request)
-            mock_serve.assert_called_once_with(request)
+        response = handler404(request)
+        assert response.status_code == 404
+        assert response.content == b"Not Found"
 
     def test_api_path_returns_json(self, rf):
         """Test that /api/ path returns JSON even without Accept header."""
@@ -150,15 +148,14 @@ class TestHandler500:
         assert "request_id" in data
         assert len(data["request_id"]) == 8
 
-    def test_html_request_serves_react_app(self, rf):
-        """Test that HTML requests serve React SPA."""
+    def test_html_request_returns_plain_text(self, rf):
+        """Test that HTML requests return plain text response."""
         request = rf.get("/server-error/")
         request.META["CSRF_COOKIE"] = "test"
 
-        with patch("config.error_handlers.serve_react_app") as mock_serve:
-            mock_serve.return_value = HttpResponse("React Error Page")
-            response = handler500(request)
-            mock_serve.assert_called_once_with(request)
+        response = handler500(request)
+        assert response.status_code == 500
+        assert response.content == b"Internal Server Error"
 
     def test_logs_error_with_request_id(self, rf):
         """Test that the error is logged with a request ID."""
@@ -201,15 +198,14 @@ class TestHandler403:
         assert data["status_code"] == 403
         assert "permission" in data["message"].lower()
 
-    def test_html_request_serves_react_app(self, rf):
-        """Test that HTML requests serve React SPA."""
+    def test_html_request_returns_plain_text(self, rf):
+        """Test that HTML requests return plain text response."""
         request = rf.get("/restricted/")
         request.META["CSRF_COOKIE"] = "test"
 
-        with patch("config.error_handlers.serve_react_app") as mock_serve:
-            mock_serve.return_value = HttpResponse("React 403")
-            response = handler403(request)
-            mock_serve.assert_called_once_with(request)
+        response = handler403(request)
+        assert response.status_code == 403
+        assert response.content == b"Forbidden"
 
     def test_no_exception_parameter(self, rf):
         """Test handler403 with default exception=None."""
@@ -235,15 +231,14 @@ class TestHandler400:
         assert data["status_code"] == 400
         assert "message" in data
 
-    def test_html_request_serves_react_app(self, rf):
-        """Test that HTML requests serve React SPA."""
+    def test_html_request_returns_plain_text(self, rf):
+        """Test that HTML requests return plain text response."""
         request = rf.get("/bad-request/")
         request.META["CSRF_COOKIE"] = "test"
 
-        with patch("config.error_handlers.serve_react_app") as mock_serve:
-            mock_serve.return_value = HttpResponse("React 400")
-            response = handler400(request)
-            mock_serve.assert_called_once_with(request)
+        response = handler400(request)
+        assert response.status_code == 400
+        assert response.content == b"Bad Request"
 
     def test_no_exception_parameter(self, rf):
         """Test handler400 with default exception=None."""
@@ -269,14 +264,13 @@ class TestHandler429:
         assert data["retry_after"] == 60
         assert "rate limit" in data["message"].lower()
 
-    def test_html_request_serves_react_app(self, rf):
-        """Test that HTML requests serve React SPA."""
+    def test_html_request_returns_plain_text(self, rf):
+        """Test that HTML requests return plain text response."""
         request = rf.get("/rate-limited/")
 
-        with patch("config.error_handlers.serve_react_app") as mock_serve:
-            mock_serve.return_value = HttpResponse("React 429")
-            response = handler429(request)
-            mock_serve.assert_called_once_with(request)
+        response = handler429(request)
+        assert response.status_code == 429
+        assert response.content == b"Too Many Requests"
 
     def test_with_exception_parameter(self, rf):
         """Test handler429 with exception parameter."""

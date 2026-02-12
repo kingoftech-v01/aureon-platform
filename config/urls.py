@@ -5,7 +5,6 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from config.views import HomeView, DashboardView
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -24,37 +23,13 @@ urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
-    # Homepage
-    path('', HomeView.as_view(), name='home'),
-
-    # Public Website (for namespace resolution in templates)
-    path('', include('apps.website.urls')),
-
     # Django Allauth (for account_login, account_logout, etc.)
     path('accounts/', include('allauth.urls')),
-
-    # React Dashboard Routes (catch-all for SPA)
-    path('dashboard/', DashboardView.as_view(), name='dashboard'),
-    path('dashboard/<path:path>', DashboardView.as_view(), name='dashboard_path'),
-    path('clients/', DashboardView.as_view(), name='clients'),
-    path('clients/<path:path>', DashboardView.as_view(), name='clients_path'),
-    path('contracts/', DashboardView.as_view(), name='contracts'),
-    path('contracts/<path:path>', DashboardView.as_view(), name='contracts_path'),
-    path('invoices/', DashboardView.as_view(), name='invoices'),
-    path('invoices/<path:path>', DashboardView.as_view(), name='invoices_path'),
-    path('payments/', DashboardView.as_view(), name='payments'),
-    path('payments/<path:path>', DashboardView.as_view(), name='payments_path'),
-    path('analytics/', DashboardView.as_view(), name='analytics'),
-    path('documents/', DashboardView.as_view(), name='documents'),
-    path('documents/<path:path>', DashboardView.as_view(), name='documents_path'),
-    path('settings/', DashboardView.as_view(), name='settings'),
-    path('settings/<path:path>', DashboardView.as_view(), name='settings_path'),
-    path('auth/<path:path>', DashboardView.as_view(), name='auth'),
 
     # Health Check Endpoints (Rhematek Production Shield)
     *get_health_urls(),
 
-    # API Documentation (DRF Spectacular) - must be before app API includes
+    # API Documentation (DRF Spectacular)
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
@@ -67,9 +42,6 @@ urlpatterns = [
     # Authentication API
     path('api/auth/', include('apps.accounts.urls')),
     path('api/auth/', include('rest_framework.urls')),
-
-    # Website Marketing API (for React frontend)
-    path('api/v1/website/', include('apps.website.api_urls')),
 
     # Core Business Apps API
     path('api/', include('apps.clients.urls')),

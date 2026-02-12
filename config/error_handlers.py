@@ -3,16 +3,12 @@ Aureon SaaS Platform - Custom Error Handlers
 Rhematek Production Shield
 
 Custom error pages for production use.
-All HTML errors redirect to React SPA error pages.
 """
 
 import uuid
 import logging
-from django.shortcuts import redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import requires_csrf_token
-
-from config.views import serve_react_app
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +35,12 @@ def handler404(request, exception=None):
             "status_code": 404,
         }, status=404)
 
-    # Serve React SPA which will handle the 404 page
-    return serve_react_app(request)
+    return HttpResponse("Not Found", status=404, content_type="text/plain")
 
 
 @requires_csrf_token
 def handler500(request):
     """Custom 500 error handler."""
-    # Generate a unique request ID for tracking
     request_id = str(uuid.uuid4())[:8]
     logger.error(f"Internal Server Error - Request ID: {request_id}")
 
@@ -58,8 +52,7 @@ def handler500(request):
             "status_code": 500,
         }, status=500)
 
-    # Serve React SPA which will handle the 500 page
-    return serve_react_app(request)
+    return HttpResponse("Internal Server Error", status=500, content_type="text/plain")
 
 
 @requires_csrf_token
@@ -72,8 +65,7 @@ def handler403(request, exception=None):
             "status_code": 403,
         }, status=403)
 
-    # Serve React SPA which will handle the 403 page
-    return serve_react_app(request)
+    return HttpResponse("Forbidden", status=403, content_type="text/plain")
 
 
 @requires_csrf_token
@@ -86,8 +78,7 @@ def handler400(request, exception=None):
             "status_code": 400,
         }, status=400)
 
-    # Serve React SPA which will handle the error page
-    return serve_react_app(request)
+    return HttpResponse("Bad Request", status=400, content_type="text/plain")
 
 
 def handler429(request, exception=None):
@@ -100,5 +91,4 @@ def handler429(request, exception=None):
             "status_code": 429,
         }, status=429)
 
-    # Serve React SPA which will handle the 429 page
-    return serve_react_app(request)
+    return HttpResponse("Too Many Requests", status=429, content_type="text/plain")

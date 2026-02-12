@@ -102,7 +102,6 @@ INSTALLED_APPS = [
     'apps.analytics',
     'apps.integrations',
     'apps.webhooks',
-    'apps.website',  # Marketing website
     'apps.subscriptions',  # Subscription management
 ]
 
@@ -645,7 +644,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_SESSION_REMEMBER = True
-LOGIN_REDIRECT_URL = '/dashboard/'
+LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
 # ====================

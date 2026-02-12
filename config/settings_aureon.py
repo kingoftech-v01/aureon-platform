@@ -66,7 +66,6 @@ INSTALLED_APPS = [
 
     # Local apps
     'apps.accounts',
-    'apps.website',
     'apps.clients',
     'apps.contracts',
     'apps.invoicing',
@@ -108,7 +107,6 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             BASE_DIR / 'templates',
-            BASE_DIR / 'apps' / 'website' / 'templates',
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -119,7 +117,6 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.media',
                 'django.template.context_processors.static',
-                'apps.website.context_processors.site_settings',
             ],
         },
     },
