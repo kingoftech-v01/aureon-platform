@@ -120,7 +120,7 @@ Eliminate the complexity of financial administration for modern businesses. Empo
 
 ### Backend
 - **Framework**: Django 5.1.4 with Django REST Framework 3.14
-- **Database**: PostgreSQL 16 with multi-schema tenancy (django-tenants)
+- **Database**: PostgreSQL 16
 - **Caching**: Redis 7.4 with django-redis
 - **Task Queue**: Celery 5.4.0 with priority queues (high/medium/low/batch)
 - **Authentication**: Django Allauth + JWT (SimpleJWT) + 2FA (pyotp)
@@ -396,25 +396,24 @@ See `.env.example` for a complete list of all available environment variables.
 
 ### Multi-Tenancy
 
-Aureon uses **Django-Tenants** to provide full schema-based tenant isolation. Each organization (tenant) has its own PostgreSQL schema, ensuring complete data separation while running on a single codebase.
+Aureon uses a simplified single-database architecture optimized for rapid development. Multi-tenancy support is planned for a future phase.
 
 ### Application Structure
 
 ```
 aureon/
 |-- apps/
-|   |-- tenants/          # Tenant management and domain routing
 |   |-- accounts/         # User authentication, 2FA, API keys
 |   |-- clients/          # CRM and contact management
 |   |-- contracts/        # Contract creation, templates, e-signatures
 |   |-- invoicing/        # Invoice generation, PDF creation
 |   |-- payments/         # Stripe payment processing
+|   |-- subscriptions/   # Recurring billing and subscriptions
 |   |-- notifications/    # Email templates and automation
 |   |-- analytics/        # Dashboards, MRR tracking, metrics
 |   |-- documents/        # Document storage and management
 |   |-- webhooks/         # Stripe and external webhook handling
 |   |-- integrations/     # Third-party integrations
-|   +-- website/          # Public marketing website
 |-- config/               # Django settings and configuration
 |-- docker/               # Docker configuration files
 |-- frontend/             # React dashboard application
@@ -478,8 +477,10 @@ We welcome contributions from the community! Please read our [Contributing Guide
 
 ### Code Quality
 
+**Platform Metrics**: 2711 tests passing, 99.83% code coverage
+
 - Run tests: `pytest`
-- Check coverage: `pytest --cov=apps`
+- Check coverage: `pytest` (coverage is auto-configured via `.coveragerc`)
 - Lint code: `flake8 apps/`
 - Format code: `black apps/`
 - Sort imports: `isort apps/`

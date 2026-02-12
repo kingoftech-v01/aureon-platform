@@ -116,15 +116,29 @@ celery -A config worker -l info
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run all tests (coverage auto-configured)
 pytest
 
-# Run with coverage
-pytest --cov=apps --cov-report=html
+# Run without coverage (faster for development)
+pytest --no-cov
 
 # Run specific test file
 pytest apps/contracts/tests/test_models.py
+
+# Run tests matching a keyword
+pytest -k "test_stripe_webhook"
 ```
+
+### Test Settings
+
+Tests use a dedicated settings module (`config/settings_test.py`) that:
+- Uses a local PostgreSQL database (`aureon_test`)
+- Disables external service dependencies
+- Uses `MD5PasswordHasher` for faster test execution
+- Sets `CELERY_TASK_ALWAYS_EAGER = True` for synchronous task testing
+- Uses in-memory cache backends
+
+Coverage is configured via `.coveragerc` and enforced at 99% minimum.
 
 ---
 
@@ -296,7 +310,7 @@ Fixes #123
 ### Backend Tests
 
 - Write tests using **pytest**
-- Aim for **>80% code coverage**
+- Maintain **99%+ code coverage** (enforced by CI)
 - Use **factories** for test data (factory_boy)
 - Mock external services (Stripe, email, etc.)
 
