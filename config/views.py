@@ -1,15 +1,13 @@
 """
-Home and authentication views for Aureon SaaS Platform.
+Home and dashboard views for Aureon SaaS Platform.
 
 Frontend rendering is handled by:
-- React SPA (Vite) for dashboard/tenant routes
+- React SPA (Vite) for dashboard routes
 - Next.js static export for marketing website routes
 """
 import os
-from django.shortcuts import redirect
 from django.views import View
-from django.http import HttpResponse, JsonResponse
-from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponse
 from django.conf import settings
 
 
@@ -149,111 +147,22 @@ def serve_react_app(request, context=None):
 
 class HomeView(View):
     """
-    Home view that serves the appropriate frontend based on domain.
-
-    - Main domain: Serves Next.js marketing site
-    - Tenant subdomain: Serves React dashboard
+    Home view that serves the marketing site.
     """
-
-    MAIN_DOMAINS = [
-        'aureon.rhematek-solutions.com',
-        'www.aureon.rhematek-solutions.com',
-        'localhost',
-        '127.0.0.1',
-    ]
 
     def get(self, request):
-        host = request.get_host().split(':')[0]
-
-        # Check if this is the main domain (marketing site)
-        if host in self.MAIN_DOMAINS:
-            return serve_marketing_site(request, '')
-
-        # Tenant subdomain - serve React dashboard
-        return serve_react_app(request)
+        return serve_marketing_site(request, '')
 
 
-class TenantDashboardView(View):
+class DashboardView(View):
     """
-    Serve the React dashboard for all authenticated tenant routes.
+    Serve the React dashboard for all authenticated routes.
     This catches /dashboard, /clients, /contracts, /invoices, etc.
     """
 
     def get(self, request, path=''):
         # React handles authentication state and routing
         return serve_react_app(request)
-
-
-class TenantLoginView(View):
-    """
-    Login view for tenant subdomains.
-    Redirects to React login page, handles POST for API compatibility.
-    """
-
-    def get_tenant(self, request):
-        """Get the tenant from the request host."""
-        from apps.tenants.models import Domain
-
-        host = request.get_host().split(':')[0]
-        try:
-            domain = Domain.objects.select_related('tenant').get(domain=host)
-            return domain.tenant
-        except Domain.DoesNotExist:
-            return None
-
-    def get(self, request):
-        # Serve React SPA which will handle routing to login page
-        return serve_react_app(request)
-
-    def post(self, request):
-        """Handle login POST request for API compatibility."""
-        tenant = self.get_tenant(request)
-
-        email = request.POST.get('email', '').strip()
-        password = request.POST.get('password', '')
-        next_url = request.POST.get('next', '/dashboard')
-
-        if not email or not password:
-            return JsonResponse({
-                'success': False,
-                'error': 'Please enter both email and password.'
-            }, status=400)
-
-        # Authenticate user
-        user = authenticate(request, username=email, password=password)
-
-        if user is not None:
-            # Check if user belongs to this tenant (or is superuser)
-            if tenant is None or user.is_superuser or (user.tenant and user.tenant.id == tenant.id):
-                login(request, user)
-                return JsonResponse({
-                    'success': True,
-                    'redirect': next_url
-                })
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'You do not have access to this workspace.'
-                }, status=403)
-        else:
-            return JsonResponse({
-                'success': False,
-                'error': 'Invalid email or password.'
-            }, status=401)
-
-
-class TenantLogoutView(View):
-    """
-    Logout view for tenant subdomains.
-    """
-
-    def get(self, request):
-        logout(request)
-        return redirect('/auth/login')
-
-    def post(self, request):
-        logout(request)
-        return JsonResponse({'success': True})
 
 
 class ReactCatchAllView(View):

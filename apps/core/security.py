@@ -728,14 +728,22 @@ class SecurityMonitor:
         threshold: int,
         details: Optional[Dict],
     ) -> None:
-        """
-        Send alert notification.
-
-        Override this method to integrate with notification services.
-        """
-        # Placeholder for notification integration
-        # Example: Send email, Slack message, PagerDuty alert
-        pass
+        """Send alert notification via email to admins."""
+        try:
+            from django.core.mail import mail_admins
+            subject = f"Security Alert: {event_type} threshold exceeded"
+            message = (
+                f"Security alert triggered:\n\n"
+                f"Event Type: {event_type}\n"
+                f"Count: {count}\n"
+                f"Threshold: {threshold}\n"
+                f"Details: {details}\n\n"
+                f"Please investigate immediately."
+            )
+            mail_admins(subject, message, fail_silently=True)
+            security_logger.info(f"Security alert sent to admins: {event_type}")
+        except Exception as e:
+            security_logger.error(f"Failed to send security alert: {e}")
 
     def get_hourly_stats(self) -> Dict[str, int]:
         """Get current hour's security statistics."""

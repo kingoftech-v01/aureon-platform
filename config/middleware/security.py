@@ -579,8 +579,16 @@ class CSRFEnhancementMiddleware(MiddlewareMixin):
         if origin:
             for allowed in allowed_origins:
                 if allowed.startswith('https://'):
-                    if origin == allowed or origin == allowed.replace('https://', 'http://'):
-                        return True
+                    if '*' in allowed:
+                        # Wildcard matching: https://*.example.com
+                        suffix = allowed.split('*', 1)[1]  # e.g., ".example.com"
+                        allowed_domain = suffix.lstrip('.')
+                        origin_host = origin.replace('https://', '').replace('http://', '')
+                        if origin_host == allowed_domain or origin_host.endswith('.' + allowed_domain):
+                            return True
+                    else:
+                        if origin == allowed or origin == allowed.replace('https://', 'http://'):
+                            return True
                 elif origin.endswith(allowed.lstrip('*.')):
                     return True
 

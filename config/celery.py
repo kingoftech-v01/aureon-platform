@@ -98,8 +98,7 @@ app.conf.task_routes = {
     # Analytics Tasks
     'apps.analytics.tasks.*': {'queue': 'analytics', 'routing_key': 'analytics'},
     'apps.analytics.tasks.generate_daily_analytics': {'queue': 'analytics'},
-    'apps.analytics.tasks.generate_revenue_report': {'queue': 'analytics'},
-    'apps.analytics.tasks.calculate_metrics': {'queue': 'analytics'},
+    'apps.analytics.tasks.calculate_revenue_metrics': {'queue': 'analytics'},
 }
 
 # ====================
@@ -126,15 +125,10 @@ app.conf.task_annotations = {
     },
 
     # Medium priority tasks
-    'apps.notifications.tasks.send_email': {
+    'apps.notifications.tasks.send_pending_notifications': {
         'rate_limit': '300/m',  # Respect email provider limits
         'max_retries': 3,
         'default_retry_delay': 120,
-    },
-    'apps.notifications.tasks.send_sms': {
-        'rate_limit': '100/m',  # SMS provider limits
-        'max_retries': 2,
-        'default_retry_delay': 180,
     },
     'apps.contracts.tasks.generate_contract_pdf': {
         'rate_limit': '100/m',  # CPU intensive

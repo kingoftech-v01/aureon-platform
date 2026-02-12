@@ -279,7 +279,7 @@ class TestPaymentMethodModel:
 
     def test_payment_method_string_representation_card(self, payment_method_card):
         """Test payment method string representation for card."""
-        expected = f"{payment_method_card.card_brand} .... {payment_method_card.card_last4}"
+        expected = f"{payment_method_card.card_brand} \u2022\u2022\u2022\u2022 {payment_method_card.card_last4}"
         assert str(payment_method_card) == expected
 
     def test_payment_method_string_representation_other(self, client_company):

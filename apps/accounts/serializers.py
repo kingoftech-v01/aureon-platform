@@ -32,7 +32,6 @@ class UserSerializer(serializers.ModelSerializer):
             'role',
             'is_admin',
             'is_manager',
-            'tenant',
             'timezone',
             'language',
             'email_notifications',
@@ -80,6 +79,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
+        # Ensure username is set (defaults to email for AbstractUser compatibility)
+        if 'username' not in validated_data:
+            validated_data['username'] = validated_data['email']
         user = User.objects.create_user(**validated_data)
         return user
 
@@ -143,6 +145,7 @@ class UserInvitationSerializer(serializers.ModelSerializer):
             'invitation_token',
             'invited_by',
             'created_at',
+            'expires_at',
             'accepted_at',
         ]
 

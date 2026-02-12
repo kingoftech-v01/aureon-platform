@@ -83,15 +83,34 @@ class ContractDetailSerializer(serializers.ModelSerializer):
         return None
 
 
+class ContractMilestoneNestedSerializer(serializers.ModelSerializer):
+    """
+    Serializer for milestones nested inside contract create/update.
+
+    Excludes the ``contract`` foreign key because it is set automatically
+    by the parent serializer's ``create`` / ``update`` methods.
+
+    ``id`` is declared as an optional writable field so that callers can
+    reference an existing milestone (for update) or omit it (for create).
+    """
+    id = serializers.UUIDField(required=False)
+
+    class Meta:
+        model = ContractMilestone
+        exclude = ['contract']
+        read_only_fields = ['created_at', 'updated_at', 'completed_by']
+
+
 class ContractCreateUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating and updating contracts.
     """
-    milestones = ContractMilestoneSerializer(many=True, required=False)
+    milestones = ContractMilestoneNestedSerializer(many=True, required=False)
 
     class Meta:
         model = Contract
         fields = [
+            'id', 'contract_number',
             'client', 'title', 'description', 'contract_type', 'status',
             'start_date', 'end_date', 'value', 'currency', 'hourly_rate',
             'estimated_hours', 'payment_terms', 'invoice_schedule',
@@ -99,6 +118,7 @@ class ContractCreateUpdateSerializer(serializers.ModelSerializer):
             'signature_client', 'signature_company', 'docusign_envelope_id',
             'contract_file', 'owner', 'notes', 'metadata', 'milestones'
         ]
+        read_only_fields = ['id', 'contract_number']
 
     def validate(self, data):
         """Validate contract data."""

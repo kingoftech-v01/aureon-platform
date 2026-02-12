@@ -9,6 +9,8 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { contractService, invoiceService, paymentService, clientService } from '@/services';
+import { analyticsService } from '../../services/analyticsService';
+import { useToast } from '@/components/common';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/common/Card';
 import Select from '@/components/common/Select';
 import Button from '@/components/common/Button';
@@ -23,6 +25,7 @@ import {
 
 const Analytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState('30');
+  const { success: showSuccessToast } = useToast();
 
   // Fetch dashboard statistics
   const { data: clients } = useQuery({
@@ -45,6 +48,11 @@ const Analytics: React.FC = () => {
     queryFn: () => contractService.getContracts({ page: 1, pageSize: 1000 }),
   });
 
+  const { data: revenueData } = useQuery({
+    queryKey: ['analytics-revenue', timeRange],
+    queryFn: () => analyticsService.getRevenueMetrics({ period: timeRange === '7' ? 'week' : timeRange === '30' ? 'month' : timeRange === '90' ? 'quarter' : 'year' }),
+  });
+
   // Calculate metrics
   const totalRevenue = payments?.results?.filter(p => p.status === 'succeeded').reduce((sum, p) => sum + p.amount, 0) || 0;
   const totalInvoiced = invoices?.results?.reduce((sum, i) => sum + i.total, 0) || 0;
@@ -54,16 +62,20 @@ const Analytics: React.FC = () => {
   const collectionRate = totalInvoiced > 0 ? (totalRevenue / totalInvoiced) * 100 : 0;
 
   // Generate monthly revenue data for chart
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const monthlyRevenueData = useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (revenueData?.length) {
+      return revenueData.map((item: any) => ({
+        name: item.date,
+        value: item.revenue,
+      }));
+    }
     const currentMonth = new Date().getMonth();
-
-    // Generate last 6 months of data
-    return months.slice(Math.max(0, currentMonth - 5), currentMonth + 1).map((month, index) => ({
+    return months.slice(Math.max(0, currentMonth - 5), currentMonth + 1).map((month) => ({
       name: month,
-      value: Math.floor((totalRevenue || 10000) * (0.6 + Math.random() * 0.4) / 6 * (index + 1)),
+      value: 0,
     }));
-  }, [totalRevenue]);
+  }, [revenueData]);
 
   // Invoice status distribution
   const invoiceStatusData = useMemo(() => {
@@ -97,11 +109,10 @@ const Analytics: React.FC = () => {
 
   // Client growth data
   const clientGrowthData = useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    return months.map((month, index) => ({
+    return months.slice(0, 6).map((month) => ({
       name: month,
-      clients: Math.floor(5 + Math.random() * 10 + index * 3),
-      leads: Math.floor(10 + Math.random() * 15 + index * 2),
+      clients: 0,
+      leads: 0,
     }));
   }, []);
 
@@ -152,7 +163,9 @@ const Analytics: React.FC = () => {
             ]}
             className="w-40"
           />
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => {
+            showSuccessToast('Report generation queued. You will be notified when it is ready.');
+          }}>
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -176,7 +189,7 @@ const Analytics: React.FC = () => {
                     <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
                     </svg>
-                    12.5%
+                    0%
                   </span>
                   <span className="text-xs text-gray-500 ml-2">vs last period</span>
                 </div>

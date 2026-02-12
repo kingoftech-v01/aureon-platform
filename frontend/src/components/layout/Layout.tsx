@@ -121,7 +121,6 @@ const Layout: React.FC<LayoutProps> = ({
         {/* Header */}
         <Header
           onMenuClick={toggleSidebar}
-          isSidebarOpen={sidebarOpen}
         />
 
         {/* Page content */}

@@ -260,6 +260,7 @@ class Notification(models.Model):
     message_html = models.TextField(
         _('Message (HTML)'),
         blank=True,
+        default='',
         help_text=_('HTML message content')
     )
 

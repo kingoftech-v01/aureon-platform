@@ -498,7 +498,7 @@ deploy_application() {
 from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(is_superuser=True).exists():
-    User.objects.create_superuser('admin@rhematek-solutions.com', 'AdminPass123!')
+    User.objects.create_superuser(username='admin', email='admin@rhematek-solutions.com', password='AdminPass123!')
     print('Superuser created')
 else:
     print('Superuser already exists')

@@ -52,10 +52,6 @@ class ClientViewSet(viewsets.ModelViewSet):
         """Filter queryset based on user permissions."""
         queryset = super().get_queryset()
 
-        # Filter by current tenant (multi-tenancy)
-        # This will be handled by django-tenants middleware
-        # queryset = queryset.filter(tenant=self.request.tenant)
-
         # Optionally filter by owner for non-admin users
         if not self.request.user.is_staff:
             # Show only clients owned by the user or unassigned

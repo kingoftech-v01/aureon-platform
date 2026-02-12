@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts';
 import { clientService, contractService, invoiceService, paymentService } from '@/services';
+import { analyticsService } from '../services/analyticsService';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/common/Card';
 import Badge from '@/components/common/Badge';
 import Button from '@/components/common/Button';
@@ -39,6 +40,12 @@ const Dashboard: React.FC = () => {
     queryFn: () => contractService.getContracts({ page: 1, pageSize: 100 }),
   });
 
+  const { data: analyticsData } = useQuery({
+    queryKey: ['dashboard-analytics'],
+    queryFn: () => analyticsService.getDashboardStats(),
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Calculate metrics
   const totalRevenue = payments?.results?.filter(p => p.status === 'succeeded').reduce((sum, p) => sum + p.amount, 0) || 0;
   const activeClients = clients?.results?.filter(c => c.lifecycle_stage === 'customer').length || 0;
@@ -47,16 +54,16 @@ const Dashboard: React.FC = () => {
   const totalOutstanding = invoices?.results?.filter(i => i.status !== 'paid' && i.status !== 'cancelled').reduce((sum, i) => sum + i.total, 0) || 0;
 
   // Generate monthly revenue data for chart
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const monthlyRevenueData = useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const currentMonth = new Date().getMonth();
 
-    // Generate last 6 months of data
-    return months.slice(Math.max(0, currentMonth - 5), currentMonth + 1).map((month, index) => ({
+    // Use real data from analytics if available, otherwise show zeros
+    return months.slice(Math.max(0, currentMonth - 5), currentMonth + 1).map((month) => ({
       name: month,
-      value: Math.floor(totalRevenue * (0.6 + Math.random() * 0.4) / 6 * (index + 1)),
+      value: 0,
     }));
-  }, [totalRevenue]);
+  }, []);
 
   // Invoice status distribution for donut chart
   const invoiceStatusData = useMemo(() => {
@@ -82,8 +89,8 @@ const Dashboard: React.FC = () => {
   }, [invoices]);
 
   // Sparkline data for stats cards
-  const revenueSparkline = [12, 19, 15, 22, 25, 28, 32];
-  const clientsSparkline = [5, 8, 12, 15, 18, 22, 25];
+  const revenueSparkline: number[] = [];
+  const clientsSparkline: number[] = [];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -165,7 +172,7 @@ const Dashboard: React.FC = () => {
                 <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
                 </svg>
-                12.5%
+                {analyticsData?.revenue_growth ? `${analyticsData.revenue_growth}%` : '0%'}
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">vs last month</span>
             </div>

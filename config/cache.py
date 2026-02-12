@@ -59,7 +59,6 @@ class CachePrefix:
     """Cache key prefixes for different data types."""
     USER = 'user'
     SESSION = 'session'
-    TENANT = 'tenant'
     CLIENT = 'client'
     CONTRACT = 'contract'
     INVOICE = 'invoice'
@@ -91,7 +90,6 @@ class CacheKeyBuilder:
         prefix: str,
         *args,
         version: Optional[str] = None,
-        tenant_id: Optional[str] = None,
     ) -> str:
         """
         Build a cache key with consistent formatting.
@@ -100,15 +98,11 @@ class CacheKeyBuilder:
             prefix: Key prefix from CachePrefix
             *args: Additional key components
             version: Optional version override
-            tenant_id: Optional tenant ID for multi-tenant isolation
 
         Returns:
             Formatted cache key string
         """
         parts = [version or cls.VERSION]
-
-        if tenant_id:
-            parts.append(f't{tenant_id}')
 
         parts.append(prefix)
         parts.extend(str(arg) for arg in args if arg is not None)
@@ -296,53 +290,46 @@ class CacheInvalidator:
         return caches[alias]
 
     @classmethod
-    def invalidate_user(cls, user_id: int, tenant_id: Optional[str] = None) -> None:
+    def invalidate_user(cls, user_id: int) -> None:
         """Invalidate all cache entries for a user."""
         cache = cls.get_cache()
         patterns = [
-            CacheKeyBuilder.build(CachePrefix.USER, user_id, tenant_id=tenant_id),
-            CacheKeyBuilder.build(CachePrefix.PERMISSIONS, user_id, tenant_id=tenant_id),
-            CacheKeyBuilder.build(CachePrefix.SESSION, user_id, tenant_id=tenant_id),
+            CacheKeyBuilder.build(CachePrefix.USER, user_id),
+            CacheKeyBuilder.build(CachePrefix.PERMISSIONS, user_id),
+            CacheKeyBuilder.build(CachePrefix.SESSION, user_id),
         ]
         for pattern in patterns:
             cache.delete_pattern(f'{pattern}*')
 
     @classmethod
-    def invalidate_tenant(cls, tenant_id: str) -> None:
-        """Invalidate all cache entries for a tenant."""
-        cache = cls.get_cache()
-        pattern = CacheKeyBuilder.build('*', tenant_id=tenant_id)
-        cache.delete_pattern(f'{pattern}*')
-
-    @classmethod
-    def invalidate_contract(cls, contract_id: int, tenant_id: Optional[str] = None) -> None:
+    def invalidate_contract(cls, contract_id: int) -> None:
         """Invalidate cache entries related to a contract."""
         cache = cls.get_cache()
-        cache.delete(CacheKeyBuilder.build(CachePrefix.CONTRACT, contract_id, tenant_id=tenant_id))
+        cache.delete(CacheKeyBuilder.build(CachePrefix.CONTRACT, contract_id))
 
     @classmethod
-    def invalidate_invoice(cls, invoice_id: int, tenant_id: Optional[str] = None) -> None:
+    def invalidate_invoice(cls, invoice_id: int) -> None:
         """Invalidate cache entries related to an invoice."""
         cache = cls.get_cache()
-        cache.delete(CacheKeyBuilder.build(CachePrefix.INVOICE, invoice_id, tenant_id=tenant_id))
+        cache.delete(CacheKeyBuilder.build(CachePrefix.INVOICE, invoice_id))
 
     @classmethod
-    def invalidate_client(cls, client_id: int, tenant_id: Optional[str] = None) -> None:
+    def invalidate_client(cls, client_id: int) -> None:
         """Invalidate cache entries related to a client."""
         cache = cls.get_cache()
         patterns = [
-            CacheKeyBuilder.build(CachePrefix.CLIENT, client_id, tenant_id=tenant_id),
-            CacheKeyBuilder.build(CachePrefix.CONTRACT, 'client', client_id, tenant_id=tenant_id),
-            CacheKeyBuilder.build(CachePrefix.INVOICE, 'client', client_id, tenant_id=tenant_id),
+            CacheKeyBuilder.build(CachePrefix.CLIENT, client_id),
+            CacheKeyBuilder.build(CachePrefix.CONTRACT, 'client', client_id),
+            CacheKeyBuilder.build(CachePrefix.INVOICE, 'client', client_id),
         ]
         for pattern in patterns:
             cache.delete_pattern(f'{pattern}*')
 
     @classmethod
-    def invalidate_analytics(cls, tenant_id: Optional[str] = None) -> None:
+    def invalidate_analytics(cls) -> None:
         """Invalidate analytics cache entries."""
         cache = cls.get_cache()
-        pattern = CacheKeyBuilder.build(CachePrefix.ANALYTICS, tenant_id=tenant_id)
+        pattern = CacheKeyBuilder.build(CachePrefix.ANALYTICS)
         cache.delete_pattern(f'{pattern}*')
 
     @classmethod
@@ -556,7 +543,7 @@ class CacheWarmer:
     """
 
     @staticmethod
-    def warm_user_cache(user_id: int, tenant_id: Optional[str] = None) -> None:
+    def warm_user_cache(user_id: int) -> None:
         """Warm cache for a specific user."""
         from apps.accounts.models import User
         from apps.accounts.services import get_user_permissions
@@ -566,7 +553,7 @@ class CacheWarmer:
             user = User.objects.select_related('profile').get(id=user_id)
 
             # Cache user data
-            cache_key = CacheKeyBuilder.build(CachePrefix.USER, user_id, tenant_id=tenant_id)
+            cache_key = CacheKeyBuilder.build(CachePrefix.USER, user_id)
             cache.set(cache_key, {
                 'id': user.id,
                 'email': user.email,
@@ -574,7 +561,7 @@ class CacheWarmer:
             }, CacheTimeout.USER_PROFILE)
 
             # Cache permissions
-            perms_key = CacheKeyBuilder.build(CachePrefix.PERMISSIONS, user_id, tenant_id=tenant_id)
+            perms_key = CacheKeyBuilder.build(CachePrefix.PERMISSIONS, user_id)
             permissions = get_user_permissions(user)
             cache.set(perms_key, permissions, CacheTimeout.PERMISSIONS)
 
@@ -582,32 +569,15 @@ class CacheWarmer:
             pass
 
     @staticmethod
-    def warm_tenant_settings(tenant_id: str) -> None:
-        """Warm cache for tenant settings."""
-        from apps.tenants.models import Tenant
-
-        cache = caches[CACHE_ALIAS_DEFAULT]
-        try:
-            tenant = Tenant.objects.get(id=tenant_id)
-            cache_key = CacheKeyBuilder.build(CachePrefix.SETTINGS, tenant_id=tenant_id)
-            cache.set(cache_key, {
-                'name': tenant.name,
-                'settings': tenant.settings,
-            }, CacheTimeout.SETTINGS)
-        except Tenant.DoesNotExist:
-            pass
-
-    @staticmethod
-    def warm_analytics_cache(tenant_id: Optional[str] = None) -> None:
+    def warm_analytics_cache() -> None:
         """Pre-compute and cache analytics data."""
         from apps.analytics.services import compute_dashboard_stats
 
         cache = caches[CACHE_ALIAS_DEFAULT]
-        stats = compute_dashboard_stats(tenant_id=tenant_id)
+        stats = compute_dashboard_stats()
         cache_key = CacheKeyBuilder.build(
             CachePrefix.ANALYTICS,
             'dashboard',
-            tenant_id=tenant_id
         )
         cache.set(cache_key, stats, CacheTimeout.ANALYTICS)
 

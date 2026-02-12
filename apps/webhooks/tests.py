@@ -178,15 +178,9 @@ class StripeWebhookHandlerTests(TestCase):
         from apps.payments.models import Payment
         from apps.invoicing.models import Invoice
         from apps.clients.models import Client
-        from apps.tenants.models import Tenant
 
-        # Create test tenant and client
-        self.tenant = Tenant.objects.create(
-            name='Test Tenant',
-            slug='test-tenant'
-        )
+        # Create test client
         self.client = Client.objects.create(
-            tenant=self.tenant,
             email='client@example.com',
             first_name='Test',
             last_name='Client'
@@ -214,7 +208,7 @@ class StripeWebhookHandlerTests(TestCase):
 
         from apps.payments.models import Payment
         payment = Payment.objects.get(stripe_payment_intent_id='pi_123456')
-        self.assertEqual(payment.status, Payment.SUCCESS)
+        self.assertEqual(payment.status, Payment.SUCCEEDED)
         self.assertEqual(payment.amount, Decimal('100.00'))
 
     def test_handle_payment_intent_succeeded_existing_payment(self):
@@ -246,7 +240,7 @@ class StripeWebhookHandlerTests(TestCase):
         result = handler.handle_payment_intent_succeeded()
 
         payment.refresh_from_db()
-        self.assertEqual(payment.status, Payment.SUCCESS)
+        self.assertEqual(payment.status, Payment.SUCCEEDED)
 
     def test_handle_payment_intent_failed(self):
         """Test handling failed payment intent."""
@@ -345,7 +339,7 @@ class StripeWebhookHandlerTests(TestCase):
             stripe_charge_id='ch_refunded',
             amount=Decimal('100.00'),
             currency='USD',
-            status=Payment.SUCCESS
+            status=Payment.SUCCEEDED
         )
 
         event = {

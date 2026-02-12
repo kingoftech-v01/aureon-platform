@@ -2,6 +2,8 @@
 Views and ViewSets for the invoicing app API.
 """
 
+import logging
+from decimal import Decimal, InvalidOperation
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -17,6 +19,8 @@ from .serializers import (
     InvoiceStatsSerializer,
 )
 from .filters import InvoiceFilter
+
+logger = logging.getLogger(__name__)
 
 
 class InvoiceViewSet(viewsets.ModelViewSet):
@@ -100,8 +104,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         try:
             invoice.mark_as_sent()
 
-            # TODO: Send email to client with invoice PDF
-            # send_invoice_email(invoice)
+            # Send email to client with invoice PDF
+            try:
+                from apps.invoicing.tasks import send_invoice_email
+                send_invoice_email.delay(str(invoice.id))
+            except Exception as e:
+                logger.warning(f"Could not queue invoice email: {e}")
 
             serializer = self.get_serializer(invoice)
             return Response(serializer.data)
@@ -127,6 +135,16 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         payment_amount = request.data.get('payment_amount')
         payment_method = request.data.get('payment_method')
         payment_reference = request.data.get('payment_reference')
+
+        # Convert payment_amount to Decimal if provided
+        if payment_amount is not None:
+            try:
+                payment_amount = Decimal(str(payment_amount))
+            except (InvalidOperation, ValueError):
+                return Response(
+                    {'detail': 'Invalid payment amount.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         try:
             invoice.mark_as_paid(

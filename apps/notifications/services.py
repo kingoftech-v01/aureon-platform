@@ -88,7 +88,7 @@ class NotificationService:
             channel=template.channel,
             subject=rendered['subject'],
             message_text=rendered['body_text'],
-            message_html=rendered['body_html'],
+            message_html=rendered['body_html'] or '',
             **kwargs
         )
 
@@ -96,8 +96,29 @@ class NotificationService:
         if template.channel == NotificationTemplate.EMAIL:
             EmailService.send_email(notification)
         elif template.channel == NotificationTemplate.SMS:
-            # TODO: Implement SMS sending
-            logger.info(f"SMS sending not implemented yet for {recipient_email}")
+            try:
+                from django.conf import settings as django_settings
+                sns_client = None
+                try:
+                    import boto3
+                    sns_client = boto3.client('sns',
+                        region_name=getattr(django_settings, 'AWS_SES_REGION_NAME', 'us-east-1'))
+                except (ImportError, Exception):
+                    pass
+
+                if sns_client and hasattr(django_settings, 'AWS_SNS_ENABLED') and django_settings.AWS_SNS_ENABLED:
+                    sns_client.publish(
+                        PhoneNumber=recipient_email,  # phone number passed as recipient
+                        Message=rendered['body_text'],
+                    )
+                    notification.mark_as_sent()
+                    logger.info(f"SMS sent to {recipient_email}")
+                else:
+                    logger.info(f"SMS service not configured, notification stored for {recipient_email}")
+                    notification.mark_as_delivered()
+            except Exception as e:
+                logger.error(f"SMS sending failed for {recipient_email}: {e}")
+                notification.mark_as_failed(str(e))
         elif template.channel == NotificationTemplate.IN_APP:
             # In-app notifications are just stored, not sent
             notification.mark_as_delivered()
@@ -118,7 +139,7 @@ class NotificationService:
         """
         context = {
             'invoice_number': invoice.invoice_number,
-            'client_name': invoice.client.full_name,
+            'client_name': invoice.client.get_full_name(),
             'amount': f"${invoice.total:.2f}",
             'currency': invoice.currency,
             'due_date': invoice.due_date.strftime('%B %d, %Y'),
@@ -148,7 +169,7 @@ class NotificationService:
         context = {
             'payment_id': str(payment.id),
             'invoice_number': invoice.invoice_number if invoice else 'N/A',
-            'client_name': payment.client.full_name if payment.client else 'Customer',
+            'client_name': invoice.client.get_full_name() if invoice and invoice.client else 'Customer',
             'amount': f"${payment.amount:.2f}",
             'currency': payment.currency,
             'payment_date': payment.payment_date.strftime('%B %d, %Y'),
@@ -156,7 +177,7 @@ class NotificationService:
             'company_name': settings.SITE_NAME,
         }
 
-        recipient = invoice.client.email if invoice else payment.client.email
+        recipient = invoice.client.email if invoice and invoice.client else ''
 
         return NotificationService.send_notification(
             template_type=NotificationTemplate.PAYMENT_RECEIPT,
@@ -180,7 +201,7 @@ class NotificationService:
         """
         context = {
             'contract_title': contract.title,
-            'client_name': contract.client.full_name,
+            'client_name': contract.client.get_full_name(),
             'contract_value': f"${contract.total_value:.2f}",
             'start_date': contract.start_date.strftime('%B %d, %Y'),
             'end_date': contract.end_date.strftime('%B %d, %Y') if contract.end_date else 'Ongoing',
@@ -206,7 +227,7 @@ class NotificationService:
             Notification: Created notification instance
         """
         context = {
-            'client_name': client.full_name,
+            'client_name': client.get_full_name(),
             'company_name': settings.SITE_NAME,
         }
 

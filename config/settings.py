@@ -92,7 +92,6 @@ INSTALLED_APPS = [
 
     # Local apps
     'apps.core',  # Core security utilities
-    'apps.tenants',
     'apps.accounts',
     'apps.clients',  # Fixed: was 'apps.crm'
     'apps.contracts',
@@ -106,10 +105,6 @@ INSTALLED_APPS = [
     'apps.website',  # Marketing website
     'apps.subscriptions',  # Subscription management
 ]
-
-# Django Tenants Configuration
-TENANT_MODEL = "tenants.Tenant"
-TENANT_DOMAIN_MODEL = "tenants.Domain"
 
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',

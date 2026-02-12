@@ -1,15 +1,12 @@
-"""
-URL configuration for notifications app.
-"""
+"""Notification URL configuration."""
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
+router = DefaultRouter()
+
 app_name = 'notifications'
 
-router = DefaultRouter()
-# TODO: Add viewsets when implemented
-
 urlpatterns = [
-    path('api/', include(router.urls)),
+    path('', include(router.urls)),
 ]

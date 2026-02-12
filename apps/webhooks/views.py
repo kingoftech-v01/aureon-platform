@@ -151,10 +151,17 @@ def generic_webhook(request, endpoint_id):
 
     # Verify signature if provided
     signature = request.META.get('HTTP_X_WEBHOOK_SIGNATURE')
-    if signature:
-        # Implement HMAC signature verification here
-        # For now, we'll accept all requests
-        pass
+    if endpoint.secret_key:
+        import hmac
+        import hashlib
+        expected_signature = hmac.new(
+            endpoint.secret_key.encode('utf-8'),
+            request.body,
+            hashlib.sha256
+        ).hexdigest()
+        if not signature or not hmac.compare_digest(signature, expected_signature):
+            logger.warning(f"Invalid webhook signature for endpoint {endpoint_id}")
+            return HttpResponse(status=401)
 
     # Get client IP
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')

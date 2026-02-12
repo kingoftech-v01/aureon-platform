@@ -36,7 +36,7 @@ class TestXSSInjection:
                 'last_name': 'Test',
             }
 
-            response = authenticated_admin_client.post('/api/users/', data)
+            response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
             # The request should either succeed (with escaped content)
             # or fail validation - but not execute the script
@@ -65,7 +65,7 @@ class TestXSSInjection:
                 'email': f'xss{i}@client.com',
             }
 
-            response = authenticated_admin_client.post('/api/clients/', data)
+            response = authenticated_admin_client.post('/api/api/clients/', data)
 
             assert response.status_code in [
                 status.HTTP_201_CREATED,
@@ -88,7 +88,7 @@ class TestXSSInjection:
                 'value': '1000.00',
             }
 
-            response = authenticated_admin_client.post('/api/contracts/', data)
+            response = authenticated_admin_client.post('/api/api/contracts/', data)
 
             assert response.status_code in [
                 status.HTTP_201_CREATED,
@@ -109,7 +109,7 @@ class TestXSSInjection:
                 'notes': payload,
             }
 
-            response = authenticated_admin_client.post('/api/invoices/', data)
+            response = authenticated_admin_client.post('/api/api/invoices/', data)
 
             assert response.status_code in [
                 status.HTTP_201_CREATED,
@@ -131,7 +131,7 @@ class TestSQLInjection:
         """Test SQL injection in search queries."""
         for payload in sql_injection_payloads:
             response = authenticated_admin_client.get(
-                f'/api/clients/?search={payload}'
+                f'/api/api/clients/?search={payload}'
             )
 
             # Should not cause server error
@@ -147,7 +147,7 @@ class TestSQLInjection:
         """Test SQL injection in filter parameters."""
         for payload in sql_injection_payloads:
             response = authenticated_admin_client.get(
-                f'/api/contracts/?status={payload}'
+                f'/api/api/contracts/?status={payload}'
             )
 
             # Should not cause server error
@@ -159,7 +159,7 @@ class TestSQLInjection:
         """Test SQL injection in ordering parameters."""
         for payload in sql_injection_payloads:
             response = authenticated_admin_client.get(
-                f'/api/invoices/?ordering={payload}'
+                f'/api/api/invoices/?ordering={payload}'
             )
 
             # Should not cause server error
@@ -178,7 +178,7 @@ class TestSQLInjection:
                 'last_name': 'Test',
             }
 
-            response = authenticated_admin_client.post('/api/users/', data)
+            response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
             # Should fail validation, not cause SQL error
             assert response.status_code in [
@@ -197,45 +197,40 @@ class TestAuthenticationBypass:
 
     def test_unauthenticated_user_list(self, api_client):
         """Test unauthenticated access to user list is denied."""
-        response = api_client.get('/api/users/')
+        response = api_client.get('/api/auth/api/users/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_unauthenticated_client_list(self, api_client):
         """Test unauthenticated access to client list is denied."""
-        response = api_client.get('/api/clients/')
+        response = api_client.get('/api/api/clients/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_unauthenticated_contract_list(self, api_client):
         """Test unauthenticated access to contract list is denied."""
-        response = api_client.get('/api/contracts/')
+        response = api_client.get('/api/api/contracts/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_unauthenticated_invoice_list(self, api_client):
         """Test unauthenticated access to invoice list is denied."""
-        response = api_client.get('/api/invoices/')
+        response = api_client.get('/api/api/invoices/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_unauthenticated_payment_list(self, api_client):
         """Test unauthenticated access to payment list is denied."""
-        response = api_client.get('/api/payments/')
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    def test_unauthenticated_tenant_list(self, api_client):
-        """Test unauthenticated access to tenant list is denied."""
-        response = api_client.get('/api/tenants/')
+        response = api_client.get('/api/api/payments/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_invalid_token(self, api_client):
         """Test invalid authentication token is rejected."""
         api_client.credentials(HTTP_AUTHORIZATION='Bearer invalid_token_123')
-        response = api_client.get('/api/users/')
+        response = api_client.get('/api/auth/api/users/')
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_expired_token_simulation(self, api_client):
         """Test handling of potentially expired tokens."""
         api_client.credentials(HTTP_AUTHORIZATION='Token expired_token_abc')
-        response = api_client.get('/api/clients/')
+        response = api_client.get('/api/api/clients/')
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -254,7 +249,7 @@ class TestAuthorizationBypass:
         """Test client user cannot access admin-only functions."""
         # Try to delete another user
         response = authenticated_client_user.delete(
-            f'/api/users/{admin_user.id}/'
+            f'/api/auth/api/users/{admin_user.id}/'
         )
 
         assert response.status_code in [
@@ -273,36 +268,12 @@ class TestAuthorizationBypass:
         }
 
         response = authenticated_contributor_client.post(
-            f'/api/users/{admin_user.id}/change_password/',
+            f'/api/auth/api/users/{admin_user.id}/change_password/',
             data
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_cross_tenant_data_access(
-        self, authenticated_admin_client, tenant_with_trial
-    ):
-        """Test user cannot access data from another tenant."""
-        # Create a client in another tenant context
-        from apps.clients.models import Client
-
-        other_client = Client.objects.create(
-            first_name='Other',
-            last_name='Tenant',
-            email='other@tenant.com',
-        )
-
-        # Try to access client from different tenant
-        response = authenticated_admin_client.get(
-            f'/api/clients/{other_client.id}/'
-        )
-
-        # Should either not find it or return forbidden
-        assert response.status_code in [
-            status.HTTP_404_NOT_FOUND,
-            status.HTTP_403_FORBIDDEN,
-            status.HTTP_200_OK,  # Some implementations may allow superuser access
-        ]
 
 
 # ============================================================================
@@ -336,7 +307,7 @@ class TestRateLimiting:
 
         # Make multiple rapid requests
         for _ in range(50):
-            response = authenticated_admin_client.get('/api/clients/')
+            response = authenticated_admin_client.get('/api/api/clients/')
             responses.append(response.status_code)
 
         # All should succeed or some should be rate limited
@@ -375,7 +346,7 @@ class TestFileUploadSecurity:
             }
 
             response = authenticated_admin_client.post(
-                '/api/client-documents/',
+                '/api/api/documents/',
                 data,
                 format='multipart'
             )
@@ -411,7 +382,7 @@ class TestInputValidation:
             'last_name': 'Test',
         }
 
-        response = authenticated_admin_client.post('/api/users/', data)
+        response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
         # Should fail validation, not cause buffer overflow
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -426,7 +397,7 @@ class TestInputValidation:
             'last_name': 'User',
         }
 
-        response = authenticated_admin_client.post('/api/users/', data)
+        response = authenticated_admin_client.post('/api/auth/api/users/', data)
 
         # Should fail validation
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -443,7 +414,7 @@ class TestInputValidation:
             'email': 'test@examp\u0131e.com',  # Using Turkish dotless i
         }
 
-        response = authenticated_admin_client.post('/api/clients/', data)
+        response = authenticated_admin_client.post('/api/api/clients/', data)
 
         # Should handle Unicode properly
         assert response.status_code in [
@@ -462,7 +433,7 @@ class TestSessionSecurity:
 
     def test_session_not_exposed_in_response(self, authenticated_admin_client):
         """Test session details are not exposed in API responses."""
-        response = authenticated_admin_client.get('/api/users/me/')
+        response = authenticated_admin_client.get('/api/auth/api/users/me/')
 
         assert response.status_code == status.HTTP_200_OK
         assert 'session' not in response.data
@@ -471,7 +442,7 @@ class TestSessionSecurity:
 
     def test_password_not_in_response(self, authenticated_admin_client, admin_user):
         """Test password is never returned in API responses."""
-        response = authenticated_admin_client.get(f'/api/users/{admin_user.id}/')
+        response = authenticated_admin_client.get(f'/api/auth/api/users/{admin_user.id}/')
 
         assert response.status_code == status.HTTP_200_OK
         assert 'password' not in response.data
@@ -490,7 +461,7 @@ class TestContentTypeSecurity:
         """Test that proper content type is required for POST requests."""
         # Send plain text when JSON is expected
         response = authenticated_admin_client.post(
-            '/api/clients/',
+            '/api/api/clients/',
             'plain text data',
             content_type='text/plain'
         )

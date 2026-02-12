@@ -52,8 +52,21 @@ class ErrorBoundary extends Component<Props, State> {
       errorInfo,
     });
 
-    // TODO: Log to error reporting service in production
-    // logErrorToService(error, errorInfo);
+    // Log to error reporting service in production
+    if (import.meta.env.PROD) {
+      try {
+        fetch('/api/error-reports/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            error: error?.toString(),
+            componentStack: errorInfo?.componentStack,
+            url: window.location.href,
+            timestamp: new Date().toISOString(),
+          }),
+        }).catch(() => {});
+      } catch {}
+    }
   }
 
   handleReset = () => {

@@ -272,9 +272,14 @@ class Client(models.Model):
             return f"{self.company_name} ({self.get_full_name()})"
         return self.get_full_name()
 
-    def get_full_name(self):
+    @property
+    def full_name(self):
         """Return full name of contact."""
         return f"{self.first_name} {self.last_name}".strip()
+
+    def get_full_name(self):
+        """Return full name of contact."""
+        return self.full_name
 
     def get_display_name(self):
         """Return display name (company name or full name)."""
@@ -298,8 +303,25 @@ class Client(models.Model):
 
     def update_financial_summary(self):
         """Update financial summary from related invoices and contracts."""
-        # TODO: Implement when invoicing app is ready
-        pass
+        from apps.invoicing.models import Invoice
+        from apps.contracts.models import Contract
+        from django.db.models import Sum
+
+        # Calculate total revenue from paid invoices
+        paid_total = Invoice.objects.filter(
+            client=self,
+            status=Invoice.PAID
+        ).aggregate(total=Sum('total'))['total'] or 0
+
+        # Calculate outstanding balance
+        outstanding = Invoice.objects.filter(
+            client=self,
+            status__in=[Invoice.SENT, Invoice.VIEWED, Invoice.PARTIALLY_PAID]
+        ).aggregate(total=Sum('total'))['total'] or 0
+
+        self.total_paid = paid_total
+        self.outstanding_balance = outstanding
+        self.save(update_fields=['total_paid', 'outstanding_balance', 'updated_at'])
 
     def create_portal_access(self):
         """Create portal user account for client."""
@@ -312,20 +334,26 @@ class Client(models.Model):
         # Generate random password
         password = secrets.token_urlsafe(16)
 
-        # Create user account
+        # Create user account with auto-generated username
+        username = self.email.split('@')[0] + str(uuid.uuid4())[:8]
         user = User.objects.create_user(
+            username=username,
             email=self.email,
             password=password,
             first_name=self.first_name,
             last_name=self.last_name,
             role=User.CLIENT,
-            # Note: tenant will be set in signal
         )
 
         self.portal_user = user
         self.save()
 
-        # TODO: Send welcome email with portal access details
+        try:
+            from apps.notifications.services import NotificationService
+            NotificationService.send_client_welcome(self)
+        except Exception:
+            pass
+
         return user
 
 

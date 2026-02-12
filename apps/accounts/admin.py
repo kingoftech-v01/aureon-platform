@@ -16,7 +16,6 @@ class UserAdmin(BaseUserAdmin):
     list_display = [
         'email',
         'full_name',
-        'tenant',
         'role_badge',
         'status_badge',
         'last_login',
@@ -55,7 +54,7 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('full_name', 'first_name', 'last_name', 'phone', 'job_title', 'avatar')
         }),
         (_('Organization'), {
-            'fields': ('tenant', 'role')
+            'fields': ('role',)
         }),
         (_('Permissions'), {
             'fields': (
@@ -87,7 +86,7 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'password1', 'password2', 'tenant', 'role'),
+            'fields': ('email', 'password1', 'password2', 'role'),
         }),
     )
 
@@ -132,7 +131,6 @@ class UserInvitationAdmin(admin.ModelAdmin):
 
     list_display = [
         'email',
-        'tenant',
         'role',
         'status_badge',
         'invited_by',
@@ -144,12 +142,10 @@ class UserInvitationAdmin(admin.ModelAdmin):
         'status',
         'role',
         'created_at',
-        'tenant',
     ]
 
     search_fields = [
         'email',
-        'tenant__name',
         'invited_by__email',
     ]
 
@@ -162,7 +158,7 @@ class UserInvitationAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (_('Invitation Details'), {
-            'fields': ('id', 'tenant', 'email', 'role')
+            'fields': ('id', 'email', 'role')
         }),
         (_('Invitation Status'), {
             'fields': ('status', 'invitation_token', 'invited_by')
@@ -211,7 +207,6 @@ class ApiKeyAdmin(admin.ModelAdmin):
         'name',
         'prefix_display',
         'user',
-        'tenant',
         'status_badge',
         'usage_count',
         'last_used_at',
@@ -221,14 +216,12 @@ class ApiKeyAdmin(admin.ModelAdmin):
     list_filter = [
         'is_active',
         'created_at',
-        'tenant',
     ]
 
     search_fields = [
         'name',
         'prefix',
         'user__email',
-        'tenant__name',
     ]
 
     readonly_fields = [
@@ -242,7 +235,7 @@ class ApiKeyAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (_('API Key Information'), {
-            'fields': ('id', 'name', 'user', 'tenant')
+            'fields': ('id', 'name', 'user')
         }),
         (_('Key Details'), {
             'fields': ('key', 'prefix', 'scopes')

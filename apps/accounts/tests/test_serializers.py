@@ -87,7 +87,7 @@ class TestUserSerializer:
 class TestUserCreateSerializer:
     """Tests for UserCreateSerializer."""
 
-    def test_valid_user_creation(self, tenant):
+    def test_valid_user_creation(self):
         """Test valid user creation data."""
         data = {
             'email': 'newuser@test.com',
@@ -143,7 +143,7 @@ class TestUserCreateSerializer:
         # Common passwords should be rejected by Django's validators
         assert not serializer.is_valid()
 
-    def test_create_user_via_serializer(self, tenant):
+    def test_create_user_via_serializer(self):
         """Test creating user through serializer."""
         data = {
             'email': 'created@test.com',
@@ -176,7 +176,7 @@ class TestUserCreateSerializer:
         assert not serializer.is_valid()
         assert 'email' in serializer.errors
 
-    def test_password_not_in_output(self, tenant):
+    def test_password_not_in_output(self):
         """Test password is not included in serializer output."""
         data = {
             'email': 'output@test.com',
@@ -422,13 +422,6 @@ class TestSerializerEdgeCases:
         """Test serializer with empty data."""
         serializer = UserCreateSerializer(data={})
         assert not serializer.is_valid()
-
-    def test_user_serializer_with_null_tenant(self, superuser):
-        """Test user serializer with null tenant."""
-        serializer = UserSerializer(superuser)
-        data = serializer.data
-
-        assert data['tenant'] is None
 
     def test_invitation_serializer_with_message(self, user_invitation):
         """Test invitation serializer includes message."""

@@ -2,7 +2,7 @@
 Pytest configuration and fixtures for Aureon SaaS Platform tests.
 
 This module provides shared fixtures for all test modules including:
-- Database fixtures (tenant, user, client, contract, invoice, payment)
+- Database fixtures (user, client, contract, invoice, payment)
 - API client fixtures
 - Factory fixtures
 - Security test fixtures
@@ -20,77 +20,36 @@ User = get_user_model()
 
 
 # ============================================================================
-# Tenant Fixtures
+# Django Settings Overrides for Tests
 # ============================================================================
 
-@pytest.fixture
-def tenant(db):
-    """Create a test tenant."""
-    from apps.tenants.models import Tenant
-
-    tenant = Tenant(
-        name='Test Organization',
-        slug='test-org',
-        schema_name='test_org',
-        tenant_type=Tenant.AGENCY,
-        plan=Tenant.PRO,
-        contact_email='admin@testorg.com',
-        contact_phone='+1234567890',
-        address_line1='123 Test Street',
-        city='Test City',
-        state='Test State',
-        postal_code='12345',
-        country='United States',
-        timezone='America/New_York',
-        currency='USD',
-        language='en',
-        max_users=10,
-        max_clients=100,
-        max_contracts=50,
-        max_invoices_per_month=500,
-        enable_api_access=True,
-        enable_custom_branding=True,
-        is_active=True,
-        is_trial=False,
-    )
-    tenant.save()
-    return tenant
-
-
-@pytest.fixture
-def tenant_with_trial(db):
-    """Create a test tenant with trial period."""
-    from apps.tenants.models import Tenant
-
-    tenant = Tenant(
-        name='Trial Organization',
-        slug='trial-org',
-        schema_name='trial_org',
-        tenant_type=Tenant.FREELANCER,
-        plan=Tenant.FREE,
-        contact_email='trial@testorg.com',
-        is_active=True,
-        is_trial=True,
-        trial_ends_at=timezone.now() + timedelta(days=14),
-    )
-    tenant.save()
-    return tenant
-
-
-@pytest.fixture
-def domain(db, tenant):
-    """Create a test domain."""
-    from apps.tenants.models import Domain
-
-    domain = Domain.objects.create(
-        tenant=tenant,
-        domain='test-org.aureon.local',
-        is_primary=True,
-        ssl_enabled=True,
-        is_verified=True,
-        verified_at=timezone.now(),
-    )
-    return domain
+@pytest.fixture(autouse=True)
+def override_test_settings(settings):
+    """Override Django settings for the test environment."""
+    # Use LocMemCache for all cache backends (Redis may not be available)
+    _locmem_cache = {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'TIMEOUT': 300,
+    }
+    settings.CACHES = {
+        'default': {**_locmem_cache, 'LOCATION': 'test-default'},
+        'sessions': {**_locmem_cache, 'LOCATION': 'test-sessions'},
+        'locks': {**_locmem_cache, 'LOCATION': 'test-locks'},
+        'throttle': {**_locmem_cache, 'LOCATION': 'test-throttle'},
+        'local': {**_locmem_cache, 'LOCATION': 'test-local'},
+    }
+    # Disable SSL redirect in tests
+    settings.SECURE_SSL_REDIRECT = False
+    # Ensure testserver is in allowed hosts
+    if 'testserver' not in settings.ALLOWED_HOSTS:
+        settings.ALLOWED_HOSTS.append('testserver')
+    # Add testserver to trusted origins for CSRF middleware
+    settings.CSRF_TRUSTED_ORIGINS = [
+        'http://testserver',
+        'https://testserver',
+        'http://localhost',
+        'https://localhost',
+    ]
 
 
 # ============================================================================
@@ -98,15 +57,16 @@ def domain(db, tenant):
 # ============================================================================
 
 @pytest.fixture
-def admin_user(db, tenant):
+def admin_user(db):
     """Create an admin user."""
     user = User.objects.create_user(
+        username='admin',
         email='admin@testorg.com',
         password='SecurePass123!',
         first_name='Admin',
         last_name='User',
-        tenant=tenant,
         role=User.ADMIN,
+        is_staff=True,
         is_verified=True,
         is_active=True,
     )
@@ -114,14 +74,14 @@ def admin_user(db, tenant):
 
 
 @pytest.fixture
-def manager_user(db, tenant):
+def manager_user(db):
     """Create a manager user."""
     user = User.objects.create_user(
+        username='manager',
         email='manager@testorg.com',
         password='SecurePass123!',
         first_name='Manager',
         last_name='User',
-        tenant=tenant,
         role=User.MANAGER,
         is_verified=True,
         is_active=True,
@@ -130,14 +90,14 @@ def manager_user(db, tenant):
 
 
 @pytest.fixture
-def contributor_user(db, tenant):
+def contributor_user(db):
     """Create a contributor user."""
     user = User.objects.create_user(
+        username='contributor',
         email='contributor@testorg.com',
         password='SecurePass123!',
         first_name='Contributor',
         last_name='User',
-        tenant=tenant,
         role=User.CONTRIBUTOR,
         is_verified=True,
         is_active=True,
@@ -146,14 +106,14 @@ def contributor_user(db, tenant):
 
 
 @pytest.fixture
-def client_user(db, tenant):
+def client_user(db):
     """Create a client user (portal access)."""
     user = User.objects.create_user(
+        username='clientuser',
         email='client@external.com',
         password='SecurePass123!',
         first_name='Client',
         last_name='User',
-        tenant=tenant,
         role=User.CLIENT,
         is_verified=True,
         is_active=True,
@@ -165,6 +125,7 @@ def client_user(db, tenant):
 def superuser(db):
     """Create a superuser."""
     user = User.objects.create_superuser(
+        username='superadmin',
         email='superadmin@aureon.com',
         password='SuperSecurePass123!',
         first_name='Super',
@@ -174,14 +135,14 @@ def superuser(db):
 
 
 @pytest.fixture
-def inactive_user(db, tenant):
+def inactive_user(db):
     """Create an inactive user."""
     user = User.objects.create_user(
+        username='inactive',
         email='inactive@testorg.com',
         password='SecurePass123!',
         first_name='Inactive',
         last_name='User',
-        tenant=tenant,
         role=User.CONTRIBUTOR,
         is_active=False,
     )
@@ -189,13 +150,12 @@ def inactive_user(db, tenant):
 
 
 @pytest.fixture
-def user_invitation(db, tenant, admin_user):
+def user_invitation(db, admin_user):
     """Create a user invitation."""
     from apps.accounts.models import UserInvitation
     import secrets
 
     invitation = UserInvitation.objects.create(
-        tenant=tenant,
         email='invitee@external.com',
         role=User.CONTRIBUTOR,
         invited_by=admin_user,
@@ -207,7 +167,7 @@ def user_invitation(db, tenant, admin_user):
 
 
 @pytest.fixture
-def api_key(db, tenant, admin_user):
+def api_key(db, admin_user):
     """Create an API key."""
     from apps.accounts.models import ApiKey
     import secrets
@@ -215,7 +175,6 @@ def api_key(db, tenant, admin_user):
     key = secrets.token_urlsafe(32)
     api_key = ApiKey.objects.create(
         user=admin_user,
-        tenant=tenant,
         name='Test API Key',
         key=key,
         prefix=key[:8],
@@ -223,6 +182,33 @@ def api_key(db, tenant, admin_user):
         is_active=True,
     )
     return api_key
+
+
+# ============================================================================
+# Backward-compatible tenant fixture (no-op)
+# ============================================================================
+
+@pytest.fixture
+def tenant(db):
+    """No-op tenant fixture for backward compatibility.
+
+    Multi-tenancy has been removed. This fixture exists so that test files
+    that still declare ``tenant`` as a dependency don't break immediately.
+    It returns ``None``.
+    """
+    return None
+
+
+@pytest.fixture
+def tenant_with_trial(db):
+    """No-op tenant_with_trial fixture for backward compatibility."""
+    return None
+
+
+@pytest.fixture
+def domain(db):
+    """No-op domain fixture for backward compatibility."""
+    return None
 
 
 # ============================================================================
@@ -612,7 +598,10 @@ def payment_method_card(db, client_company):
 @pytest.fixture
 def api_client():
     """Create an API test client."""
-    return APIClient()
+    client = APIClient()
+    client.defaults['HTTP_ORIGIN'] = 'http://testserver'
+    client.defaults['SERVER_NAME'] = 'testserver'
+    return client
 
 
 @pytest.fixture

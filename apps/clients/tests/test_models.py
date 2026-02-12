@@ -199,6 +199,28 @@ class TestClientPortalAccess:
 
         assert result == client_user
 
+    def test_create_portal_access_notification_failure(self, admin_user):
+        """Test create_portal_access handles notification failure gracefully."""
+        from unittest.mock import patch
+        from apps.clients.models import Client
+
+        client = Client.objects.create(
+            client_type=Client.INDIVIDUAL,
+            first_name='Notify',
+            last_name='Fail',
+            email='notifyfail@example.com',
+            owner=admin_user,
+        )
+
+        with patch(
+            'apps.notifications.services.NotificationService.send_client_welcome',
+            side_effect=Exception('SMTP error'),
+        ):
+            user = client.create_portal_access()
+
+        assert user is not None
+        assert client.portal_user == user
+
 
 # ============================================================================
 # Client Tags Tests

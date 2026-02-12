@@ -48,6 +48,7 @@ export interface RegisterData {
   first_name: string;
   last_name: string;
   organization_name?: string;
+  company_name?: string;
 }
 
 // ============================================
@@ -299,6 +300,7 @@ export enum PaymentStatus {
   PROCESSING = 'processing',
   SUCCEEDED = 'succeeded',
   FAILED = 'failed',
+  CANCELLED = 'cancelled',
   REFUNDED = 'refunded',
   PARTIALLY_REFUNDED = 'partially_refunded',
 }
@@ -546,4 +548,5 @@ export interface FilterConfig {
 export interface PaginationConfig {
   page: number;
   page_size: number;
+  pageSize?: number; // alias
 }

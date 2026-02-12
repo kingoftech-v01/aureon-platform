@@ -8,7 +8,7 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { clientService } from '@/services';
+import { clientService, contractService, invoiceService } from '@/services';
 import { useToast } from '@/components/common';
 import Button from '@/components/common/Button';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/common/Card';
@@ -27,6 +27,20 @@ const ClientDetail: React.FC = () => {
   const { data: client, isLoading, error } = useQuery({
     queryKey: ['client', id],
     queryFn: () => clientService.getClient(id!),
+    enabled: !!id,
+  });
+
+  // Fetch related contracts
+  const { data: relatedContracts } = useQuery({
+    queryKey: ['client-contracts', id],
+    queryFn: () => contractService.getContracts({ page: 1, pageSize: 5 }, { client: id }),
+    enabled: !!id,
+  });
+
+  // Fetch related invoices
+  const { data: relatedInvoices } = useQuery({
+    queryKey: ['client-invoices', id],
+    queryFn: () => invoiceService.getInvoices({ page: 1, pageSize: 5 }, { client: id }),
     enabled: !!id,
   });
 
@@ -258,20 +272,54 @@ const ClientDetail: React.FC = () => {
             </Card>
           )}
 
-          {/* Related Records - Placeholder */}
+          {/* Related Records */}
           <Card>
             <CardHeader>
-              <CardTitle>Related Records</CardTitle>
+              <CardTitle>Related Contracts</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <p className="text-gray-500 dark:text-gray-400">
-                  Contracts, invoices, and payments will appear here
-                </p>
-              </div>
+              {relatedContracts?.results?.length ? (
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {relatedContracts.results.map((contract: any) => (
+                    <Link key={contract.id} to={`/contracts/${contract.id}`} className="flex items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-gray-800 px-2 rounded-lg transition-colors">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{contract.title}</p>
+                        <p className="text-sm text-gray-500">{contract.contract_number}</p>
+                      </div>
+                      <Badge variant={contract.status === 'active' ? 'success' : contract.status === 'draft' ? 'default' : 'warning'}>
+                        {contract.status}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">No contracts yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Related Invoices</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {relatedInvoices?.results?.length ? (
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {relatedInvoices.results.map((invoice: any) => (
+                    <Link key={invoice.id} to={`/invoices/${invoice.id}`} className="flex items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-gray-800 px-2 rounded-lg transition-colors">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{invoice.invoice_number}</p>
+                        <p className="text-sm text-gray-500">{formatCurrency(invoice.total)}</p>
+                      </div>
+                      <Badge variant={invoice.status === 'paid' ? 'success' : invoice.status === 'overdue' ? 'danger' : 'warning'}>
+                        {invoice.status}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">No invoices yet</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -313,19 +361,19 @@ const ClientDetail: React.FC = () => {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" fullWidth disabled>
+              <Button variant="outline" fullWidth onClick={() => navigate(`/contracts/create?client=${id}`)}>
                 <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Create Contract
               </Button>
-              <Button variant="outline" fullWidth disabled>
+              <Button variant="outline" fullWidth onClick={() => navigate(`/invoices/create?client=${id}`)}>
                 <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
                 Create Invoice
               </Button>
-              <Button variant="outline" fullWidth disabled>
+              <Button variant="outline" fullWidth onClick={() => window.location.href = `mailto:${client?.email}`}>
                 <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>

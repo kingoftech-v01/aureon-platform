@@ -11,6 +11,8 @@ import { useAuth } from '@/contexts';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import Avatar from '@/components/common/Avatar';
 import Badge from '@/components/common/Badge';
+import { notificationService } from '../../services/notificationService';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -19,6 +21,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -27,50 +30,15 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // Mock notifications (will be replaced with real data from API)
-  const notifications = [
-    {
-      id: '1',
-      type: 'success' as const,
-      title: 'Payment Received',
-      message: 'Invoice #INV-001 has been paid',
-      time: '5 minutes ago',
-      unread: true,
-      icon: (
-        <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-        </svg>
-      ),
-    },
-    {
-      id: '2',
-      type: 'warning' as const,
-      title: 'Contract Expiring',
-      message: 'Contract with Acme Corp expires in 7 days',
-      time: '2 hours ago',
-      unread: true,
-      icon: (
-        <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
-    {
-      id: '3',
-      type: 'info' as const,
-      title: 'New Client Added',
-      message: 'John Smith has been added as a client',
-      time: '1 day ago',
-      unread: false,
-      icon: (
-        <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-        </svg>
-      ),
-    },
-  ];
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationService.getNotifications({ page: 1, page_size: 10 }),
+    staleTime: 30 * 1000,
+  });
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const notifications = notificationsData?.results || [];
+
+  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
   // Quick actions for command palette
   const quickActions = [
@@ -124,8 +92,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      // Navigate to search results or filter
       setShowSearch(false);
+      window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
     }
   };
 
@@ -281,26 +249,42 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                   <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                     Notifications
                   </h3>
-                  <button className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium">
+                  <button className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium" onClick={() => {
+                    notificationService.markAllAsRead().then(() => {
+                      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+                    });
+                  }}>
                     Mark all read
                   </button>
                 </div>
 
                 <div className="max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
-                  {notifications.map((notification) => (
+                  {notifications.map((notification: any) => (
                     <div
                       key={notification.id}
                       className={`px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors ${
-                        notification.unread ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''
+                        !notification.is_read ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''
                       }`}
+                      onClick={() => {
+                        if (notification.link) {
+                          navigate(notification.link);
+                          setShowNotifications(false);
+                        }
+                      }}
                     >
                       <div className="flex items-start space-x-3">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                          notification.type === 'success' ? 'bg-green-100 dark:bg-green-900/30' :
-                          notification.type === 'warning' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                          notification.type === 'success' || notification.type === 'invoice_paid' || notification.type === 'payment_received' ? 'bg-green-100 dark:bg-green-900/30' :
+                          notification.type === 'warning' || notification.type === 'payment_failed' ? 'bg-amber-100 dark:bg-amber-900/30' :
                           'bg-blue-100 dark:bg-blue-900/30'
                         }`}>
-                          {notification.icon}
+                          <svg className={`w-5 h-5 ${
+                            notification.type === 'success' || notification.type === 'invoice_paid' || notification.type === 'payment_received' ? 'text-green-500' :
+                            notification.type === 'warning' || notification.type === 'payment_failed' ? 'text-amber-500' :
+                            'text-blue-500'
+                          }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
@@ -310,10 +294,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                             {notification.message}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                            {notification.time}
+                            {new Date(notification.created_at).toRelativeString?.() || new Date(notification.created_at).toLocaleDateString()}
                           </p>
                         </div>
-                        {notification.unread && (
+                        {!notification.is_read && (
                           <div className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0 mt-2" />
                         )}
                       </div>

@@ -52,8 +52,9 @@ def register(request):
     serializer = UserCreateSerializer(data=request.data)
 
     if serializer.is_valid():
-        # Create user
+        # Create user (username defaults to email for AbstractUser compatibility)
         user = User.objects.create_user(
+            username=serializer.validated_data['email'],
             email=serializer.validated_data['email'],
             password=serializer.validated_data['password'],
             first_name=serializer.validated_data.get('first_name', ''),

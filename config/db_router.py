@@ -23,8 +23,6 @@ class ReadWriteRouter:
     MASTER_ONLY_MODELS = {
         'auth.User',
         'accounts.User',
-        'tenants.Tenant',
-        'tenants.Domain',
         'payments.Payment',
         'payments.Subscription',
         'contracts.Contract',

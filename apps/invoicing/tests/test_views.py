@@ -13,6 +13,7 @@ Tests cover:
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
+from unittest.mock import patch, MagicMock
 from rest_framework import status
 from apps.invoicing.models import Invoice, InvoiceItem
 
@@ -27,19 +28,19 @@ class TestInvoiceViewSet:
 
     def test_list_invoices(self, authenticated_admin_client, invoice_draft, invoice_sent):
         """Test listing invoices."""
-        response = authenticated_admin_client.get('/api/invoices/')
+        response = authenticated_admin_client.get('/api/api/invoices/')
 
         assert response.status_code == status.HTTP_200_OK
 
     def test_list_invoices_unauthenticated(self, api_client):
         """Test listing invoices without authentication."""
-        response = api_client.get('/api/invoices/')
+        response = api_client.get('/api/api/invoices/')
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_retrieve_invoice(self, authenticated_admin_client, invoice_draft):
         """Test retrieving a specific invoice."""
-        response = authenticated_admin_client.get(f'/api/invoices/{invoice_draft.id}/')
+        response = authenticated_admin_client.get(f'/api/api/invoices/{invoice_draft.id}/')
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['invoice_number'] == invoice_draft.invoice_number
@@ -56,7 +57,7 @@ class TestInvoiceViewSet:
             'notes': 'Thank you for your business!',
         }
 
-        response = authenticated_admin_client.post('/api/invoices/', data)
+        response = authenticated_admin_client.post('/api/api/invoices/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['invoice_number'].startswith('INV-')
@@ -84,7 +85,7 @@ class TestInvoiceViewSet:
         }
 
         response = authenticated_admin_client.post(
-            '/api/invoices/',
+            '/api/api/invoices/',
             data,
             format='json'
         )
@@ -99,7 +100,7 @@ class TestInvoiceViewSet:
         }
 
         response = authenticated_admin_client.patch(
-            f'/api/invoices/{invoice_draft.id}/',
+            f'/api/api/invoices/{invoice_draft.id}/',
             data
         )
 
@@ -109,7 +110,7 @@ class TestInvoiceViewSet:
     def test_delete_invoice(self, authenticated_admin_client, invoice_draft):
         """Test deleting an invoice."""
         response = authenticated_admin_client.delete(
-            f'/api/invoices/{invoice_draft.id}/'
+            f'/api/api/invoices/{invoice_draft.id}/'
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -125,7 +126,7 @@ class TestInvoiceViewSet:
             'due_date': str(date.today() - timedelta(days=10)),
         }
 
-        response = authenticated_admin_client.post('/api/invoices/', data)
+        response = authenticated_admin_client.post('/api/api/invoices/', data)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'due_date' in response.data
@@ -142,7 +143,7 @@ class TestInvoiceSearchFilter:
     def test_search_by_invoice_number(self, authenticated_admin_client, invoice_draft):
         """Test searching invoices by invoice number."""
         response = authenticated_admin_client.get(
-            f'/api/invoices/?search={invoice_draft.invoice_number}'
+            f'/api/api/invoices/?search={invoice_draft.invoice_number}'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -152,17 +153,18 @@ class TestInvoiceSearchFilter:
     ):
         """Test filtering invoices by status."""
         response = authenticated_admin_client.get(
-            f'/api/invoices/?status={Invoice.DRAFT}'
+            f'/api/api/invoices/?status={Invoice.DRAFT}'
         )
 
         assert response.status_code == status.HTTP_200_OK
-        for invoice in response.data:
+        results = response.data.get('results', response.data)
+        for invoice in results:
             assert invoice['status'] == Invoice.DRAFT
 
     def test_ordering_by_total(self, authenticated_admin_client, invoice_draft, invoice_paid):
         """Test ordering invoices by total."""
         response = authenticated_admin_client.get(
-            '/api/invoices/?ordering=-total'
+            '/api/api/invoices/?ordering=-total'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -170,7 +172,7 @@ class TestInvoiceSearchFilter:
     def test_ordering_by_due_date(self, authenticated_admin_client, invoice_draft, invoice_sent):
         """Test ordering invoices by due date."""
         response = authenticated_admin_client.get(
-            '/api/invoices/?ordering=due_date'
+            '/api/api/invoices/?ordering=due_date'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -188,7 +190,7 @@ class TestInvoiceStatistics:
         self, authenticated_admin_client, invoice_draft, invoice_sent, invoice_paid
     ):
         """Test the stats endpoint returns correct data."""
-        response = authenticated_admin_client.get('/api/invoices/stats/')
+        response = authenticated_admin_client.get('/api/api/invoices/stats/')
 
         assert response.status_code == status.HTTP_200_OK
         assert 'total_invoices' in response.data
@@ -212,7 +214,7 @@ class TestInvoiceActions:
     def test_send_invoice(self, authenticated_admin_client, invoice_draft):
         """Test sending an invoice."""
         response = authenticated_admin_client.post(
-            f'/api/invoices/{invoice_draft.id}/send/'
+            f'/api/api/invoices/{invoice_draft.id}/send/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -221,7 +223,7 @@ class TestInvoiceActions:
     def test_send_non_draft_invoice_fails(self, authenticated_admin_client, invoice_sent):
         """Test sending non-draft invoice fails."""
         response = authenticated_admin_client.post(
-            f'/api/invoices/{invoice_sent.id}/send/'
+            f'/api/api/invoices/{invoice_sent.id}/send/'
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -235,7 +237,7 @@ class TestInvoiceActions:
         }
 
         response = authenticated_admin_client.post(
-            f'/api/invoices/{invoice_sent.id}/mark_paid/',
+            f'/api/api/invoices/{invoice_sent.id}/mark_paid/',
             data
         )
 
@@ -250,26 +252,28 @@ class TestInvoiceActions:
         }
 
         response = authenticated_admin_client.post(
-            f'/api/invoices/{invoice_sent.id}/mark_paid/',
+            f'/api/api/invoices/{invoice_sent.id}/mark_paid/',
             data
         )
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['status'] == Invoice.PARTIALLY_PAID
 
-    def test_generate_pdf(self, authenticated_admin_client, invoice_draft):
+    @patch('apps.invoicing.tasks.generate_invoice.delay')
+    def test_generate_pdf(self, mock_delay, authenticated_admin_client, invoice_draft):
         """Test generating PDF for invoice."""
         response = authenticated_admin_client.post(
-            f'/api/invoices/{invoice_draft.id}/generate_pdf/'
+            f'/api/api/invoices/{invoice_draft.id}/generate_pdf/'
         )
 
-        # Should return success even if PDF generation is not implemented
+        # Should return success when PDF generation task is queued
         assert response.status_code == status.HTTP_200_OK
+        mock_delay.assert_called_once_with(str(invoice_draft.id))
 
     def test_recalculate_totals(self, authenticated_admin_client, invoice_draft, invoice_item):
         """Test recalculating invoice totals."""
         response = authenticated_admin_client.post(
-            f'/api/invoices/{invoice_draft.id}/recalculate/'
+            f'/api/api/invoices/{invoice_draft.id}/recalculate/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -277,7 +281,7 @@ class TestInvoiceActions:
     def test_get_invoice_items(self, authenticated_admin_client, invoice_draft, invoice_item):
         """Test getting items for a specific invoice."""
         response = authenticated_admin_client.get(
-            f'/api/invoices/{invoice_draft.id}/items/'
+            f'/api/api/invoices/{invoice_draft.id}/items/'
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -293,7 +297,7 @@ class TestInvoiceItemViewSet:
 
     def test_list_invoice_items(self, authenticated_admin_client, invoice_item):
         """Test listing invoice items."""
-        response = authenticated_admin_client.get('/api/invoice-items/')
+        response = authenticated_admin_client.get('/api/api/items/')
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -306,7 +310,7 @@ class TestInvoiceItemViewSet:
             'unit_price': '500.00',
         }
 
-        response = authenticated_admin_client.post('/api/invoice-items/', data)
+        response = authenticated_admin_client.post('/api/api/items/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['description'] == 'New Service'
@@ -318,7 +322,7 @@ class TestInvoiceItemViewSet:
         }
 
         response = authenticated_admin_client.patch(
-            f'/api/invoice-items/{invoice_item.id}/',
+            f'/api/api/items/{invoice_item.id}/',
             data
         )
 
@@ -328,7 +332,7 @@ class TestInvoiceItemViewSet:
     def test_delete_invoice_item(self, authenticated_admin_client, invoice_item):
         """Test deleting an invoice item."""
         response = authenticated_admin_client.delete(
-            f'/api/invoice-items/{invoice_item.id}/'
+            f'/api/api/items/{invoice_item.id}/'
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -346,7 +350,7 @@ class TestInvoiceAuthorization:
         self, authenticated_contributor_client, invoice_draft
     ):
         """Test non-staff users have filtered access."""
-        response = authenticated_contributor_client.get('/api/invoices/')
+        response = authenticated_contributor_client.get('/api/api/invoices/')
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -364,7 +368,7 @@ class TestInvoiceViewEdgeCases:
         import uuid
         fake_id = uuid.uuid4()
 
-        response = authenticated_admin_client.get(f'/api/invoices/{fake_id}/')
+        response = authenticated_admin_client.get(f'/api/api/invoices/{fake_id}/')
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -378,7 +382,7 @@ class TestInvoiceViewEdgeCases:
         }
 
         response = authenticated_admin_client.post(
-            '/api/invoices/',
+            '/api/api/invoices/',
             data,
             format='json'
         )
@@ -397,7 +401,101 @@ class TestInvoiceViewEdgeCases:
             'due_date': str(date.today() + timedelta(days=30)),
         }
 
-        response = authenticated_admin_client.post('/api/invoices/', data)
+        response = authenticated_admin_client.post('/api/api/invoices/', data)
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['contract'] == str(contract_fixed.id)
+        assert str(response.data['contract']) == str(contract_fixed.id)
+
+
+# ============================================================================
+# Coverage Tests for Error Branches
+# ============================================================================
+
+@pytest.mark.django_db
+class TestInvoiceViewCoverage:
+    """Tests to cover error handling branches in views."""
+
+    @patch('apps.invoicing.models.Invoice.mark_as_sent', side_effect=Exception('send failed'))
+    def test_send_invoice_error_returns_500(
+        self, mock_mark_sent, authenticated_admin_client, invoice_draft
+    ):
+        """Test send action returns 500 when mark_as_sent raises."""
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_draft.id}/send/'
+        )
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'Failed to send invoice' in response.data['detail']
+
+    def test_mark_paid_invalid_amount_returns_400(
+        self, authenticated_admin_client, invoice_sent
+    ):
+        """Test mark_paid with invalid payment_amount returns 400."""
+        data = {
+            'payment_amount': 'not-a-number',
+        }
+
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_sent.id}/mark_paid/',
+            data
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'Invalid payment amount' in response.data['detail']
+
+    @patch('apps.invoicing.models.Invoice.mark_as_paid', side_effect=Exception('payment failed'))
+    def test_mark_paid_error_returns_500(
+        self, mock_mark_paid, authenticated_admin_client, invoice_sent
+    ):
+        """Test mark_paid action returns 500 when mark_as_paid raises."""
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_sent.id}/mark_paid/',
+            {}
+        )
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'Failed to mark invoice as paid' in response.data['detail']
+
+    @patch('apps.invoicing.models.Invoice.generate_pdf', side_effect=Exception('pdf failed'))
+    def test_generate_pdf_error_returns_500(
+        self, mock_gen_pdf, authenticated_admin_client, invoice_draft
+    ):
+        """Test generate_pdf returns 500 when generate_pdf raises."""
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_draft.id}/generate_pdf/'
+        )
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'Failed to generate PDF' in response.data['detail']
+
+    @patch('apps.invoicing.models.Invoice.calculate_totals', side_effect=Exception('calc failed'))
+    def test_recalculate_error_returns_500(
+        self, mock_calc, authenticated_admin_client, invoice_draft, invoice_item
+    ):
+        """Test recalculate returns 500 when calculate_totals raises."""
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_draft.id}/recalculate/'
+        )
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'Failed to recalculate totals' in response.data['detail']
+
+    def test_non_staff_item_access(
+        self, authenticated_contributor_client, invoice_item
+    ):
+        """Test non-staff users have filtered access to invoice items."""
+        response = authenticated_contributor_client.get('/api/api/items/')
+
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_mark_paid_defaults_to_balance_due(
+        self, authenticated_admin_client, invoice_sent
+    ):
+        """Test mark_paid without payment_amount defaults to balance due."""
+        response = authenticated_admin_client.post(
+            f'/api/api/invoices/{invoice_sent.id}/mark_paid/',
+            {}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['status'] == Invoice.PAID

@@ -321,7 +321,7 @@ class Command(BaseCommand):
                         Payment.BANK_TRANSFER,
                         Payment.CHECK
                     ]),
-                    status=Payment.SUCCESS,
+                    status=Payment.SUCCEEDED,
                     payment_date=invoice.issue_date + timedelta(days=random.randint(1, 30)),
                     stripe_payment_intent_id=f'pi_demo_{fake.uuid4()[:12]}',
                     stripe_charge_id=f'ch_demo_{fake.uuid4()[:12]}',

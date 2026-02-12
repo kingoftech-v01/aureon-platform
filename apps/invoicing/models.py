@@ -332,8 +332,8 @@ class Invoice(models.Model):
 
     def generate_pdf(self):
         """Generate PDF invoice."""
-        # TODO: Implement PDF generation with ReportLab or WeasyPrint
-        pass
+        from apps.invoicing.tasks import generate_invoice
+        generate_invoice.delay(str(self.id))
 
 
 class InvoiceItem(models.Model):

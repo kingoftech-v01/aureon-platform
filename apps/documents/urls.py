@@ -1,15 +1,14 @@
-"""
-URL configuration for documents app.
-"""
+"""Document URL configuration."""
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views import DocumentViewSet
+
+router = DefaultRouter()
+router.register(r'', DocumentViewSet, basename='document')
 
 app_name = 'documents'
 
-router = DefaultRouter()
-# TODO: Add viewsets when implemented
-
 urlpatterns = [
-    path('api/', include(router.urls)),
+    path('', include(router.urls)),
 ]

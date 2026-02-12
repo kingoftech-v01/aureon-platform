@@ -31,10 +31,10 @@ def api_site_settings(request):
     """Get site-wide settings like contact info, social links"""
     settings_obj = SiteSettings.get_settings()
     data = {
-        'site_name': settings_obj.site_name if settings_obj else 'Aureon',
-        'site_tagline': settings_obj.site_tagline if settings_obj else 'Financial Automation Platform',
+        'site_name': settings_obj.company_name if settings_obj else 'Aureon',
+        'site_tagline': settings_obj.tagline if settings_obj else 'Financial Automation Platform',
         'contact_email': settings_obj.contact_email if settings_obj else 'support@aureon.io',
-        'contact_phone': settings_obj.contact_phone if settings_obj else '+1 (555) 123-4567',
+        'contact_phone': settings_obj.phone if settings_obj else '+1 (555) 123-4567',
         'address': settings_obj.address if settings_obj else 'Rhematek Solutions, Tech City',
         'twitter_url': settings_obj.twitter_url if settings_obj else '',
         'linkedin_url': settings_obj.linkedin_url if settings_obj else '',
@@ -392,7 +392,8 @@ def api_newsletter(request):
             return api_response({'success': True, 'message': 'You are already subscribed!'})
 
         # Create subscription
-        NewsletterSubscriber.objects.create(email=email, is_confirmed=True)
+        from django.utils import timezone as tz
+        NewsletterSubscriber.objects.create(email=email, confirmed_at=tz.now())
 
         return api_response({'success': True, 'message': 'Thank you for subscribing!'})
     except json.JSONDecodeError:

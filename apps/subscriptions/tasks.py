@@ -23,11 +23,32 @@ def process_subscription_payment(self, subscription_id):
 
         try:
             subscription = Subscription.objects.get(id=subscription_id)
-            # In production, this would integrate with Stripe
-            logger.info(f"Subscription {subscription_id} payment processed for {subscription.user.email}")
+
+            # Process via Stripe if configured
+            if subscription.stripe_subscription_id:
+                import stripe
+                from django.conf import settings
+                stripe.api_key = settings.STRIPE_SECRET_KEY
+
+                stripe_sub = stripe.Subscription.retrieve(subscription.stripe_subscription_id)
+
+                if stripe_sub.status == 'active':
+                    subscription.status = 'active'
+                    subscription.current_period_end = timezone.datetime.fromtimestamp(
+                        stripe_sub.current_period_end, tz=timezone.utc
+                    )
+                    subscription.save(update_fields=['status', 'current_period_end', 'updated_at'])
+                    logger.info(f"Subscription {subscription_id} payment confirmed via Stripe")
+                elif stripe_sub.status in ('past_due', 'unpaid'):
+                    subscription.status = 'past_due'
+                    subscription.save(update_fields=['status', 'updated_at'])
+                    logger.warning(f"Subscription {subscription_id} is {stripe_sub.status}")
+            else:
+                logger.info(f"Subscription {subscription_id} has no Stripe ID, marking as processed")
+
             return {
                 'status': 'success',
-                'subscription_id': subscription_id,
+                'subscription_id': str(subscription_id),
                 'user': subscription.user.email
             }
         except Subscription.DoesNotExist:

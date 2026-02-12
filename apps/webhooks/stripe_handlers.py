@@ -8,6 +8,7 @@ import logging
 from django.db import transaction
 from apps.payments.models import Payment
 from apps.invoicing.models import Invoice
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -75,13 +76,13 @@ class StripeWebhookHandler:
             defaults={
                 'amount': amount,
                 'currency': currency,
-                'status': Payment.SUCCESS,
+                'status': Payment.SUCCEEDED,
                 'payment_method': Payment.CARD,  # Default to card
             }
         )
 
         if not created:
-            payment.status = Payment.SUCCESS
+            payment.status = Payment.SUCCEEDED
             payment.save(update_fields=['status', 'updated_at'])
 
         # Update related invoice if exists
@@ -168,7 +169,7 @@ class StripeWebhookHandler:
 
             if payment:
                 payment.stripe_charge_id = charge_id
-                payment.status = Payment.SUCCESS
+                payment.status = Payment.SUCCEEDED
                 payment.save(update_fields=['stripe_charge_id', 'status', 'updated_at'])
 
                 return {
@@ -251,13 +252,25 @@ class StripeWebhookHandler:
     @transaction.atomic
     def handle_subscription_created(self):
         """Handle new subscription creation."""
+        from apps.subscriptions.models import Subscription
+
         subscription_id = self.data['id']
         customer_id = self.data['customer']
         status = self.data['status']
 
         logger.info(f"Subscription {subscription_id} created for customer {customer_id} with status {status}")
 
-        # Future: Update tenant subscription status
+        # Update local subscription record
+        try:
+            subscription = Subscription.objects.filter(
+                stripe_subscription_id=subscription_id
+            ).first()
+            if subscription:
+                subscription.status = status
+                subscription.save(update_fields=['status', 'updated_at'])
+                logger.info(f"Updated local subscription {subscription.id} to status {status}")
+        except Exception as e:
+            logger.warning(f"Could not update local subscription for {subscription_id}: {e}")
 
         return {
             'status': 'processed',
@@ -268,13 +281,31 @@ class StripeWebhookHandler:
     @transaction.atomic
     def handle_subscription_updated(self):
         """Handle subscription update."""
+        from apps.subscriptions.models import Subscription
+
         subscription_id = self.data['id']
         status = self.data['status']
         cancel_at_period_end = self.data.get('cancel_at_period_end', False)
 
         logger.info(f"Subscription {subscription_id} updated to status {status}")
 
-        # Future: Update tenant subscription status
+        try:
+            subscription = Subscription.objects.filter(
+                stripe_subscription_id=subscription_id
+            ).first()
+            if subscription:
+                subscription.status = status
+                subscription.cancel_at_period_end = cancel_at_period_end
+                if self.data.get('current_period_end'):
+                    from datetime import datetime
+                    subscription.current_period_end = datetime.fromtimestamp(
+                        self.data['current_period_end'],
+                        tz=timezone.utc
+                    )
+                subscription.save()
+                logger.info(f"Updated local subscription {subscription.id}")
+        except Exception as e:
+            logger.warning(f"Could not update local subscription for {subscription_id}: {e}")
 
         return {
             'status': 'processed',
@@ -286,11 +317,23 @@ class StripeWebhookHandler:
     @transaction.atomic
     def handle_subscription_deleted(self):
         """Handle subscription cancellation."""
+        from apps.subscriptions.models import Subscription
+
         subscription_id = self.data['id']
 
         logger.info(f"Subscription {subscription_id} canceled")
 
-        # Future: Update tenant subscription status to canceled
+        try:
+            subscription = Subscription.objects.filter(
+                stripe_subscription_id=subscription_id
+            ).first()
+            if subscription:
+                subscription.status = 'canceled'
+                subscription.canceled_at = timezone.now()
+                subscription.save(update_fields=['status', 'canceled_at', 'updated_at'])
+                logger.info(f"Canceled local subscription {subscription.id}")
+        except Exception as e:
+            logger.warning(f"Could not cancel local subscription for {subscription_id}: {e}")
 
         return {
             'status': 'processed',
