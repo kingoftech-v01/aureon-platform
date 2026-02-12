@@ -231,3 +231,98 @@ class TestPaymentActivitySignal:
 
         assert '9999.99' in activity.description
         assert 'EUR' in activity.description
+
+
+# =============================================================================
+# Exception Handling Tests (covers lines 25-26, 44-45, 58-59)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestContractSignalExceptionHandling:
+    """Tests for exception handling in the contract post_save signal (lines 25-26)."""
+
+    def test_contract_signal_handles_activity_logger_exception(self, client_company, admin_user):
+        """When ActivityLogger.log_activity raises, the signal should not propagate the error."""
+        from apps.contracts.models import Contract
+
+        with patch(
+            'apps.analytics.services.ActivityLogger.log_activity',
+            side_effect=Exception('Logger service unavailable'),
+        ):
+            # Creating a contract should succeed even if the signal handler fails
+            contract = Contract.objects.create(
+                client=client_company,
+                title='Signal Exception Test Contract',
+                description='Testing.',
+                contract_type=Contract.FIXED_PRICE,
+                status=Contract.DRAFT,
+                start_date=date.today(),
+                end_date=date.today() + timedelta(days=30),
+                value=Decimal('1000.00'),
+                currency='USD',
+                owner=admin_user,
+            )
+
+        assert contract.pk is not None
+
+
+@pytest.mark.django_db
+class TestInvoiceSignalExceptionHandling:
+    """Tests for exception handling in the invoice post_save signal (lines 44-45)."""
+
+    def test_invoice_signal_handles_activity_logger_exception(self, client_company, contract_fixed):
+        """When ActivityLogger.log_activity raises, the signal should not propagate the error."""
+        from apps.invoicing.models import Invoice
+
+        with patch(
+            'apps.analytics.services.ActivityLogger.log_activity',
+            side_effect=Exception('Logger service unavailable'),
+        ):
+            invoice = Invoice.objects.create(
+                client=client_company,
+                contract=contract_fixed,
+                status=Invoice.DRAFT,
+                issue_date=date.today(),
+                due_date=date.today() + timedelta(days=30),
+                subtotal=Decimal('1000.00'),
+                total=Decimal('1000.00'),
+                currency='USD',
+            )
+
+        assert invoice.pk is not None
+
+    def test_invoice_paid_signal_handles_activity_logger_exception(self, invoice_draft):
+        """When ActivityLogger raises on invoice paid update, the signal should not propagate."""
+        with patch(
+            'apps.analytics.services.ActivityLogger.log_activity',
+            side_effect=Exception('Logger service unavailable'),
+        ):
+            invoice_draft.status = 'paid'
+            invoice_draft.save()
+
+        invoice_draft.refresh_from_db()
+        assert invoice_draft.status == 'paid'
+
+
+@pytest.mark.django_db
+class TestPaymentSignalExceptionHandling:
+    """Tests for exception handling in the payment post_save signal (lines 58-59)."""
+
+    def test_payment_signal_handles_activity_logger_exception(self, invoice_sent):
+        """When ActivityLogger.log_activity raises, the signal should not propagate the error."""
+        from apps.payments.models import Payment
+
+        with patch(
+            'apps.analytics.services.ActivityLogger.log_activity',
+            side_effect=Exception('Logger service unavailable'),
+        ):
+            payment = Payment.objects.create(
+                invoice=invoice_sent,
+                amount=Decimal('100.00'),
+                currency='USD',
+                payment_method=Payment.CARD,
+                status='succeeded',
+                payment_date=timezone.now(),
+            )
+
+        assert payment.pk is not None

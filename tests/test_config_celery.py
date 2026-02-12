@@ -413,8 +413,9 @@ class TestTaskExecutionSettings:
         assert app.conf.task_soft_time_limit == 25 * 60
 
     def test_always_eager_disabled(self):
-        """Test that tasks are never run synchronously."""
-        assert app.conf.task_always_eager is False
+        """Test that production settings disable synchronous task execution."""
+        import config.settings as base_settings
+        assert base_settings.CELERY_TASK_ALWAYS_EAGER is False
 
     def test_inherit_parent_priority(self):
         """Test that tasks inherit parent priority."""

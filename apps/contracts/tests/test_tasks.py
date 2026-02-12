@@ -364,3 +364,92 @@ class TestCheckContractExpirations:
         result = check_contract_expirations()
 
         assert result['expiring_notified'] >= 1
+
+
+# =============================================================================
+# PDF Generation with Terms and Payment Terms (lines 72-74)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestGenerateContractPdfTerms:
+    """Tests covering terms_and_conditions and payment_terms branches."""
+
+    @patch('reportlab.platypus.SimpleDocTemplate')
+    def test_contract_with_terms_and_payment_terms(self, mock_doc_cls, client_company, admin_user):
+        """Test PDF generation for a contract with terms_and_conditions and payment_terms."""
+        contract = Contract.objects.create(
+            client=client_company,
+            title='Full Terms Contract',
+            description='Scope of work.',
+            contract_type=Contract.FIXED_PRICE,
+            status=Contract.ACTIVE,
+            start_date=date.today(),
+            end_date=date.today() + timedelta(days=30),
+            value=Decimal('5000.00'),
+            currency='USD',
+            owner=admin_user,
+            terms_and_conditions='Standard terms apply.',
+            payment_terms='Net 30.',
+        )
+
+        mock_doc = MagicMock()
+        captured_elements = []
+
+        def build_effect(elements):
+            captured_elements.extend(elements)
+            buf = mock_doc_cls.call_args[0][0]
+            buf.write(b'%PDF-1.4 test')
+
+        mock_doc.build.side_effect = build_effect
+        mock_doc_cls.return_value = mock_doc
+
+        result = generate_contract_pdf(str(contract.id))
+        assert result['status'] == 'success'
+        assert len(captured_elements) > 0
+
+    @patch('reportlab.platypus.SimpleDocTemplate')
+    def test_contract_without_terms(self, mock_doc_cls, client_company, admin_user):
+        """Test PDF generation with empty terms_and_conditions and empty payment_terms."""
+        contract = Contract.objects.create(
+            client=client_company,
+            title='No Terms Contract',
+            description='A contract.',
+            contract_type=Contract.FIXED_PRICE,
+            status=Contract.ACTIVE,
+            start_date=date.today(),
+            end_date=date.today() + timedelta(days=30),
+            value=Decimal('2000.00'),
+            currency='USD',
+            owner=admin_user,
+            terms_and_conditions='',
+            payment_terms='',
+        )
+
+        mock_doc = MagicMock()
+
+        def build_effect(elements):
+            buf = mock_doc_cls.call_args[0][0]
+            buf.write(b'%PDF-1.4 test')
+
+        mock_doc.build.side_effect = build_effect
+        mock_doc_cls.return_value = mock_doc
+
+        result = generate_contract_pdf(str(contract.id))
+        assert result['status'] == 'success'
+
+
+# =============================================================================
+# Retry Exception for check_contract_expirations (lines 199-201)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestCheckContractExpirationsRetry:
+    """Tests for retry behavior of check_contract_expirations."""
+
+    def test_retries_on_exception(self):
+        """Task should retry when a top-level exception occurs."""
+        with patch('apps.contracts.models.Contract.objects') as mock_objects:
+            mock_objects.filter.side_effect = Exception('DB connection lost')
+
+            with pytest.raises(Exception, match='DB connection lost'):
+                check_contract_expirations()

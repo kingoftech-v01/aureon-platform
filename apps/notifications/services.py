@@ -81,16 +81,20 @@ class NotificationService:
         # Render template
         rendered = template.render(context)
 
-        # Create notification
-        notification = Notification.objects.create(
-            template=template,
-            email=recipient_email,
-            channel=template.channel,
-            subject=rendered['subject'],
-            message_text=rendered['body_text'],
-            message_html=rendered['body_html'] or '',
-            **kwargs
-        )
+        # Create notification - for SMS, store recipient in phone field
+        notification_fields = {
+            'template': template,
+            'channel': template.channel,
+            'subject': rendered['subject'],
+            'message_text': rendered['body_text'],
+            'message_html': rendered['body_html'] or '',
+        }
+        if template.channel == NotificationTemplate.SMS:
+            notification_fields['phone'] = recipient_email
+        else:
+            notification_fields['email'] = recipient_email
+        notification_fields.update(kwargs)
+        notification = Notification.objects.create(**notification_fields)
 
         # Send notification based on channel
         if template.channel == NotificationTemplate.EMAIL:
@@ -106,13 +110,18 @@ class NotificationService:
                 except (ImportError, Exception):
                     pass
 
+                phone_number = notification.phone or (notification.user.phone if notification.user and hasattr(notification.user, 'phone') else None)
                 if sns_client and hasattr(django_settings, 'AWS_SNS_ENABLED') and django_settings.AWS_SNS_ENABLED:
-                    sns_client.publish(
-                        PhoneNumber=recipient_email,  # phone number passed as recipient
-                        Message=rendered['body_text'],
-                    )
-                    notification.mark_as_sent()
-                    logger.info(f"SMS sent to {recipient_email}")
+                    if not phone_number:
+                        logger.error(f"SMS notification {notification.id} has no phone number")
+                        notification.mark_as_failed('No phone number available')
+                    else:
+                        sns_client.publish(
+                            PhoneNumber=phone_number,
+                            Message=rendered['body_text'],
+                        )
+                        notification.mark_as_sent()
+                        logger.info(f"SMS sent to {phone_number}")
                 else:
                     logger.info(f"SMS service not configured, notification stored for {recipient_email}")
                     notification.mark_as_delivered()

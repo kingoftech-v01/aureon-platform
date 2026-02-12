@@ -241,3 +241,81 @@ class TestDocumentViewSet:
         response = client.delete(f'{self.BASE_URL}{doc_pdf.id}/')
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # ---- Filter by contract (line 44) ----
+
+    def test_filter_by_contract(self, authenticated_admin_client, doc_pdf, contract_fixed):
+        """Filtering by contract should return only that contract's documents."""
+        # Link doc_pdf to contract_fixed
+        doc_pdf.contract = contract_fixed
+        doc_pdf.save()
+
+        response = authenticated_admin_client.get(
+            self.BASE_URL, {'contract': str(contract_fixed.id)}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        for item in response.data:
+            assert str(item['contract']) == str(contract_fixed.id)
+
+    # ---- Perform create exercises lines 54-60 ----
+
+    def test_create_document_queues_task(self, authenticated_admin_client):
+        """Document creation should queue task via perform_create (line 54-58)."""
+        uploaded = SimpleUploadedFile('new_queued.pdf', b'%PDF-1.4 queued', content_type='application/pdf')
+        data = {
+            'title': 'Queued Upload',
+            'description': 'Test task queuing',
+            'document_type': Document.PROPOSAL,
+            'file': uploaded,
+        }
+
+        with patch('apps.documents.tasks.process_document') as mock_task:
+            response = authenticated_admin_client.post(self.BASE_URL, data, format='multipart')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert Document.objects.filter(title='Queued Upload').exists()
+        mock_task.delay.assert_called_once()
+
+    def test_create_document_task_queue_failure(self, authenticated_admin_client):
+        """Document creation should succeed even when task queuing fails (lines 59-60)."""
+        uploaded = SimpleUploadedFile('fail_queue.pdf', b'%PDF-1.4 fail', content_type='application/pdf')
+        data = {
+            'title': 'Failed Queue Upload',
+            'description': 'Test task queue failure',
+            'document_type': Document.PROPOSAL,
+            'file': uploaded,
+        }
+
+        with patch('apps.documents.tasks.process_document') as mock_task:
+            mock_task.delay.side_effect = Exception('Celery broker down')
+            response = authenticated_admin_client.post(self.BASE_URL, data, format='multipart')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert Document.objects.filter(title='Failed Queue Upload').exists()
+
+    # ---- Download with no file (lines 65-68) ----
+
+    def test_download_no_file(self, authenticated_admin_client, admin_user):
+        """Download should return 404 when document has no file attached."""
+        doc_no_file = Document.objects.create(
+            title='No File Doc',
+            description='Document without file',
+            document_type=Document.OTHER,
+            uploaded_by=admin_user,
+        )
+
+        response = authenticated_admin_client.get(
+            f'{self.BASE_URL}{doc_no_file.id}/download/'
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert 'error' in response.data
+
+    def test_download_with_file(self, authenticated_admin_client, doc_pdf):
+        """Download should return the file when it exists."""
+        response = authenticated_admin_client.get(
+            f'{self.BASE_URL}{doc_pdf.id}/download/'
+        )
+
+        assert response.status_code == status.HTTP_200_OK

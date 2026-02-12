@@ -26,11 +26,27 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+class IsAdminOrSuperuser(IsAuthenticated):
+    """Permission class that only allows admin or superuser access."""
+
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        if view.action in ['destroy', 'create']:
+            return request.user.is_superuser or getattr(request.user, 'role', None) in ['admin']
+        return True
+
+
 class UserViewSet(viewsets.ModelViewSet):
     """ViewSet for user management."""
 
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['destroy', 'create']:
+            return [IsAdminOrSuperuser()]
+        return super().get_permissions()
 
     def get_serializer_class(self):
         if self.action == 'create':

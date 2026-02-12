@@ -446,3 +446,113 @@ class TestWebhookHealth:
         client = DjangoClient()
         response = client.post(self.HEALTH_URL)
         assert response.status_code == 405
+
+
+# =============================================================================
+# Sync Processing Success Path (lines 102-104)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestStripeWebhookSyncProcessing:
+    """Tests for the sync processing path in the Stripe webhook view (lines 102-104)."""
+
+    STRIPE_WEBHOOK_URL = '/webhooks/stripe/'
+
+    @patch('apps.webhooks.views.StripeWebhookHandler')
+    @patch('apps.webhooks.views.stripe.Webhook.construct_event')
+    def test_sync_processing_success_returns_200(self, mock_construct_event, MockHandler, db):
+        """Sync processing success path should return 200 with processed: True."""
+        event_id = f'evt_{uuid.uuid4().hex[:24]}'
+        event = {
+            'id': event_id,
+            'type': 'payment_intent.succeeded',
+            'data': {
+                'object': {
+                    'id': f'pi_{uuid.uuid4().hex[:24]}',
+                    'amount': 5000,
+                    'currency': 'usd',
+                }
+            }
+        }
+        mock_construct_event.return_value = event
+
+        handler_instance = MagicMock()
+        handler_instance.handle.return_value = {'status': 'processed'}
+        MockHandler.return_value = handler_instance
+
+        # Force the sync path by making Celery task import raise ImportError
+        with patch('apps.webhooks.tasks.process_stripe_webhook') as mock_task:
+            mock_task.delay.side_effect = Exception('Celery not available')
+
+            client = DjangoClient()
+            response = client.post(
+                self.STRIPE_WEBHOOK_URL,
+                data=json.dumps(event),
+                content_type='application/json',
+                HTTP_STRIPE_SIGNATURE='t=123,v1=abc',
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['received'] is True
+        assert data['processed'] is True
+
+
+# =============================================================================
+# Generic Webhook X-Forwarded-For (line 169)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestGenericWebhookForwardedIp:
+    """Tests for X-Forwarded-For in generic webhooks (line 169)."""
+
+    def test_generic_webhook_saves_forwarded_ip(self, db):
+        """Generic webhook should use X-Forwarded-For header when present."""
+        endpoint = WebhookEndpoint.objects.create(
+            url='https://example.com/webhook-fwd',
+            secret_key='',
+            event_types=['invoice.created'],
+            is_active=True,
+        )
+        payload = {
+            'id': f'fwd_ip_test_{uuid.uuid4().hex[:8]}',
+            'event_type': 'invoice.created',
+            'data': {'test': True},
+        }
+
+        client = DjangoClient()
+        response = client.post(
+            f'/webhooks/receive/{endpoint.id}/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            HTTP_X_FORWARDED_FOR='198.51.100.50, 203.0.113.10',
+        )
+
+        assert response.status_code == 200
+
+        saved = WebhookEvent.objects.get(event_id=payload['id'])
+        assert saved.ip_address == '198.51.100.50'
+
+
+# =============================================================================
+# Health Check Exception Path (lines 236-238)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestWebhookHealthException:
+    """Tests for health check exception handler (lines 236-238)."""
+
+    HEALTH_URL = '/webhooks/health/'
+
+    def test_health_check_exception_returns_500(self, db):
+        """Health check should return 500 when an exception occurs."""
+        with patch('apps.webhooks.views.WebhookEvent.objects.filter') as mock_filter:
+            mock_filter.side_effect = Exception('Database error')
+
+            client = DjangoClient()
+            response = client.get(self.HEALTH_URL)
+
+        assert response.status_code == 500
+        data = response.json()
+        assert data['status'] == 'unhealthy'
+        assert 'error' in data

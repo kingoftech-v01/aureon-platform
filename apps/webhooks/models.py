@@ -185,9 +185,9 @@ class WebhookEvent(models.Model):
 
     def mark_as_failed(self, error_message, should_retry=True):
         """Mark webhook as failed and optionally queue for retry."""
+        self.retry_count += 1
         self.status = self.RETRYING if (should_retry and self.retry_count < self.max_retries) else self.FAILED
         self.error_message = str(error_message)
-        self.retry_count += 1
         self.response_code = 500
         self.save(update_fields=['status', 'error_message', 'retry_count', 'response_code', 'updated_at'])
 

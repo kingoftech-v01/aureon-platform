@@ -831,6 +831,84 @@ class TestSanitizeHtml:
         assert '<div>' not in result
 
 
+class TestSanitizeHtmlMocked:
+    """Tests for sanitize_html with mocked bleach to ensure function body is exercised (lines 655-676)."""
+
+    def test_sanitize_html_calls_bleach_clean_and_linkify(self):
+        """Verify that sanitize_html calls bleach.clean and bleach.linkify correctly."""
+        mock_bleach = MagicMock()
+        mock_bleach.clean.return_value = '<p>safe content</p>'
+        mock_bleach.linkify.return_value = '<p>safe content</p>'
+
+        with patch.dict('sys.modules', {'bleach': mock_bleach}):
+            # Need to reimport to pick up the mocked bleach
+            from importlib import reload
+            import apps.core.validators as validators_mod
+            reload(validators_mod)
+
+            result = validators_mod.sanitize_html('<script>bad</script><p>safe content</p>')
+
+            assert result == '<p>safe content</p>'
+            mock_bleach.clean.assert_called_once()
+            mock_bleach.linkify.assert_called_once()
+
+            # Verify default tags were passed
+            call_kwargs = mock_bleach.clean.call_args
+            assert 'tags' in call_kwargs.kwargs or len(call_kwargs.args) > 1
+
+    def test_sanitize_html_default_allowed_tags(self):
+        """Verify default allowed tags include basic formatting."""
+        mock_bleach = MagicMock()
+        mock_bleach.clean.return_value = '<p>text</p>'
+        mock_bleach.linkify.return_value = '<p>text</p>'
+
+        with patch.dict('sys.modules', {'bleach': mock_bleach}):
+            from importlib import reload
+            import apps.core.validators as validators_mod
+            reload(validators_mod)
+
+            validators_mod.sanitize_html('<p>text</p>')
+
+            clean_call = mock_bleach.clean.call_args
+            tags_arg = clean_call.kwargs.get('tags') or clean_call[1].get('tags')
+            if tags_arg is None and len(clean_call.args) > 1:
+                tags_arg = clean_call.args[1]
+            assert tags_arg is not None
+
+    def test_sanitize_html_custom_allowed_tags_passed(self):
+        """Verify custom allowed_tags override is passed to bleach.clean."""
+        mock_bleach = MagicMock()
+        mock_bleach.clean.return_value = '<b>bold</b>'
+        mock_bleach.linkify.return_value = '<b>bold</b>'
+        custom_tags = {'b', 'i'}
+
+        with patch.dict('sys.modules', {'bleach': mock_bleach}):
+            from importlib import reload
+            import apps.core.validators as validators_mod
+            reload(validators_mod)
+
+            result = validators_mod.sanitize_html('<b>bold</b>', allowed_tags=custom_tags)
+
+            assert result == '<b>bold</b>'
+
+    def test_sanitize_html_linkify_called_with_correct_args(self):
+        """Verify linkify is called with parse_email=False."""
+        mock_bleach = MagicMock()
+        mock_bleach.clean.return_value = 'text with links'
+        mock_bleach.linkify.return_value = 'text with links'
+
+        with patch.dict('sys.modules', {'bleach': mock_bleach}):
+            from importlib import reload
+            import apps.core.validators as validators_mod
+            reload(validators_mod)
+
+            validators_mod.sanitize_html('text with links')
+
+            linkify_call = mock_bleach.linkify.call_args
+            assert linkify_call.kwargs.get('parse_email') is False or \
+                   (len(linkify_call.args) > 1 and linkify_call.args[1] is False)
+
+
 class TestSanitizeFilename:
 
     def test_basic_filename(self):

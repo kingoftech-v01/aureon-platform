@@ -3,9 +3,11 @@
 import logging
 from decimal import Decimal
 from datetime import datetime, timedelta
-from django.db.models import Sum, Count, Avg, Q
+from django.db.models import Sum, Count, Avg, Q, F
 from django.utils import timezone
 from .models import RevenueMetric, ClientMetric, ActivityLog
+from apps.payments.models import Payment
+from apps.clients.models import Client
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +28,7 @@ class RevenueMetricsCalculator:
             RevenueMetric: Calculated metrics
         """
         from apps.invoicing.models import Invoice
-        from apps.payments.models import Payment
         from apps.contracts.models import Contract
-        from apps.clients.models import Client
 
         # Date range for the month
         from datetime import date
@@ -163,7 +163,6 @@ class ClientMetricsCalculator:
             ClientMetric: Calculated metrics
         """
         from apps.invoicing.models import Invoice
-        from apps.payments.models import Payment
         from apps.contracts.models import Contract
 
         # Get or create metric record
@@ -182,10 +181,10 @@ class ClientMetricsCalculator:
         avg_value = invoices.aggregate(avg=Avg('total'))['avg']
         metric.average_invoice_value = avg_value or Decimal('0.00')
 
-        # Outstanding balance
+        # Outstanding balance (balance_due = total - paid_amount)
         outstanding = invoices.filter(
             status__in=[Invoice.SENT, Invoice.VIEWED, Invoice.PARTIALLY_PAID]
-        ).aggregate(total=Sum('balance_due'))['total']
+        ).aggregate(total=Sum(F('total') - F('paid_amount')))['total']
         metric.outstanding_balance = outstanding or Decimal('0.00')
 
         # Last invoice date
@@ -193,8 +192,8 @@ class ClientMetricsCalculator:
         if last_invoice:
             metric.last_invoice_date = last_invoice.issue_date
 
-        # Payment Metrics
-        payments = Payment.objects.filter(client=client)
+        # Payment Metrics (Payment links to client through Invoice)
+        payments = Payment.objects.filter(invoice__client=client)
         metric.total_payments = payments.filter(status=Payment.SUCCEEDED).count()
         metric.failed_payments = payments.filter(status=Payment.FAILED).count()
 
@@ -206,7 +205,10 @@ class ClientMetricsCalculator:
         last_payment = payments.filter(status=Payment.SUCCEEDED).order_by('-payment_date').first()
         if last_payment:
             metric.last_payment_date = last_payment.payment_date
-            metric.days_since_last_payment = (timezone.now().date() - last_payment.payment_date).days
+            payment_date = last_payment.payment_date
+            if hasattr(payment_date, 'date'):
+                payment_date = payment_date.date()
+            metric.days_since_last_payment = (timezone.now().date() - payment_date).days
         else:
             metric.days_since_last_payment = 0
 
@@ -290,9 +292,6 @@ class DashboardDataService:
             dict: Dashboard summary data
         """
         from apps.invoicing.models import Invoice
-        from apps.payments.models import Payment
-        from apps.contracts.models import Contract
-        from apps.clients.models import Client
 
         # Current month revenue
         current_month = timezone.now().month

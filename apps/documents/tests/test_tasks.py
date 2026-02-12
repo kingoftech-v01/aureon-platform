@@ -111,7 +111,6 @@ class TestProcessDocument:
         mock_file = MagicMock(spec=['name', 'size', 'read'])
         mock_file.name = 'cloud_doc.pdf'
         mock_file.size = 4096
-        mock_file.__bool__ = MagicMock(return_value=True)
         # hasattr(mock_file, 'path') should be False since 'path' not in spec
 
         with patch.object(Document, 'file', new_callable=PropertyMock) as mock_field:
@@ -122,3 +121,55 @@ class TestProcessDocument:
         document_with_file.refresh_from_db()
         assert document_with_file.processing_status == 'completed'
         assert document_with_file.file_size == 4096
+
+    def test_virus_scan_failure_handled_gracefully(self, document_with_file):
+        """Virus scan failure should be caught and processing should continue (lines 39-40)."""
+        mock_file = MagicMock()
+        mock_file.name = 'scanned.pdf'
+        mock_file.size = 1024
+        mock_file.path = '/tmp/scanned.pdf'
+        type(mock_file).path = PropertyMock(return_value='/tmp/scanned.pdf')
+        mock_file.__bool__ = MagicMock(return_value=True)
+
+        with patch.object(Document, 'file', new_callable=PropertyMock) as mock_field:
+            mock_field.return_value = mock_file
+
+            # Make the FileUploadValidator constructor raise an exception
+            with patch(
+                'apps.core.validators.FileUploadValidator',
+                side_effect=Exception('Virus scan engine unavailable'),
+            ):
+                result = process_document(document_with_file.id)
+
+        assert result['status'] == 'success'
+        document_with_file.refresh_from_db()
+        assert document_with_file.processing_status == 'completed'
+
+    def test_virus_scan_validation_error_handled(self, document_with_file):
+        """Virus scan raising ValidationError should be caught gracefully (lines 39-40)."""
+        from django.core.exceptions import ValidationError
+
+        mock_file = MagicMock()
+        mock_file.name = 'malicious.pdf'
+        mock_file.size = 512
+        mock_file.path = '/tmp/malicious.pdf'
+        type(mock_file).path = PropertyMock(return_value='/tmp/malicious.pdf')
+        mock_file.__bool__ = MagicMock(return_value=True)
+
+        with patch.object(Document, 'file', new_callable=PropertyMock) as mock_field:
+            mock_field.return_value = mock_file
+
+            # Make the validator instance raise when called
+            mock_validator_instance = MagicMock()
+            mock_validator_instance.side_effect = ValidationError('File failed virus scan')
+
+            with patch(
+                'apps.core.validators.FileUploadValidator',
+                return_value=mock_validator_instance,
+            ):
+                result = process_document(document_with_file.id)
+
+        assert result['status'] == 'success'
+        document_with_file.refresh_from_db()
+        # Processing still completes, the scan failure is just a warning
+        assert document_with_file.processing_status == 'completed'

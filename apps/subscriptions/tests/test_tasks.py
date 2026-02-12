@@ -333,3 +333,20 @@ class TestCancelSubscription:
         result = cancel_subscription(str(subscription_active.id), immediate=True)
 
         assert result['status'] == 'success'
+
+
+# =============================================================================
+# Retry Exception Tests for process_subscription_renewals (covers lines 101-103)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestProcessSubscriptionRenewalsRetry:
+    """Tests for retry behavior of process_subscription_renewals."""
+
+    def test_retries_on_top_level_exception(self):
+        """Task should retry when a top-level exception occurs."""
+        with patch('apps.subscriptions.models.Subscription.objects') as mock_objects:
+            mock_objects.filter.side_effect = Exception('DB connection lost')
+
+            with pytest.raises(Exception, match='DB connection lost'):
+                process_subscription_renewals()

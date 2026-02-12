@@ -57,6 +57,8 @@ class Payment(models.Model):
         'invoicing.Invoice',
         on_delete=models.CASCADE,
         related_name='payments',
+        null=True,
+        blank=True,
         help_text=_('Invoice this payment is for')
     )
 
@@ -233,7 +235,8 @@ class Payment(models.Model):
             import hashlib
             from django.utils import timezone
 
-            hash_input = f"{self.invoice.id}-{timezone.now().isoformat()}"
+            invoice_id = self.invoice_id or "no-invoice"
+            hash_input = f"{invoice_id}-{timezone.now().isoformat()}"
             hash_digest = hashlib.sha256(hash_input.encode()).hexdigest()[:12]
             self.transaction_id = f"TXN-{hash_digest.upper()}"
 

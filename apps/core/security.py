@@ -740,10 +740,13 @@ class SecurityMonitor:
                 f"Details: {details}\n\n"
                 f"Please investigate immediately."
             )
-            mail_admins(subject, message, fail_silently=True)
+            mail_admins(subject, message, fail_silently=False)
             security_logger.info(f"Security alert sent to admins: {event_type}")
         except Exception as e:
-            security_logger.error(f"Failed to send security alert: {e}")
+            security_logger.critical(
+                f"FAILED to send security alert for {event_type}: {e}. "
+                f"Count={count}, threshold={threshold}. Manual investigation required."
+            )
 
     def get_hourly_stats(self) -> Dict[str, int]:
         """Get current hour's security statistics."""

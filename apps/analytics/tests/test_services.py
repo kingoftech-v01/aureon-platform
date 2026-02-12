@@ -217,8 +217,6 @@ class TestClientMetricsCalculator:
         from apps.payments.models import Payment
 
         with patch.object(Payment, 'SUCCESS', Payment.SUCCEEDED, create=True):
-            # Monkeypatch Client.full_name since it doesn't exist as a property
-            client_company.full_name = client_company.get_full_name()
             result = ClientMetricsCalculator.calculate_client_metrics(client_company)
 
         assert isinstance(result, ClientMetric)
@@ -229,7 +227,6 @@ class TestClientMetricsCalculator:
         from apps.payments.models import Payment
 
         with patch.object(Payment, 'SUCCESS', Payment.SUCCEEDED, create=True):
-            client_lead.full_name = client_lead.get_full_name()
             result = ClientMetricsCalculator.calculate_client_metrics(client_lead)
 
         assert result.total_invoices == 0
@@ -243,7 +240,6 @@ class TestClientMetricsCalculator:
         from apps.payments.models import Payment
 
         with patch.object(Payment, 'SUCCESS', Payment.SUCCEEDED, create=True):
-            client_company.full_name = client_company.get_full_name()
             result = ClientMetricsCalculator.calculate_client_metrics(client_company)
 
         assert result.total_invoices >= 2
@@ -254,7 +250,6 @@ class TestClientMetricsCalculator:
         from apps.payments.models import Payment
 
         with patch.object(Payment, 'SUCCESS', Payment.SUCCEEDED, create=True):
-            client_company.full_name = client_company.get_full_name()
             result = ClientMetricsCalculator.calculate_client_metrics(client_company)
 
         assert result.total_contracts >= 2
@@ -265,7 +260,6 @@ class TestClientMetricsCalculator:
         from apps.payments.models import Payment
 
         with patch.object(Payment, 'SUCCESS', Payment.SUCCEEDED, create=True):
-            client_company.full_name = client_company.get_full_name()
             ClientMetricsCalculator.calculate_client_metrics(client_company)
             ClientMetricsCalculator.calculate_client_metrics(client_company)
 
@@ -277,7 +271,6 @@ class TestClientMetricsCalculator:
         from apps.payments.models import Payment
 
         with patch.object(Payment, 'SUCCESS', Payment.SUCCEEDED, create=True):
-            client_company.full_name = client_company.get_full_name()
             result = ClientMetricsCalculator.calculate_client_metrics(client_company)
 
         # With successful payments and no failures, score should be high

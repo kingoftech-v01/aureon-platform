@@ -221,3 +221,55 @@ class TestBackupCriticalDataRetry:
         """Test that the task retries on failure."""
         with pytest.raises(Exception):
             backup_critical_data()
+
+
+# =============================================================================
+# Redis Exception and Stripe Skipped Tests (covers lines 104-105, 119)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestHealthCheckRedisException:
+    """Tests for Redis exception handling in health check (lines 104-105)."""
+
+    @patch('apps.core.tasks.settings')
+    def test_redis_unhealthy_when_getattr_raises(self, mock_settings):
+        """Redis check should be unhealthy when settings access raises an exception."""
+        # Make CELERY_BROKER_URL raise an AttributeError via side_effect on getattr
+        type(mock_settings).CELERY_BROKER_URL = property(
+            lambda self: (_ for _ in ()).throw(Exception("Redis connect failed"))
+        )
+        mock_settings.STRIPE_SECRET_KEY = 'sk_test_XXXX_dummy'
+        mock_settings.STRIPE_LIVE_SECRET_KEY = ''
+
+        result = health_check_external_services()
+
+        assert result['services']['redis']['status'] == 'unhealthy'
+        assert 'error' in result['services']['redis']
+
+
+@pytest.mark.django_db
+class TestHealthCheckStripeSkipped:
+    """Tests for Stripe skipped when test keys are used (line 119)."""
+
+    @patch('apps.core.tasks.settings')
+    def test_stripe_skipped_with_test_key(self, mock_settings):
+        """Stripe check should be skipped when using test placeholder key."""
+        mock_settings.CELERY_BROKER_URL = 'redis://localhost:6379/0'
+        mock_settings.STRIPE_SECRET_KEY = 'sk_test_XXXX_dummy'
+        mock_settings.STRIPE_LIVE_SECRET_KEY = ''
+
+        result = health_check_external_services()
+
+        assert result['services']['stripe']['status'] == 'skipped'
+        assert 'Test keys' in result['services']['stripe']['message']
+
+    @patch('apps.core.tasks.settings')
+    def test_stripe_skipped_when_not_configured(self, mock_settings):
+        """Stripe check should be skipped when no key is configured."""
+        mock_settings.CELERY_BROKER_URL = 'redis://localhost:6379/0'
+        mock_settings.STRIPE_SECRET_KEY = None
+        mock_settings.STRIPE_LIVE_SECRET_KEY = None
+
+        result = health_check_external_services()
+
+        assert result['services']['stripe']['status'] == 'skipped'

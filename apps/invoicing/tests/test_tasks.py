@@ -551,3 +551,33 @@ class TestRecurringInvoiceCoverage:
         assert result['invoices_generated'] >= 1
         invoice_count = Invoice.objects.filter(contract=contract).count()
         assert invoice_count == 2
+
+
+# =============================================================================
+# Retry Exception Tests (covers lines 216-218, 258-260)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestGenerateRecurringInvoicesRetry:
+    """Tests for retry behavior of generate_recurring_invoices (lines 216-218)."""
+
+    def test_retries_on_exception(self):
+        """Task should retry when a top-level exception occurs."""
+        with patch('apps.contracts.models.Contract.objects') as mock_objects:
+            mock_objects.filter.side_effect = Exception('DB connection lost')
+
+            with pytest.raises(Exception, match='DB connection lost'):
+                generate_recurring_invoices()
+
+
+@pytest.mark.django_db
+class TestSendPaymentRemindersRetry:
+    """Tests for retry behavior of send_payment_reminders (lines 258-260)."""
+
+    def test_retries_on_exception(self):
+        """Task should retry when a top-level exception occurs."""
+        with patch('apps.invoicing.models.Invoice.objects') as mock_objects:
+            mock_objects.filter.side_effect = Exception('DB connection lost')
+
+            with pytest.raises(Exception, match='DB connection lost'):
+                send_payment_reminders()

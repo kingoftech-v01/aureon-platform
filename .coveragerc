@@ -1,0 +1,26 @@
+[run]
+source =
+    apps
+    config
+omit =
+    */migrations/*
+    */tests/*
+    */__init__.py
+    */admin.py
+    */apps.py
+    */management/commands/*
+    config/settings.py
+    config/settings_aureon.py
+    config/settings_test.py
+    config/wsgi.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if TYPE_CHECKING:
+    if settings.DEBUG
+    pass
+
+fail_under = 99

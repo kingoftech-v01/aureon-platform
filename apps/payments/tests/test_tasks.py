@@ -369,3 +369,20 @@ class TestSyncStripeData:
         with patch.object(Invoice, 'mark_as_paid') as mock_mark_paid:
             sync_stripe_data()
             mock_mark_paid.assert_called_once()
+
+
+# =============================================================================
+# Retry Exception Tests for sync_stripe_data (covers lines 146-148)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestSyncStripeDataRetry:
+    """Tests for retry behavior of sync_stripe_data."""
+
+    def test_retries_on_top_level_exception(self):
+        """Task should retry when a top-level exception occurs."""
+        with patch('apps.payments.models.Payment.objects') as mock_objects:
+            mock_objects.filter.side_effect = Exception('DB connection lost')
+
+            with pytest.raises(Exception, match='DB connection lost'):
+                sync_stripe_data()

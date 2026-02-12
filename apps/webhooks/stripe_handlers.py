@@ -78,6 +78,7 @@ class StripeWebhookHandler:
                 'currency': currency,
                 'status': Payment.SUCCEEDED,
                 'payment_method': Payment.CARD,  # Default to card
+                'payment_date': timezone.now(),
             }
         )
 

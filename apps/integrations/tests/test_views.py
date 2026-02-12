@@ -359,3 +359,29 @@ class TestIntegrationViewSet:
         response = authenticated_admin_client.get(f'{self.BASE_URL}{fake_uuid}/')
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # ---- Sync action real task path (lines 51-59) ----
+
+    def test_sync_active_integration_queues_task(self, authenticated_admin_client, active_xero):
+        """Sync on active integration should import and call the task, returning sync_queued."""
+        with patch('apps.integrations.tasks.sync_external_service') as mock_task:
+            response = authenticated_admin_client.post(
+                f'{self.BASE_URL}{active_xero.id}/sync/'
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['status'] == 'sync_queued'
+        mock_task.delay.assert_called_once()
+
+    def test_sync_active_integration_task_exception(self, authenticated_admin_client, active_xero):
+        """Sync on active integration should return 500 when task.delay raises (lines 58-59)."""
+        with patch(
+            'apps.integrations.tasks.sync_external_service'
+        ) as mock_task:
+            mock_task.delay.side_effect = Exception('Celery broker unavailable')
+            response = authenticated_admin_client.post(
+                f'{self.BASE_URL}{active_xero.id}/sync/'
+            )
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'error' in response.data

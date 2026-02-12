@@ -272,7 +272,9 @@ app.conf.enable_utc = True
 app.conf.task_track_started = True
 app.conf.task_time_limit = 30 * 60  # 30 minutes hard limit
 app.conf.task_soft_time_limit = 25 * 60  # 25 minutes soft limit
-app.conf.task_always_eager = False  # Never run synchronously in production
+# Note: task_always_eager should be False in production.
+# This is enforced via CELERY_TASK_ALWAYS_EAGER in Django settings.
+# Test settings may override to True for synchronous test execution.
 
 # Task priority (higher = more priority)
 app.conf.task_inherit_parent_priority = True

@@ -151,7 +151,7 @@ class TestWebhookEventAdmin:
         event_admin.retry_failed_webhooks(request, queryset)
 
         mock_task.delay.assert_called_once_with(webhook_event.id)
-        event_admin.message_user.assert_not_called  # message_user is called on the admin
+        # message_user is called on the admin (it's a real method, not a mock)
 
     def test_mark_as_processed_action(self, event_admin, webhook_event):
         webhook_event.status = WebhookEvent.FAILED

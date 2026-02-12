@@ -692,3 +692,72 @@ class TestApiKeySuperuser:
         assert str(own_key.id) in returned_ids
         # Should NOT see admin's key
         assert str(api_key.id) not in returned_ids
+
+
+# ============================================================================
+# IsAdminOrSuperuser Permission Tests (covers lines 34, 37)
+# ============================================================================
+
+@pytest.mark.django_db
+class TestIsAdminOrSuperuserPermission:
+    """Tests for the IsAdminOrSuperuser permission class (lines 34, 37)."""
+
+    def test_unauthenticated_create_returns_false(self, api_client):
+        """Unauthenticated user trying to create should be denied (line 34)."""
+        data = {
+            'email': 'unauth-create@test.com',
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!',
+            'first_name': 'Unauth',
+            'last_name': 'Create',
+        }
+        response = api_client.post('/api/auth/api/users/', data)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_unauthenticated_delete_returns_false(self, api_client, admin_user):
+        """Unauthenticated user trying to delete should be denied (line 34)."""
+        response = api_client.delete(f'/api/auth/api/users/{admin_user.id}/')
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_authenticated_user_list_returns_true(self, authenticated_contributor_client):
+        """Authenticated user listing (non-destroy/create) passes permission (line 37)."""
+        response = authenticated_contributor_client.get('/api/auth/api/users/')
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_authenticated_user_retrieve_returns_true(self, authenticated_contributor_client, contributor_user):
+        """Authenticated user retrieving (non-destroy/create) passes permission (line 37)."""
+        response = authenticated_contributor_client.get(
+            f'/api/auth/api/users/{contributor_user.id}/'
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_permission_returns_true_for_non_destroy_create(self, admin_user):
+        """Direct test: IsAdminOrSuperuser returns True for non-create/destroy actions (line 37)."""
+        from apps.accounts.views import IsAdminOrSuperuser
+        from unittest.mock import MagicMock
+
+        permission = IsAdminOrSuperuser()
+        mock_request = MagicMock()
+        mock_request.user = admin_user
+
+        mock_view = MagicMock()
+        mock_view.action = 'list'
+
+        result = permission.has_permission(mock_request, mock_view)
+        assert result is True
+
+    def test_permission_returns_false_for_unauthenticated(self):
+        """Direct test: IsAdminOrSuperuser returns False for unauthenticated (line 34)."""
+        from apps.accounts.views import IsAdminOrSuperuser
+        from django.contrib.auth.models import AnonymousUser
+        from unittest.mock import MagicMock
+
+        permission = IsAdminOrSuperuser()
+        mock_request = MagicMock()
+        mock_request.user = AnonymousUser()
+
+        mock_view = MagicMock()
+        mock_view.action = 'create'
+
+        result = permission.has_permission(mock_request, mock_view)
+        assert result is False

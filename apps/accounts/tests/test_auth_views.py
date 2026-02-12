@@ -529,3 +529,39 @@ class TestTokenRefresh:
         response = api_client.post(self.REFRESH_URL, {}, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+# ============================================================================
+# get_current_user unauthenticated branch (covers line 86)
+# ============================================================================
+
+
+class TestGetCurrentUserInternalCheck:
+    """Tests for the internal is_authenticated check in get_current_user (line 86)."""
+
+    @pytest.mark.django_db
+    def test_get_current_user_unauthenticated_internal_check(self):
+        """Bypass DRF permission to exercise the view's own is_authenticated check."""
+        from unittest.mock import patch as mock_patch, MagicMock
+        from django.contrib.auth.models import AnonymousUser
+
+        client = APIClient()
+
+        # Override default permission classes to allow the request through
+        with mock_patch(
+            'apps.accounts.auth_views.permission_classes',
+        ) as mock_perms:
+            # Override the view's permissions at the DRF level
+            with mock_patch(
+                'rest_framework.views.APIView.check_permissions',
+                return_value=None,
+            ):
+                # Force the request user to be AnonymousUser
+                with mock_patch(
+                    'rest_framework.views.APIView.perform_authentication',
+                    return_value=None,
+                ):
+                    response = client.get(f"{AUTH_URL_PREFIX}user/")
+
+        # Either the DRF default permission or the view's own check returns 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

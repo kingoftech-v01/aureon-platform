@@ -4,8 +4,10 @@ Analytics Celery tasks for Aureon SaaS Platform.
 These tasks handle analytics and reporting operations.
 """
 from celery import shared_task
+from datetime import timedelta
 from django.utils import timezone
 import logging
+from apps.analytics.services import DashboardDataService
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ def generate_daily_analytics(self):
 def generate_weekly_reports(self):
     """Generate weekly reports. Runs Monday at 5 AM."""
     try:
-        from apps.analytics.services import RevenueMetricsCalculator, DashboardDataService
+        from apps.analytics.services import RevenueMetricsCalculator
 
         logger.info("Generating weekly reports...")
         today = timezone.now()
@@ -57,7 +59,7 @@ def generate_weekly_reports(self):
         # Calculate metrics for the past 4 weeks
         metrics = []
         for weeks_ago in range(4):
-            date = today - timezone.timedelta(weeks=weeks_ago)
+            date = today - timedelta(weeks=weeks_ago)
             metric = RevenueMetricsCalculator.calculate_month_metrics(date.year, date.month)
             metrics.append(metric)
 

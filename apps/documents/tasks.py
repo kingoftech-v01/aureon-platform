@@ -19,10 +19,25 @@ def process_document(self, document_id):
         document = Document.objects.get(id=document_id)
         logger.info(f"Processing document {document.title}...")
 
-        # Validate file type
-        if document.file:
+        # Validate file type - check via name attribute to support
+        # storage backends that may not implement __bool__ (e.g. S3)
+        has_file = getattr(document.file, 'name', None)
+        if has_file:
             file_path = document.file.path if hasattr(document.file, 'path') else None
             file_size = document.file.size
+
+            # Run virus scan on uploaded files
+            try:
+                from apps.core.validators import FileUploadValidator
+                validator = FileUploadValidator(
+                    check_mime=False,
+                    virus_scan=True,
+                    max_size=None,
+                )
+                validator(document.file)
+                logger.info(f"Virus scan passed for document {document.title}")
+            except Exception as scan_exc:
+                logger.warning(f"Virus scan skipped or failed for document {document.title}: {scan_exc}")
 
             # Update file size
             document.file_size = file_size

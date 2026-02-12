@@ -4,6 +4,7 @@ Subscriptions Celery tasks for Aureon SaaS Platform.
 These tasks handle subscription processing and renewals.
 """
 from celery import shared_task
+from datetime import timedelta
 from django.utils import timezone
 import logging
 
@@ -34,8 +35,9 @@ def process_subscription_payment(self, subscription_id):
 
                 if stripe_sub.status == 'active':
                     subscription.status = 'active'
-                    subscription.current_period_end = timezone.datetime.fromtimestamp(
-                        stripe_sub.current_period_end, tz=timezone.utc
+                    import datetime as _dt
+                    subscription.current_period_end = _dt.datetime.fromtimestamp(
+                        stripe_sub.current_period_end, tz=_dt.timezone.utc
                     )
                     subscription.save(update_fields=['status', 'current_period_end', 'updated_at'])
                     logger.info(f"Subscription {subscription_id} payment confirmed via Stripe")
@@ -51,7 +53,7 @@ def process_subscription_payment(self, subscription_id):
                 'subscription_id': str(subscription_id),
                 'user': subscription.user.email
             }
-        except Subscription.DoesNotExist:
+        except (Subscription.DoesNotExist, ValueError):
             logger.warning(f"Subscription {subscription_id} not found")
             return {'status': 'error', 'message': 'Subscription not found'}
 
@@ -72,7 +74,7 @@ def process_subscription_renewals(self):
         logger.info("Processing subscription renewals...")
 
         # Find subscriptions expiring in the next 24 hours
-        tomorrow = timezone.now() + timezone.timedelta(days=1)
+        tomorrow = timezone.now() + timedelta(days=1)
         expiring_subscriptions = Subscription.objects.filter(
             status='active',
             cancel_at_period_end=False,

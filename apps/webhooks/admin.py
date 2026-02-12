@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 import json
 from .models import WebhookEvent, WebhookEndpoint
+from .tasks import process_stripe_webhook, send_outgoing_webhook
 
 
 @admin.register(WebhookEvent)
@@ -143,8 +144,6 @@ class WebhookEventAdmin(admin.ModelAdmin):
 
     def retry_failed_webhooks(self, request, queryset):
         """Admin action to retry failed webhooks."""
-        from .tasks import process_stripe_webhook
-
         count = 0
         for webhook in queryset.filter(status__in=['failed', 'retrying']):
             if webhook.can_retry:
@@ -259,9 +258,9 @@ class WebhookEndpointAdmin(admin.ModelAdmin):
             color = 'red'
 
         return format_html(
-            '<span style="color: {}; font-weight: bold;">{:.1f}%</span>',
+            '<span style="color: {}; font-weight: bold;">{}%</span>',
             color,
-            rate
+            f'{rate:.1f}'
         )
     success_rate_display.short_description = 'Success Rate'
 
@@ -269,8 +268,6 @@ class WebhookEndpointAdmin(admin.ModelAdmin):
 
     def test_webhook_endpoint(self, request, queryset):
         """Admin action to send test webhook to selected endpoints."""
-        from .tasks import send_outgoing_webhook
-
         for endpoint in queryset.filter(is_active=True):
             send_outgoing_webhook.delay(
                 str(endpoint.id),

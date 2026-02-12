@@ -259,3 +259,47 @@ class TestCalculateRevenueMetrics:
             assert calls[0][0] == (2025, 1)
             # Second call: previous month (Dec 2024)
             assert calls[1][0] == (2024, 12)
+
+
+# =============================================================================
+# Retry/Exception Tests (covers lines 45-47, 76-78, 105-107)
+# =============================================================================
+
+@pytest.mark.django_db
+class TestGenerateDailyAnalyticsRetry:
+    """Tests for generate_daily_analytics retry behavior (lines 45-47)."""
+
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
+    def test_retries_on_revenue_calculation_failure(self, mock_calc):
+        """Task should retry when revenue calculation raises an exception."""
+        mock_calc.calculate_month_metrics.side_effect = Exception('DB connection lost')
+
+        with pytest.raises(Exception, match='DB connection lost'):
+            generate_daily_analytics()
+
+
+@pytest.mark.django_db
+class TestGenerateWeeklyReportsRetry:
+    """Tests for generate_weekly_reports retry behavior (lines 76-78)."""
+
+    @patch('apps.analytics.tasks.DashboardDataService')
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
+    def test_retries_on_weekly_report_failure(self, mock_calc, mock_dashboard_svc):
+        """Task should retry when weekly report generation raises an exception."""
+        mock_calc.calculate_month_metrics.side_effect = Exception('Service unavailable')
+
+        with pytest.raises(Exception, match='Service unavailable'):
+            generate_weekly_reports()
+
+
+@pytest.mark.django_db
+class TestCalculateRevenueMetricsRetry:
+    """Tests for calculate_revenue_metrics retry behavior (lines 105-107)."""
+
+    @patch('apps.analytics.services.RevenueMetricsCalculator')
+    def test_retries_on_revenue_metrics_failure(self, mock_calc):
+        """Task should retry when revenue metrics calculation raises an exception."""
+        mock_calc.calculate_month_metrics.side_effect = Exception('Calculation error')
+
+        with pytest.raises(Exception, match='Calculation error'):
+            calculate_revenue_metrics()

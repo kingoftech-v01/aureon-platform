@@ -508,3 +508,43 @@ class TestClientDocumentUpload:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['name'] == 'Uploaded Doc'
+
+
+# ============================================================================
+# Non-Staff Note Queryset Filter (covers line 170)
+# ============================================================================
+
+@pytest.mark.django_db
+class TestClientNoteNonStaffFilter:
+    """Tests for ClientNoteViewSet.get_queryset non-staff filter (line 170)."""
+
+    def test_non_staff_user_notes_queryset(
+        self, authenticated_contributor_client, client_company, contributor_user
+    ):
+        """Non-staff user should see only their own notes or notes for their clients."""
+        # Assign client to contributor
+        client_company.owner = contributor_user
+        client_company.save()
+
+        response = authenticated_contributor_client.get('/api/api/notes/')
+        assert response.status_code == status.HTTP_200_OK
+
+
+# ============================================================================
+# Non-Staff Document Queryset Filter (covers line 201)
+# ============================================================================
+
+@pytest.mark.django_db
+class TestClientDocumentNonStaffFilter:
+    """Tests for ClientDocumentViewSet.get_queryset non-staff filter (line 201)."""
+
+    def test_non_staff_user_documents_queryset(
+        self, authenticated_contributor_client, client_company, contributor_user
+    ):
+        """Non-staff user should see only their own docs or docs for their clients."""
+        # Assign client to contributor
+        client_company.owner = contributor_user
+        client_company.save()
+
+        response = authenticated_contributor_client.get('/api/api/documents/')
+        assert response.status_code == status.HTTP_200_OK

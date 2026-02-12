@@ -42,8 +42,9 @@ def process_stripe_webhook(self, webhook_event_id):
     except Exception as e:
         logger.error(f"Error processing webhook {webhook_event.event_id}: {str(e)}", exc_info=True)
 
-        # Retry with exponential backoff
-        if webhook_event.can_retry:
+        # Retry with exponential backoff - check retry count directly since
+        # the event may still be in PROCESSING status at this point
+        if webhook_event.retry_count < webhook_event.max_retries:
             webhook_event.mark_as_failed(str(e), should_retry=True)
             raise self.retry(exc=e, countdown=60 * (2 ** webhook_event.retry_count))
         else:
@@ -133,7 +134,7 @@ def send_outgoing_webhook(webhook_endpoint_id, event_type, payload):
 
     # Check if endpoint subscribes to this event type
     if event_type not in endpoint.event_types:
-        logger.info(f"Endpoint {endpoint_id} not subscribed to {event_type}")
+        logger.info(f"Endpoint {endpoint.id} not subscribed to {event_type}")
         return {'skipped': 'Not subscribed to event type'}
 
     # Prepare payload

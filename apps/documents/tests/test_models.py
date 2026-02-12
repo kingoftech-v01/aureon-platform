@@ -11,7 +11,7 @@ Tests cover:
 
 import uuid
 import pytest
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from apps.documents.models import Document
@@ -201,3 +201,41 @@ class TestDocument:
 
         doc_private = self._create_document(is_public=False, filename='private.pdf')
         assert doc_private.is_public is False
+
+    def test_document_save_file_size_exception_handled(self):
+        """save() should handle exception when file.size raises (line 121)."""
+        # First create a document with a file normally
+        uploaded_file = SimpleUploadedFile('broken_size.pdf', b'%PDF-1.4 test')
+        doc = self._create_document(filename='broken_size.pdf')
+        doc_id = doc.id
+
+        # Now re-fetch and clear file_size, then save with a broken .size
+        doc = Document.objects.get(id=doc_id)
+        # Clear file_size and file_type so save() tries to re-detect them
+        Document.objects.filter(id=doc_id).update(file_size=0, file_type='')
+        doc.refresh_from_db()
+        assert doc.file_size == 0
+        assert doc.file_type == ''
+
+        # Patch file.size to raise an exception
+        original_file = doc.file
+        with patch.object(
+            type(original_file), 'size',
+            new_callable=PropertyMock,
+            side_effect=Exception('Size unavailable'),
+        ):
+            # This should exercise lines 119-122 (try/except)
+            doc.save()
+
+        doc.refresh_from_db()
+        # file_type was set from the name, but file_size remains 0 because .size raised
+        assert doc.file_type == 'pdf'
+        assert doc.file_size == 0
+
+    def test_document_file_extension_no_file(self):
+        """file_extension should return empty string when no file is attached (line 130)."""
+        doc = Document.objects.create(
+            title='No File Extension',
+            document_type=Document.OTHER,
+        )
+        assert doc.file_extension == ''

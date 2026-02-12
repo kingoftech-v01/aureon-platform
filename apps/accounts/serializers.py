@@ -2,10 +2,18 @@
 Serializers for user account models.
 """
 
+import re
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from .models import UserInvitation, ApiKey
+
+
+def strip_html_tags(value):
+    """Strip HTML tags from a string value for XSS prevention."""
+    if value:
+        return re.sub(r'<[^>]*>', '', value)
+    return value
 
 User = get_user_model()
 
@@ -71,6 +79,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'phone',
             'role',
         ]
+
+    def validate_first_name(self, value):
+        """Strip HTML tags from first_name to prevent XSS."""
+        return strip_html_tags(value)
+
+    def validate_last_name(self, value):
+        """Strip HTML tags from last_name to prevent XSS."""
+        return strip_html_tags(value)
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:

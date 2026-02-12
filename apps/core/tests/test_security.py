@@ -1120,14 +1120,14 @@ class TestSecurityMonitorSendAlert:
         assert 'suspicious_requests' in message
 
     @patch('django.core.mail.mail_admins')
-    def test_uses_fail_silently(self, mock_mail_admins):
-        """Test that mail_admins is called with fail_silently=True."""
+    def test_uses_fail_silently_false(self, mock_mail_admins):
+        """Test that mail_admins is called with fail_silently=False to ensure delivery."""
         monitor = SecurityMonitor()
 
         monitor._send_alert_notification('failed_logins', 100, 50, None)
 
         mock_mail_admins.assert_called_once()
-        assert mock_mail_admins.call_args[1]['fail_silently'] is True
+        assert mock_mail_admins.call_args[1]['fail_silently'] is False
 
     @patch('django.core.mail.mail_admins')
     def test_handles_mail_exception_gracefully(self, mock_mail_admins):
