@@ -7,4 +7,7 @@ class SubscriptionsConfig(AppConfig):
     verbose_name = 'Subscriptions'
 
     def ready(self):
-        pass
+        try:
+            import apps.subscriptions.signals  # noqa
+        except ImportError:
+            pass

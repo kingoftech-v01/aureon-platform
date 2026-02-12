@@ -43,17 +43,18 @@ urlpatterns = [
     path('api/auth/', include('apps.accounts.urls')),
     path('api/auth/', include('rest_framework.urls')),
 
-    # Core Business Apps API
+    # Explicit-prefix API routes (must be before generic api/ includes)
+    path('api/subscriptions/', include('apps.subscriptions.urls')),
+    path('api/integrations/', include('apps.integrations.urls')),
+    path('api/analytics/', include('apps.analytics.urls')),
+
+    # Core Business Apps API (generic api/ prefix — order matters)
     path('api/', include('apps.clients.urls')),
     path('api/', include('apps.contracts.urls')),
     path('api/', include('apps.invoicing.urls')),
     path('api/', include('apps.payments.urls')),
     path('api/', include('apps.notifications.urls')),
     path('api/', include('apps.documents.urls')),
-    path('api/', include('apps.integrations.urls')),
-
-    # Analytics API
-    path('api/analytics/', include('apps.analytics.urls')),
 
     # Webhooks (must be before API docs for proper routing)
     path('webhooks/', include('apps.webhooks.urls')),

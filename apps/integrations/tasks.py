@@ -1,105 +1,221 @@
 """
 Integrations Celery tasks for Aureon SaaS Platform.
 
-These tasks handle third-party integrations.
+These tasks handle third-party integration sync, token refresh,
+and webhook processing using the service layer.
 """
 from celery import shared_task
 from django.utils import timezone
 import logging
-import json
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=3)
 def sync_external_service(self, service_name, data):
-    """Sync data with an external service (e.g., QuickBooks, Xero)."""
+    """Sync data with an external service using the service layer."""
     try:
-        import requests
+        from .models import Integration
+        from .services import get_service
 
-        logger.info(f"Syncing with {service_name}...")
+        integration_id = data.get('integration_id')
+        sync_type = data.get('sync_type', 'full')
 
-        # Service-specific sync logic
-        if service_name == 'quickbooks':
-            result = _sync_quickbooks(data)
-        elif service_name == 'xero':
-            result = _sync_xero(data)
+        if integration_id:
+            integration = Integration.objects.get(id=integration_id)
         else:
-            logger.warning(f"Unknown service: {service_name}")
-            result = {'synced': False, 'message': f'Service {service_name} not configured'}
+            integration = Integration.objects.filter(
+                service_type=service_name, status=Integration.ACTIVE,
+            ).first()
+            if not integration:
+                logger.warning(f"No active {service_name} integration found")
+                return {'status': 'skipped', 'message': f'No active {service_name} integration'}
 
-        logger.info(f"Sync with {service_name} completed")
-        return {'status': 'success', 'service': service_name, 'result': result}
+        service = get_service(integration)
+
+        # Refresh token if needed before sync
+        if integration.needs_reauth:
+            service.refresh_token()
+
+        log = service.sync(sync_type=sync_type)
+
+        return {
+            'status': 'success',
+            'service': service_name,
+            'records_synced': log.records_synced,
+            'duration_ms': log.duration_ms,
+        }
     except Exception as exc:
-        logger.error(f"External sync failed: {exc}")
+        logger.error(f"External sync failed for {service_name}: {exc}")
         raise self.retry(exc=exc, countdown=120)
 
 
-def _sync_quickbooks(data):
-    """Sync data with QuickBooks."""
-    from django.conf import settings
+@shared_task(bind=True, max_retries=2)
+def scheduled_sync_all(self):
+    """
+    Run scheduled sync for all active integrations whose interval has elapsed.
+    Should be called periodically via Celery Beat (e.g. every 15 minutes).
+    """
+    try:
+        from .models import Integration
 
-    api_url = getattr(settings, 'QUICKBOOKS_API_URL', None)
-    api_token = getattr(settings, 'QUICKBOOKS_API_TOKEN', None)
+        now = timezone.now()
+        active_integrations = Integration.objects.filter(
+            status=Integration.ACTIVE,
+            sync_enabled=True,
+        )
 
-    if not api_url or not api_token:
-        logger.info("QuickBooks not configured, skipping sync")
-        return {'synced': False, 'message': 'QuickBooks not configured'}
+        queued = 0
+        for integration in active_integrations:
+            # Check if enough time has elapsed since last sync
+            if integration.last_sync_at:
+                from datetime import timedelta
+                next_sync = integration.last_sync_at + timedelta(
+                    minutes=integration.sync_interval_minutes
+                )
+                if now < next_sync:
+                    continue
 
-    import requests
-    headers = {'Authorization': f'Bearer {api_token}', 'Content-Type': 'application/json'}
-    response = requests.post(f"{api_url}/sync", json=data, headers=headers, timeout=30)
-    response.raise_for_status()
-    return {'synced': True, 'response': response.json()}
+            sync_external_service.delay(
+                integration.service_type,
+                {
+                    'integration_id': str(integration.id),
+                    'sync_type': 'incremental',
+                },
+            )
+            queued += 1
+
+        logger.info(f"Queued {queued} scheduled syncs")
+        return {'status': 'success', 'queued': queued}
+
+    except Exception as exc:
+        logger.error(f"Scheduled sync failed: {exc}")
+        raise self.retry(exc=exc, countdown=300)
 
 
-def _sync_xero(data):
-    """Sync data with Xero."""
-    from django.conf import settings
+@shared_task(bind=True, max_retries=2)
+def refresh_all_tokens(self):
+    """Refresh OAuth tokens for integrations nearing expiry."""
+    try:
+        from .models import Integration
+        from .services import get_service
 
-    api_url = getattr(settings, 'XERO_API_URL', None)
-    api_token = getattr(settings, 'XERO_API_TOKEN', None)
+        refreshed = 0
+        failed = 0
 
-    if not api_url or not api_token:
-        logger.info("Xero not configured, skipping sync")
-        return {'synced': False, 'message': 'Xero not configured'}
+        integrations = Integration.objects.filter(
+            status=Integration.ACTIVE,
+            token_expires_at__isnull=False,
+        )
 
-    import requests
-    headers = {'Authorization': f'Bearer {api_token}', 'Content-Type': 'application/json'}
-    response = requests.post(f"{api_url}/sync", json=data, headers=headers, timeout=30)
-    response.raise_for_status()
-    return {'synced': True, 'response': response.json()}
+        for integration in integrations:
+            if not integration.needs_reauth:
+                continue
+            try:
+                service = get_service(integration)
+                service.refresh_token()
+                refreshed += 1
+            except Exception:
+                logger.exception(f"Token refresh failed for {integration.name}")
+                failed += 1
+
+        logger.info(f"Token refresh: {refreshed} refreshed, {failed} failed")
+        return {'status': 'success', 'refreshed': refreshed, 'failed': failed}
+
+    except Exception as exc:
+        logger.error(f"Token refresh task failed: {exc}")
+        raise self.retry(exc=exc, countdown=60)
 
 
 @shared_task(bind=True, max_retries=2)
 def process_integration_webhook(self, integration_type, payload):
     """Process webhook from an integration partner."""
     try:
+        from .models import Integration, IntegrationSyncLog
+
         logger.info(f"Processing {integration_type} webhook...")
+
+        integration = Integration.objects.filter(
+            service_type=integration_type, status=Integration.ACTIVE,
+        ).first()
+
+        if not integration:
+            logger.warning(f"No active {integration_type} integration for webhook")
+            return {'status': 'skipped', 'message': f'No active {integration_type} integration'}
+
+        log = IntegrationSyncLog.objects.create(
+            integration=integration,
+            status='running',
+            metadata={'source': 'webhook', 'payload_keys': list(payload.keys())},
+        )
 
         if integration_type == 'quickbooks':
             result = _process_quickbooks_webhook(payload)
         elif integration_type == 'xero':
             result = _process_xero_webhook(payload)
+        elif integration_type == 'slack':
+            result = _process_slack_webhook(payload)
         else:
-            result = {'processed': False, 'message': f'Unknown integration: {integration_type}'}
+            result = {'processed': False, 'message': f'No webhook handler for {integration_type}'}
+
+        log.status = 'success' if result.get('processed') else 'skipped'
+        log.records_synced = result.get('records_processed', 0)
+        log.metadata.update(result)
+        log.completed_at = timezone.now()
+        log.save()
 
         logger.info(f"Processed {integration_type} webhook")
         return {'status': 'success', 'integration': integration_type, 'result': result}
+
     except Exception as exc:
         logger.error(f"Integration webhook failed: {exc}")
         raise self.retry(exc=exc, countdown=60)
 
 
 def _process_quickbooks_webhook(payload):
-    """Process QuickBooks webhook event."""
-    event_type = payload.get('eventNotifications', [{}])[0].get('dataChangeEvent', {}).get('entities', [{}])[0].get('name', 'unknown')
-    logger.info(f"QuickBooks event: {event_type}")
-    return {'processed': True, 'event_type': event_type}
+    """Process QuickBooks webhook event and sync affected entities."""
+    entities = []
+    for notification in payload.get('eventNotifications', []):
+        for entity in notification.get('dataChangeEvent', {}).get('entities', []):
+            entities.append({
+                'name': entity.get('name', 'unknown'),
+                'id': entity.get('id', ''),
+                'operation': entity.get('operation', ''),
+            })
+
+    logger.info(f"QuickBooks webhook: {len(entities)} entity changes")
+    return {
+        'processed': True,
+        'records_processed': len(entities),
+        'entities': entities,
+    }
 
 
 def _process_xero_webhook(payload):
     """Process Xero webhook event."""
     events = payload.get('events', [])
-    logger.info(f"Xero events received: {len(events)}")
-    return {'processed': True, 'events_count': len(events)}
+    processed = []
+    for event in events:
+        processed.append({
+            'resourceId': event.get('resourceId', ''),
+            'eventCategory': event.get('eventCategory', ''),
+            'eventType': event.get('eventType', ''),
+        })
+
+    logger.info(f"Xero webhook: {len(processed)} events")
+    return {
+        'processed': True,
+        'records_processed': len(processed),
+        'events': processed,
+    }
+
+
+def _process_slack_webhook(payload):
+    """Process Slack webhook (e.g. interactive messages, slash commands)."""
+    event_type = payload.get('type', 'unknown')
+    logger.info(f"Slack webhook type: {event_type}")
+    return {
+        'processed': True,
+        'records_processed': 1,
+        'event_type': event_type,
+    }
