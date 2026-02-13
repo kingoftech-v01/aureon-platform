@@ -8,6 +8,9 @@
 .env.*.local
 *.env
 
+# Redis
+dump.rdb
+
 # Keep example file
 !.env.example
 
