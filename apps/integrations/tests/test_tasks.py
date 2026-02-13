@@ -1,235 +1,415 @@
 """
 Tests for integrations Celery tasks.
 
-Covers:
-- sync_external_service: service routing, QuickBooks sync, Xero sync, unknown service
-- _sync_quickbooks / _sync_xero: API calls, missing config
-- process_integration_webhook: QuickBooks webhook, Xero webhook, unknown
-- _process_quickbooks_webhook / _process_xero_webhook: payload parsing
+Covers the service-based tasks:
+- sync_external_service: look up integration, refresh token if needed, sync
+- scheduled_sync_all: queue syncs for active integrations past their interval
+- refresh_all_tokens: batch OAuth token refresh
+- process_integration_webhook: webhook processing with sync log creation
+- _process_quickbooks_webhook / _process_xero_webhook / _process_slack_webhook
 """
 
 import pytest
+from datetime import timedelta
 from unittest.mock import patch, MagicMock
-from django.test import override_settings
 
+from django.utils import timezone
+
+from apps.integrations.models import Integration, IntegrationSyncLog
 from apps.integrations.tasks import (
     sync_external_service,
+    scheduled_sync_all,
+    refresh_all_tokens,
     process_integration_webhook,
-    _sync_quickbooks,
-    _sync_xero,
     _process_quickbooks_webhook,
     _process_xero_webhook,
+    _process_slack_webhook,
 )
+
+
+@pytest.fixture
+def active_qb(db):
+    return Integration.objects.create(
+        name='QB Active',
+        service_type=Integration.QUICKBOOKS,
+        status=Integration.ACTIVE,
+        access_token='tok_qb',
+        config={'company_id': 'qb_1'},
+        sync_enabled=True,
+        sync_interval_minutes=60,
+    )
+
+
+@pytest.fixture
+def active_xero(db):
+    return Integration.objects.create(
+        name='Xero Active',
+        service_type=Integration.XERO,
+        status=Integration.ACTIVE,
+        access_token='tok_xero',
+        config={'tenant_id': 'xero_1'},
+        sync_enabled=True,
+        sync_interval_minutes=30,
+        last_sync_at=timezone.now() - timedelta(hours=2),
+    )
+
+
+@pytest.fixture
+def inactive_integration(db):
+    return Integration.objects.create(
+        name='Inactive',
+        service_type=Integration.SLACK,
+        status=Integration.INACTIVE,
+    )
+
+
+@pytest.fixture
+def expiring_token_integration(db):
+    return Integration.objects.create(
+        name='Expiring',
+        service_type=Integration.QUICKBOOKS,
+        status=Integration.ACTIVE,
+        access_token='tok_old',
+        refresh_token='ref_old',
+        token_expires_at=timezone.now() - timedelta(hours=1),
+        config={'company_id': 'qb_exp'},
+    )
 
 
 # ---------------------------------------------------------------------------
 # sync_external_service
 # ---------------------------------------------------------------------------
 
+@pytest.mark.django_db
 class TestSyncExternalService:
 
-    @patch('apps.integrations.tasks._sync_quickbooks')
-    def test_routes_to_quickbooks(self, mock_qb):
-        mock_qb.return_value = {'synced': True}
-        result = sync_external_service('quickbooks', {'invoice_id': '123'})
+    @patch('apps.integrations.services.get_service')
+    def test_sync_by_integration_id(self, mock_get_service, active_qb):
+        mock_log = MagicMock(records_synced=10, duration_ms=500)
+        mock_service = MagicMock()
+        mock_service.sync.return_value = mock_log
+        mock_get_service.return_value = mock_service
+
+        # Integration doesn't need reauth
+        active_qb.token_expires_at = None
+        active_qb.save()
+
+        result = sync_external_service(
+            'quickbooks',
+            {'integration_id': str(active_qb.id), 'sync_type': 'full'},
+        )
 
         assert result['status'] == 'success'
-        assert result['service'] == 'quickbooks'
-        mock_qb.assert_called_once_with({'invoice_id': '123'})
+        assert result['records_synced'] == 10
+        mock_service.sync.assert_called_once_with(sync_type='full')
 
-    @patch('apps.integrations.tasks._sync_xero')
-    def test_routes_to_xero(self, mock_xero):
-        mock_xero.return_value = {'synced': True}
-        result = sync_external_service('xero', {'data': 'test'})
+    @patch('apps.integrations.services.get_service')
+    def test_sync_by_service_type_fallback(self, mock_get_service, active_qb):
+        mock_log = MagicMock(records_synced=5, duration_ms=200)
+        mock_service = MagicMock()
+        mock_service.sync.return_value = mock_log
+        mock_get_service.return_value = mock_service
+
+        active_qb.token_expires_at = None
+        active_qb.save()
+
+        result = sync_external_service('quickbooks', {'sync_type': 'incremental'})
 
         assert result['status'] == 'success'
-        assert result['service'] == 'xero'
-        mock_xero.assert_called_once_with({'data': 'test'})
+        mock_service.sync.assert_called_once_with(sync_type='incremental')
 
-    def test_unknown_service(self):
-        result = sync_external_service('unknown_service', {})
+    def test_no_active_integration_skips(self, inactive_integration):
+        result = sync_external_service(
+            'slack', {'sync_type': 'full'},
+        )
+
+        assert result['status'] == 'skipped'
+
+    @patch('apps.integrations.services.get_service')
+    def test_refreshes_token_if_needed(self, mock_get_service, expiring_token_integration):
+        mock_log = MagicMock(records_synced=1, duration_ms=100)
+        mock_service = MagicMock()
+        mock_service.sync.return_value = mock_log
+        mock_get_service.return_value = mock_service
+
+        result = sync_external_service(
+            'quickbooks',
+            {'integration_id': str(expiring_token_integration.id)},
+        )
 
         assert result['status'] == 'success'
-        assert result['result']['synced'] is False
-        assert 'not configured' in result['result']['message']
+        mock_service.refresh_token.assert_called_once()
 
-    @patch('apps.integrations.tasks._sync_quickbooks')
-    def test_retries_on_exception(self, mock_qb):
-        mock_qb.side_effect = ConnectionError('network error')
+    @patch('apps.integrations.services.get_service')
+    def test_retries_on_exception(self, mock_get_service, active_qb):
+        mock_get_service.side_effect = Exception('boom')
 
-        with pytest.raises(Exception):
-            sync_external_service('quickbooks', {})
-
-
-# ---------------------------------------------------------------------------
-# _sync_quickbooks
-# ---------------------------------------------------------------------------
-
-class TestSyncQuickbooks:
-
-    @override_settings(QUICKBOOKS_API_URL=None, QUICKBOOKS_API_TOKEN=None)
-    def test_not_configured(self):
-        result = _sync_quickbooks({'data': 'test'})
-        assert result['synced'] is False
-        assert 'not configured' in result['message']
-
-    @override_settings(QUICKBOOKS_API_URL='https://qb.api/v3', QUICKBOOKS_API_TOKEN='tok_123')
-    def test_successful_sync(self):
-        import requests as req_module
-        mock_response = MagicMock()
-        mock_response.json.return_value = {'status': 'ok'}
-        mock_response.raise_for_status = MagicMock()
-
-        with patch.object(req_module, 'post', return_value=mock_response) as mock_post:
-            result = _sync_quickbooks({'invoice': 'inv_1'})
-
-        assert result['synced'] is True
-        assert result['response'] == {'status': 'ok'}
-        mock_post.assert_called_once()
-        call_args = mock_post.call_args
-        assert 'Bearer tok_123' in str(call_args)
-
-    @override_settings(QUICKBOOKS_API_URL='https://qb.api/v3', QUICKBOOKS_API_TOKEN='tok_123')
-    def test_api_error_raises(self):
-        import requests as req_module
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = req_module.exceptions.HTTPError('500')
-
-        with patch.object(req_module, 'post', return_value=mock_response):
-            with pytest.raises(req_module.exceptions.HTTPError):
-                _sync_quickbooks({'data': 'test'})
-
-    @override_settings(QUICKBOOKS_API_URL='https://qb.api/v3', QUICKBOOKS_API_TOKEN=None)
-    def test_missing_token(self):
-        result = _sync_quickbooks({'data': 'test'})
-        assert result['synced'] is False
+        with pytest.raises(Exception, match='boom'):
+            sync_external_service(
+                'quickbooks',
+                {'integration_id': str(active_qb.id)},
+            )
 
 
 # ---------------------------------------------------------------------------
-# _sync_xero
+# scheduled_sync_all
 # ---------------------------------------------------------------------------
 
-class TestSyncXero:
+@pytest.mark.django_db
+class TestScheduledSyncAll:
 
-    @override_settings(XERO_API_URL=None, XERO_API_TOKEN=None)
-    def test_not_configured(self):
-        result = _sync_xero({'data': 'test'})
-        assert result['synced'] is False
-        assert 'not configured' in result['message']
+    @patch('apps.integrations.tasks.sync_external_service')
+    def test_queues_due_integrations(self, mock_sync, active_xero):
+        """Xero integration last synced 2h ago with 30min interval: should be queued."""
+        result = scheduled_sync_all()
 
-    @override_settings(XERO_API_URL='https://xero.api/2.0', XERO_API_TOKEN='xero_tok')
-    def test_successful_sync(self):
-        import requests as req_module
-        mock_response = MagicMock()
-        mock_response.json.return_value = {'contacts': []}
-        mock_response.raise_for_status = MagicMock()
+        assert result['status'] == 'success'
+        assert result['queued'] >= 1
+        mock_sync.delay.assert_called()
 
-        with patch.object(req_module, 'post', return_value=mock_response) as mock_post:
-            result = _sync_xero({'contact': 'c_1'})
+    @patch('apps.integrations.tasks.sync_external_service')
+    def test_skips_recently_synced(self, mock_sync, db):
+        Integration.objects.create(
+            name='Recent',
+            service_type=Integration.SLACK,
+            status=Integration.ACTIVE,
+            access_token='tok',
+            sync_enabled=True,
+            sync_interval_minutes=60,
+            last_sync_at=timezone.now() - timedelta(minutes=10),
+            config={'channel': '#test'},
+        )
 
-        assert result['synced'] is True
-        mock_post.assert_called_once()
+        result = scheduled_sync_all()
 
-    @override_settings(XERO_API_URL='https://xero.api/2.0', XERO_API_TOKEN='xero_tok')
-    def test_api_error_raises(self):
-        import requests as req_module
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = req_module.exceptions.HTTPError('401')
+        assert result['queued'] == 0
+        mock_sync.delay.assert_not_called()
 
-        with patch.object(req_module, 'post', return_value=mock_response):
-            with pytest.raises(req_module.exceptions.HTTPError):
-                _sync_xero({'data': 'test'})
+    @patch('apps.integrations.tasks.sync_external_service')
+    def test_skips_inactive(self, mock_sync, inactive_integration):
+        result = scheduled_sync_all()
 
-    @override_settings(XERO_API_URL=None, XERO_API_TOKEN='tok')
-    def test_missing_url(self):
-        result = _sync_xero({'data': 'test'})
-        assert result['synced'] is False
+        assert result['queued'] == 0
+
+    @patch('apps.integrations.tasks.sync_external_service')
+    def test_queues_never_synced(self, mock_sync, active_qb):
+        """Integration with no last_sync_at should always be queued."""
+        active_qb.last_sync_at = None
+        active_qb.save()
+
+        result = scheduled_sync_all()
+
+        assert result['queued'] >= 1
+
+    def test_retries_on_exception(self):
+        with patch('apps.integrations.models.Integration.objects') as mock_objs:
+            mock_objs.filter.side_effect = Exception('DB error')
+
+            with pytest.raises(Exception, match='DB error'):
+                scheduled_sync_all()
+
+
+# ---------------------------------------------------------------------------
+# refresh_all_tokens
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestRefreshAllTokens:
+
+    @patch('apps.integrations.services.get_service')
+    def test_refreshes_expired_tokens(self, mock_get_service, expiring_token_integration):
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+
+        result = refresh_all_tokens()
+
+        assert result['status'] == 'success'
+        assert result['refreshed'] >= 1
+        mock_service.refresh_token.assert_called()
+
+    @patch('apps.integrations.services.get_service')
+    def test_skips_non_expired(self, mock_get_service, db):
+        Integration.objects.create(
+            name='Fresh',
+            service_type=Integration.XERO,
+            status=Integration.ACTIVE,
+            access_token='tok',
+            token_expires_at=timezone.now() + timedelta(hours=2),
+            config={'tenant_id': 't1'},
+        )
+
+        result = refresh_all_tokens()
+
+        assert result['refreshed'] == 0
+
+    @patch('apps.integrations.services.get_service')
+    def test_counts_failures(self, mock_get_service, expiring_token_integration):
+        mock_service = MagicMock()
+        mock_service.refresh_token.side_effect = Exception('Token error')
+        mock_get_service.return_value = mock_service
+
+        result = refresh_all_tokens()
+
+        assert result['failed'] >= 1
+
+    def test_retries_on_top_level_exception(self):
+        with patch('apps.integrations.models.Integration.objects') as mock_objs:
+            mock_objs.filter.side_effect = Exception('DB down')
+
+            with pytest.raises(Exception, match='DB down'):
+                refresh_all_tokens()
 
 
 # ---------------------------------------------------------------------------
 # process_integration_webhook
 # ---------------------------------------------------------------------------
 
+@pytest.mark.django_db
 class TestProcessIntegrationWebhook:
 
-    @patch('apps.integrations.tasks._process_quickbooks_webhook')
-    def test_routes_to_quickbooks(self, mock_handler):
-        mock_handler.return_value = {'processed': True, 'event_type': 'Invoice'}
-        result = process_integration_webhook('quickbooks', {'eventNotifications': []})
+    def test_quickbooks_webhook(self, active_qb):
+        payload = {
+            'eventNotifications': [{
+                'dataChangeEvent': {
+                    'entities': [{'name': 'Invoice', 'id': '123', 'operation': 'Create'}]
+                }
+            }]
+        }
+        result = process_integration_webhook('quickbooks', payload)
 
         assert result['status'] == 'success'
-        assert result['integration'] == 'quickbooks'
-        mock_handler.assert_called_once()
+        assert IntegrationSyncLog.objects.filter(integration=active_qb).exists()
 
-    @patch('apps.integrations.tasks._process_xero_webhook')
-    def test_routes_to_xero(self, mock_handler):
-        mock_handler.return_value = {'processed': True, 'events_count': 3}
-        result = process_integration_webhook('xero', {'events': [1, 2, 3]})
-
-        assert result['status'] == 'success'
-        assert result['integration'] == 'xero'
-
-    def test_unknown_integration(self):
-        result = process_integration_webhook('unknown', {})
+    def test_xero_webhook(self, active_xero):
+        payload = {
+            'events': [
+                {'resourceId': 'r1', 'eventCategory': 'INVOICE', 'eventType': 'UPDATE'},
+            ]
+        }
+        result = process_integration_webhook('xero', payload)
 
         assert result['status'] == 'success'
-        assert result['result']['processed'] is False
 
-    @patch('apps.integrations.tasks._process_quickbooks_webhook')
-    def test_retries_on_exception(self, mock_handler):
-        mock_handler.side_effect = RuntimeError('processing error')
+    def test_slack_webhook(self, db):
+        slack = Integration.objects.create(
+            name='Slack',
+            service_type=Integration.SLACK,
+            status=Integration.ACTIVE,
+            access_token='tok_slack',
+            config={'channel': '#test'},
+        )
+        payload = {'type': 'event_callback', 'event': {'type': 'message'}}
+        result = process_integration_webhook('slack', payload)
 
-        with pytest.raises(Exception):
-            process_integration_webhook('quickbooks', {})
+        assert result['status'] == 'success'
+
+    def test_no_active_integration_skips(self, inactive_integration):
+        result = process_integration_webhook('slack', {})
+
+        assert result['status'] == 'skipped'
+
+    def test_unknown_integration_type(self, db):
+        result = process_integration_webhook('unknown_service', {})
+
+        assert result['status'] == 'skipped'
+
+    def test_unhandled_type_creates_skipped_log(self, db):
+        custom = Integration.objects.create(
+            name='Custom',
+            service_type=Integration.CUSTOM,
+            status=Integration.ACTIVE,
+            access_token='tok_custom',
+        )
+        result = process_integration_webhook('custom', {'data': 'test'})
+
+        assert result['status'] == 'success'
+        log = IntegrationSyncLog.objects.filter(integration=custom).first()
+        assert log is not None
+        assert log.status == 'skipped'
+
+    def test_retries_on_exception(self):
+        with patch('apps.integrations.models.Integration.objects') as mock_objs:
+            mock_objs.filter.side_effect = RuntimeError('DB crash')
+
+            with pytest.raises(RuntimeError):
+                process_integration_webhook('quickbooks', {})
 
 
 # ---------------------------------------------------------------------------
-# _process_quickbooks_webhook
+# Webhook processors
 # ---------------------------------------------------------------------------
 
 class TestProcessQuickbooksWebhook:
 
-    def test_extracts_event_type(self):
+    def test_extracts_entities(self):
         payload = {
             'eventNotifications': [{
                 'dataChangeEvent': {
-                    'entities': [{'name': 'Invoice', 'id': '123'}]
+                    'entities': [
+                        {'name': 'Invoice', 'id': '1', 'operation': 'Create'},
+                        {'name': 'Customer', 'id': '2', 'operation': 'Update'},
+                    ]
                 }
             }]
         }
         result = _process_quickbooks_webhook(payload)
-        assert result['processed'] is True
-        assert result['event_type'] == 'Invoice'
 
-    def test_missing_event_data(self):
+        assert result['processed'] is True
+        assert result['records_processed'] == 2
+        assert len(result['entities']) == 2
+
+    def test_empty_notifications(self):
+        result = _process_quickbooks_webhook({'eventNotifications': []})
+
+        assert result['processed'] is True
+        assert result['records_processed'] == 0
+
+    def test_missing_key(self):
         result = _process_quickbooks_webhook({})
+
         assert result['processed'] is True
-        assert result['event_type'] == 'unknown'
+        assert result['records_processed'] == 0
 
-    def test_empty_notifications_raises_index_error(self):
-        """Empty eventNotifications list triggers IndexError in source (known bug)."""
-        with pytest.raises(IndexError):
-            _process_quickbooks_webhook({'eventNotifications': []})
-
-
-# ---------------------------------------------------------------------------
-# _process_xero_webhook
-# ---------------------------------------------------------------------------
 
 class TestProcessXeroWebhook:
 
-    def test_counts_events(self):
-        payload = {'events': [{'id': 1}, {'id': 2}, {'id': 3}]}
+    def test_extracts_events(self):
+        payload = {
+            'events': [
+                {'resourceId': 'r1', 'eventCategory': 'INVOICE', 'eventType': 'UPDATE'},
+                {'resourceId': 'r2', 'eventCategory': 'PAYMENT', 'eventType': 'CREATE'},
+            ]
+        }
         result = _process_xero_webhook(payload)
+
         assert result['processed'] is True
-        assert result['events_count'] == 3
+        assert result['records_processed'] == 2
 
     def test_empty_events(self):
         result = _process_xero_webhook({'events': []})
-        assert result['processed'] is True
-        assert result['events_count'] == 0
 
-    def test_missing_events_key(self):
-        result = _process_xero_webhook({})
         assert result['processed'] is True
-        assert result['events_count'] == 0
+        assert result['records_processed'] == 0
+
+    def test_missing_key(self):
+        result = _process_xero_webhook({})
+
+        assert result['processed'] is True
+        assert result['records_processed'] == 0
+
+
+class TestProcessSlackWebhook:
+
+    def test_processes_event(self):
+        payload = {'type': 'event_callback'}
+        result = _process_slack_webhook(payload)
+
+        assert result['processed'] is True
+        assert result['records_processed'] == 1
+        assert result['event_type'] == 'event_callback'
+
+    def test_unknown_type(self):
+        result = _process_slack_webhook({})
+
+        assert result['processed'] is True
+        assert result['event_type'] == 'unknown'

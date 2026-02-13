@@ -442,46 +442,108 @@ class TestGetCurrentUser:
 
 
 class TestLogoutEndpoint:
-    """Tests for the logout view."""
+    """Tests for the logout view (JWT token blacklisting)."""
 
     LOGOUT_URL = f"{AUTH_URL_PREFIX}logout/"
+    LOGIN_URL = f"{AUTH_URL_PREFIX}login/"
 
     @pytest.mark.django_db
-    def test_logout_success(self, api_client):
-        """Logout returns success message."""
-        response = api_client.post(self.LOGOUT_URL, format="json")
+    def test_logout_success_with_refresh_token(self, api_client, admin_user):
+        """Logout with valid refresh token blacklists it and returns 200."""
+        # Login to get a refresh token
+        login_data = {"email": admin_user.email, "password": "SecurePass123!"}
+        login_resp = api_client.post(self.LOGIN_URL, login_data, format="json")
+        refresh_token = login_resp.data["refresh"]
+        access_token = login_resp.data["access"]
+
+        # Use the access token for authentication
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        response = api_client.post(
+            self.LOGOUT_URL, {"refresh": refresh_token}, format="json"
+        )
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["detail"] == "Successfully logged out."
 
     @pytest.mark.django_db
-    def test_logout_authenticated_user(self, authenticated_admin_client):
-        """Authenticated user can log out successfully."""
-        response = authenticated_admin_client.post(self.LOGOUT_URL, format="json")
+    def test_logout_blacklisted_token_cannot_refresh(self, api_client, admin_user):
+        """After logout, the refresh token cannot be used to get new access tokens."""
+        login_data = {"email": admin_user.email, "password": "SecurePass123!"}
+        login_resp = api_client.post(self.LOGIN_URL, login_data, format="json")
+        refresh_token = login_resp.data["refresh"]
+        access_token = login_resp.data["access"]
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["detail"] == "Successfully logged out."
+        # Logout
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+        api_client.post(self.LOGOUT_URL, {"refresh": refresh_token}, format="json")
+
+        # Try to use blacklisted refresh token
+        api_client.credentials()  # clear auth
+        refresh_resp = api_client.post(
+            f"{AUTH_URL_PREFIX}token/refresh/",
+            {"refresh": refresh_token},
+            format="json",
+        )
+        assert refresh_resp.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.django_db
-    def test_logout_unauthenticated_user(self, api_client):
-        """Unauthenticated user can also call logout (AllowAny)."""
-        response = api_client.post(self.LOGOUT_URL, format="json")
+    def test_logout_missing_refresh_token(self, authenticated_admin_client):
+        """Logout without refresh token in body returns 400."""
+        response = authenticated_admin_client.post(
+            self.LOGOUT_URL, {}, format="json"
+        )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Refresh token is required" in response.data["detail"]
 
     @pytest.mark.django_db
-    def test_logout_get_method_not_allowed(self, api_client):
+    def test_logout_invalid_refresh_token(self, authenticated_admin_client):
+        """Logout with invalid refresh token returns 400."""
+        response = authenticated_admin_client.post(
+            self.LOGOUT_URL, {"refresh": "invalid-token-value"}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "invalid or already blacklisted" in response.data["detail"]
+
+    @pytest.mark.django_db
+    def test_logout_unauthenticated_denied(self, api_client):
+        """Unauthenticated request to logout is denied (requires auth)."""
+        response = api_client.post(
+            self.LOGOUT_URL, {"refresh": "some-token"}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.django_db
+    def test_logout_get_method_not_allowed(self, authenticated_admin_client):
         """Logout endpoint only accepts POST."""
-        response = api_client.get(self.LOGOUT_URL)
+        response = authenticated_admin_client.get(self.LOGOUT_URL)
 
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
     @pytest.mark.django_db
-    def test_logout_idempotent(self, api_client):
-        """Calling logout multiple times always succeeds."""
-        for _ in range(3):
-            response = api_client.post(self.LOGOUT_URL, format="json")
-            assert response.status_code == status.HTTP_200_OK
+    def test_logout_already_blacklisted_token(self, api_client, admin_user):
+        """Calling logout with an already blacklisted token returns 400."""
+        login_data = {"email": admin_user.email, "password": "SecurePass123!"}
+        login_resp = api_client.post(self.LOGIN_URL, login_data, format="json")
+        refresh_token = login_resp.data["refresh"]
+        access_token = login_resp.data["access"]
+
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        # First logout succeeds
+        resp1 = api_client.post(
+            self.LOGOUT_URL, {"refresh": refresh_token}, format="json"
+        )
+        assert resp1.status_code == status.HTTP_200_OK
+
+        # Second logout with same token returns error
+        resp2 = api_client.post(
+            self.LOGOUT_URL, {"refresh": refresh_token}, format="json"
+        )
+        assert resp2.status_code == status.HTTP_400_BAD_REQUEST
 
 
 # ============================================================================

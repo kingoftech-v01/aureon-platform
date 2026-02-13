@@ -77,14 +77,16 @@ class TestIntegrationViewSet:
         response = authenticated_admin_client.get(self.BASE_URL)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 2
+        results = response.data.get('results', response.data)
+        assert len(results) >= 2
 
     def test_list_integrations_returns_expected_fields(self, authenticated_admin_client, quickbooks_integration):
         """Response should include expected fields."""
         response = authenticated_admin_client.get(self.BASE_URL)
 
         assert response.status_code == status.HTTP_200_OK
-        item = response.data[0]
+        results = response.data.get('results', response.data)
+        item = results[0]
         expected_fields = [
             'id', 'name', 'service_type', 'status', 'config',
             'sync_enabled', 'sync_interval_minutes', 'is_connected',
@@ -168,10 +170,41 @@ class TestIntegrationViewSet:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['status'] == 'connected'
+        assert response.data['status'] == Integration.ACTIVE
 
         quickbooks_integration.refresh_from_db()
         assert quickbooks_integration.status == Integration.ACTIVE
+
+    def test_connect_with_oauth_tokens(self, authenticated_admin_client, quickbooks_integration):
+        """Connect with access_token and refresh_token stores them."""
+        data = {
+            'access_token': 'new_access',
+            'refresh_token': 'new_refresh',
+        }
+        response = authenticated_admin_client.post(
+            f'{self.BASE_URL}{quickbooks_integration.id}/connect/',
+            data, format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        quickbooks_integration.refresh_from_db()
+        assert quickbooks_integration.access_token == 'new_access'
+        assert quickbooks_integration.refresh_token == 'new_refresh'
+
+    def test_connect_with_token_expires_at(self, authenticated_admin_client, quickbooks_integration):
+        """Connect with token_expires_at parses and stores the datetime."""
+        data = {
+            'access_token': 'tok_exp',
+            'token_expires_at': '2027-01-01T00:00:00Z',
+        }
+        response = authenticated_admin_client.post(
+            f'{self.BASE_URL}{quickbooks_integration.id}/connect/',
+            data, format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        quickbooks_integration.refresh_from_db()
+        assert quickbooks_integration.token_expires_at is not None
 
     def test_connect_already_active(self, authenticated_admin_client, active_xero):
         """Connecting an already-active integration should still succeed."""
@@ -385,3 +418,140 @@ class TestIntegrationViewSet:
 
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in response.data
+
+    def test_sync_with_sync_type(self, authenticated_admin_client, active_xero):
+        """Sync action passes sync_type parameter."""
+        with patch('apps.integrations.tasks.sync_external_service') as mock_task:
+            response = authenticated_admin_client.post(
+                f'{self.BASE_URL}{active_xero.id}/sync/',
+                {'sync_type': 'incremental'}, format='json',
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['sync_type'] == 'incremental'
+
+    # ---- Test connection action ----
+
+    def test_test_connection_no_token(self, authenticated_admin_client, quickbooks_integration):
+        """Test action on integration without access token returns 400."""
+        quickbooks_integration.access_token = ''
+        quickbooks_integration.save()
+
+        response = authenticated_admin_client.post(
+            f'{self.BASE_URL}{quickbooks_integration.id}/test/'
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data['connected'] is False
+
+    @patch('apps.integrations.services.get_service')
+    def test_test_connection_success(self, mock_get_svc, authenticated_admin_client, active_xero):
+        """Test action with successful connection returns 200."""
+        mock_service = MagicMock()
+        mock_service.test_connection.return_value = {'connected': True, 'organisation': 'Test'}
+        mock_get_svc.return_value = mock_service
+
+        response = authenticated_admin_client.post(
+            f'{self.BASE_URL}{active_xero.id}/test/'
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['connected'] is True
+
+    @patch('apps.integrations.services.get_service')
+    def test_test_connection_failure(self, mock_get_svc, authenticated_admin_client, active_xero):
+        """Test action with failed connection returns 400."""
+        mock_service = MagicMock()
+        mock_service.test_connection.return_value = {'connected': False, 'error': 'Auth failed'}
+        mock_get_svc.return_value = mock_service
+
+        response = authenticated_admin_client.post(
+            f'{self.BASE_URL}{active_xero.id}/test/'
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data['connected'] is False
+
+    def test_test_connection_unknown_service(self, authenticated_admin_client, db):
+        """Test action on unsupported service type returns 400."""
+        custom = Integration.objects.create(
+            name='Custom',
+            service_type='custom',
+            status=Integration.ACTIVE,
+            access_token='some_token',
+        )
+
+        response = authenticated_admin_client.post(
+            f'{self.BASE_URL}{custom.id}/test/'
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    # ---- Stats action ----
+
+    def test_stats(self, authenticated_admin_client, quickbooks_integration, active_xero, slack_integration):
+        """Stats action returns aggregate metrics."""
+        response = authenticated_admin_client.get(f'{self.BASE_URL}stats/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'total_integrations' in response.data
+        assert 'active_integrations' in response.data
+        assert 'syncs_last_24h' in response.data
+
+    def test_stats_empty(self, authenticated_admin_client):
+        """Stats action with no integrations returns zeros."""
+        response = authenticated_admin_client.get(f'{self.BASE_URL}stats/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['total_integrations'] == 0
+
+    def test_stats_with_sync_logs(self, authenticated_admin_client, active_xero):
+        """Stats action includes sync log metrics."""
+        IntegrationSyncLog.objects.create(
+            integration=active_xero,
+            status='success',
+            records_synced=25,
+            duration_ms=500,
+        )
+        response = authenticated_admin_client.get(f'{self.BASE_URL}stats/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['syncs_last_24h'] >= 1
+
+    # ---- Retrieve detail serializer ----
+
+    def test_retrieve_returns_detail_fields(self, authenticated_admin_client, active_xero):
+        """Retrieve should use IntegrationDetailSerializer with sync log fields."""
+        IntegrationSyncLog.objects.create(
+            integration=active_xero,
+            status='success',
+            records_synced=10,
+        )
+        response = authenticated_admin_client.get(
+            f'{self.BASE_URL}{active_xero.id}/'
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'recent_sync_logs' in response.data
+        assert 'total_syncs' in response.data
+        assert 'successful_syncs' in response.data
+
+    # ---- Filter / Search ----
+
+    def test_filter_by_service_type(self, authenticated_admin_client, quickbooks_integration, active_xero):
+        """Filtering by service_type returns only matching integrations."""
+        response = authenticated_admin_client.get(f'{self.BASE_URL}?service_type=xero')
+
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_filter_by_status(self, authenticated_admin_client, quickbooks_integration, active_xero):
+        """Filtering by status returns only matching integrations."""
+        response = authenticated_admin_client.get(f'{self.BASE_URL}?status=active')
+
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_search_by_name(self, authenticated_admin_client, quickbooks_integration):
+        """Search by name works."""
+        response = authenticated_admin_client.get(f'{self.BASE_URL}?search=QuickBooks')
+
+        assert response.status_code == status.HTTP_200_OK
