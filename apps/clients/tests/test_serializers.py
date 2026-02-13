@@ -274,7 +274,7 @@ class TestClientCreateUpdateSerializer:
     def test_fields_are_correct(self):
         """Test that the serializer has all expected fields."""
         expected_fields = [
-            'client_type', 'company_name', 'first_name', 'last_name',
+            'id', 'client_type', 'company_name', 'first_name', 'last_name',
             'email', 'phone', 'secondary_email', 'secondary_phone', 'website',
             'address_line1', 'address_line2', 'city', 'state', 'postal_code',
             'country', 'industry', 'company_size', 'annual_revenue', 'tax_id',

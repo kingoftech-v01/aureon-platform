@@ -19,7 +19,7 @@ class TestDocumentURLs:
     def test_router_registered(self):
         from apps.documents.urls import router
         assert len(router.registry) == 1
-        assert router.registry[0][0] == ''
+        assert router.registry[0][0] == 'documents'
         assert router.registry[0][2] == 'document'
 
     def test_router_generates_list_url(self):

@@ -25,7 +25,7 @@ from apps.documents.models import Document
 # ROOT_URLCONF used by the test runner, so we provide our own.
 # ---------------------------------------------------------------------------
 urlpatterns = [
-    path('api/documents/', include('apps.documents.urls')),
+    path('api/', include('apps.documents.urls')),
 ]
 
 
@@ -33,7 +33,7 @@ urlpatterns = [
 class TestDocumentViewSet:
     """Tests for the DocumentViewSet."""
 
-    BASE_URL = '/api/documents/'
+    BASE_URL = '/api/api/documents/'
 
     @pytest.fixture(autouse=True)
     def _use_custom_urls(self, settings):

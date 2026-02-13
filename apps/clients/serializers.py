@@ -77,13 +77,14 @@ class ClientCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = [
-            'client_type', 'company_name', 'first_name', 'last_name',
+            'id', 'client_type', 'company_name', 'first_name', 'last_name',
             'email', 'phone', 'secondary_email', 'secondary_phone', 'website',
             'address_line1', 'address_line2', 'city', 'state', 'postal_code',
             'country', 'industry', 'company_size', 'annual_revenue', 'tax_id',
             'lifecycle_stage', 'source', 'tags', 'owner', 'portal_access_enabled',
             'notes', 'is_active', 'metadata'
         ]
+        read_only_fields = ['id']
 
     def validate(self, data):
         """Validate client data."""

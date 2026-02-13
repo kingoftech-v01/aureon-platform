@@ -26,11 +26,15 @@ class PaymentSerializer(serializers.ModelSerializer):
 
     def get_invoice_number(self, obj):
         """Get invoice number."""
-        return obj.invoice.invoice_number
+        if obj.invoice:
+            return obj.invoice.invoice_number
+        return None
 
     def get_client_name(self, obj):
         """Get client name."""
-        return obj.invoice.client.get_display_name()
+        if obj.invoice and obj.invoice.client:
+            return obj.invoice.client.get_display_name()
+        return None
 
 
 class PaymentMethodSerializer(serializers.ModelSerializer):

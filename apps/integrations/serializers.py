@@ -61,9 +61,10 @@ class IntegrationCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Integration
         fields = [
-            'name', 'service_type', 'config', 'sync_enabled',
+            'id', 'name', 'service_type', 'config', 'sync_enabled',
             'sync_interval_minutes', 'webhook_url', 'metadata',
         ]
+        read_only_fields = ['id']
 
     REQUIRED_CONFIG_FIELDS = {
         'quickbooks': ['company_id'],
