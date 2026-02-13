@@ -5,9 +5,23 @@ URL configuration for accounts app.
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import UserViewSet, UserInvitationViewSet, ApiKeyViewSet
+from .views import (
+    UserViewSet, UserInvitationViewSet, ApiKeyViewSet,
+    TeamViewSet, TeamMemberViewSet, TeamInvitationViewSet,
+)
 from .auth_views import CustomTokenObtainPairView, register, get_current_user, logout
 from . import two_factor
+from .views_frontend import (
+    LoginPageView,
+    RegisterPageView,
+    ProfileView,
+    SettingsView,
+    TeamListView,
+    TeamDetailView,
+    UserListView,
+    InvitationListView,
+    TwoFactorSetupView,
+)
 
 app_name = 'accounts'
 
@@ -16,8 +30,11 @@ router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'invitations', UserInvitationViewSet, basename='invitation')
 router.register(r'api-keys', ApiKeyViewSet, basename='apikey')
+router.register(r'teams', TeamViewSet, basename='team')
+router.register(r'team-members', TeamMemberViewSet, basename='team-member')
+router.register(r'team-invitations', TeamInvitationViewSet, basename='team-invitation')
 
-urlpatterns = [
+api_urlpatterns = [
     # JWT Authentication
     path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('register/', register, name='register'),
@@ -37,3 +54,17 @@ urlpatterns = [
     # User Management API
     path('api/', include(router.urls)),
 ]
+
+frontend_urlpatterns = [
+    path('login-page/', LoginPageView.as_view(), name='login_page'),
+    path('register-page/', RegisterPageView.as_view(), name='register_page'),
+    path('profile/', ProfileView.as_view(), name='profile'),
+    path('settings/', SettingsView.as_view(), name='settings'),
+    path('teams/', TeamListView.as_view(), name='team_list'),
+    path('teams/<uuid:pk>/', TeamDetailView.as_view(), name='team_detail'),
+    path('users/', UserListView.as_view(), name='user_list'),
+    path('invitations-list/', InvitationListView.as_view(), name='invitation_list'),
+    path('2fa/setup/', TwoFactorSetupView.as_view(), name='two_factor_setup'),
+]
+
+urlpatterns = api_urlpatterns + frontend_urlpatterns

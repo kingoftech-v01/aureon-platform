@@ -448,3 +448,230 @@ class ApiKey(models.Model):
         self.last_used_at = timezone.now()
         self.usage_count += 1
         self.save(update_fields=['last_used_at', 'usage_count'])
+
+
+class Team(models.Model):
+    """
+    Team model for organizing users into groups.
+    """
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    name = models.CharField(
+        _('Team Name'),
+        max_length=255,
+        help_text=_('Name of the team')
+    )
+
+    description = models.TextField(
+        _('Description'),
+        blank=True,
+        help_text=_('Team description')
+    )
+
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='owned_teams',
+        help_text=_('User who owns this team')
+    )
+
+    is_active = models.BooleanField(
+        _('Active'),
+        default=True
+    )
+
+    metadata = models.JSONField(
+        _('Metadata'),
+        default=dict,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(_('Created At'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('Updated At'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('Team')
+        verbose_name_plural = _('Teams')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['owner']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def member_count(self):
+        """Return the number of team members."""
+        return self.members.count()
+
+
+class TeamMember(models.Model):
+    """
+    Team membership model linking users to teams with roles.
+    """
+
+    OWNER = 'owner'
+    ADMIN = 'admin'
+    MEMBER = 'member'
+    VIEWER = 'viewer'
+
+    ROLE_CHOICES = [
+        (OWNER, _('Owner')),
+        (ADMIN, _('Admin')),
+        (MEMBER, _('Member')),
+        (VIEWER, _('Viewer')),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE,
+        related_name='members',
+        help_text=_('Team this membership belongs to')
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='team_memberships',
+        help_text=_('User who is a member')
+    )
+
+    role = models.CharField(
+        _('Role'),
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default=MEMBER
+    )
+
+    joined_at = models.DateTimeField(
+        _('Joined At'),
+        auto_now_add=True
+    )
+
+    class Meta:
+        verbose_name = _('Team Member')
+        verbose_name_plural = _('Team Members')
+        unique_together = ['team', 'user']
+        ordering = ['-joined_at']
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.team.name} ({self.role})"
+
+
+class TeamInvitation(models.Model):
+    """
+    Invitation to join a team.
+    """
+
+    PENDING = 'pending'
+    ACCEPTED = 'accepted'
+    EXPIRED = 'expired'
+    CANCELLED = 'cancelled'
+
+    STATUS_CHOICES = [
+        (PENDING, _('Pending')),
+        (ACCEPTED, _('Accepted')),
+        (EXPIRED, _('Expired')),
+        (CANCELLED, _('Cancelled')),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE,
+        related_name='invitations',
+        help_text=_('Team this invitation is for')
+    )
+
+    email = models.EmailField(
+        _('Email Address'),
+        help_text=_('Email address to invite')
+    )
+
+    role = models.CharField(
+        _('Role'),
+        max_length=20,
+        choices=TeamMember.ROLE_CHOICES,
+        default=TeamMember.MEMBER
+    )
+
+    invited_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='sent_team_invitations',
+        help_text=_('User who sent the invitation')
+    )
+
+    invitation_token = models.CharField(
+        _('Invitation Token'),
+        max_length=255,
+        unique=True
+    )
+
+    status = models.CharField(
+        _('Status'),
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=PENDING
+    )
+
+    created_at = models.DateTimeField(_('Created At'), auto_now_add=True)
+    expires_at = models.DateTimeField(_('Expires At'))
+    accepted_at = models.DateTimeField(_('Accepted At'), null=True, blank=True)
+
+    class Meta:
+        verbose_name = _('Team Invitation')
+        verbose_name_plural = _('Team Invitations')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['team', 'status']),
+            models.Index(fields=['email']),
+            models.Index(fields=['invitation_token']),
+        ]
+
+    def __str__(self):
+        return f"Team invite to {self.email} for {self.team.name} ({self.status})"
+
+    @property
+    def is_expired(self):
+        """Check if invitation has expired."""
+        from django.utils import timezone
+        if self.status == self.ACCEPTED:
+            return False
+        return timezone.now() > self.expires_at
+
+    def accept(self, user):
+        """Accept the team invitation."""
+        from django.utils import timezone
+        self.status = self.ACCEPTED
+        self.accepted_at = timezone.now()
+        self.save()
+
+        TeamMember.objects.get_or_create(
+            team=self.team,
+            user=user,
+            defaults={'role': self.role}
+        )
+
+    def cancel(self):
+        """Cancel the invitation."""
+        self.status = self.CANCELLED
+        self.save()

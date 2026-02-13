@@ -5,7 +5,7 @@ Admin interface for client management.
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
-from .models import Client, ClientNote, ClientDocument
+from .models import Client, ClientNote, ClientDocument, PortalMessage
 
 
 class ClientNoteInline(admin.TabularInline):
@@ -172,3 +172,30 @@ class ClientDocumentAdmin(admin.ModelAdmin):
     list_filter = ['file_type', 'created_at']
     search_fields = ['name', 'client__first_name', 'client__last_name', 'client__company_name']
     readonly_fields = ['id', 'file_size', 'created_at']
+
+
+@admin.register(PortalMessage)
+class PortalMessageAdmin(admin.ModelAdmin):
+    """Admin for PortalMessage model."""
+
+    list_display = ['subject', 'client', 'sender', 'is_from_client', 'is_read', 'created_at']
+    list_filter = ['is_from_client', 'is_read', 'created_at']
+    search_fields = ['subject', 'content', 'client__first_name', 'client__last_name', 'client__company_name']
+    readonly_fields = ['id', 'read_at', 'created_at', 'updated_at']
+
+    fieldsets = (
+        (_('Message Details'), {
+            'fields': ('id', 'client', 'sender', 'subject', 'content')
+        }),
+        (_('Type & Status'), {
+            'fields': ('is_from_client', 'is_read', 'read_at')
+        }),
+        (_('Threading'), {
+            'fields': ('parent',),
+            'classes': ('collapse',)
+        }),
+        (_('Timestamps'), {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )

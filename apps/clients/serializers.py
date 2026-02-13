@@ -3,7 +3,7 @@ Serializers for the clients app.
 """
 
 from rest_framework import serializers
-from .models import Client, ClientNote, ClientDocument
+from .models import Client, ClientNote, ClientDocument, PortalMessage
 from apps.accounts.models import User
 
 
@@ -161,3 +161,24 @@ class ClientStatsSerializer(serializers.Serializer):
     total_value = serializers.DecimalField(max_digits=12, decimal_places=2)
     total_paid = serializers.DecimalField(max_digits=12, decimal_places=2)
     outstanding_balance = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
+class PortalMessageSerializer(serializers.ModelSerializer):
+    """Serializer for portal messages."""
+    sender_name = serializers.SerializerMethodField()
+    replies_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PortalMessage
+        fields = [
+            'id', 'client', 'sender', 'sender_name', 'subject', 'content',
+            'is_from_client', 'is_read', 'read_at', 'parent',
+            'replies_count', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'sender', 'read_at', 'created_at', 'updated_at']
+
+    def get_sender_name(self, obj):
+        return obj.sender.get_full_name()
+
+    def get_replies_count(self, obj):
+        return obj.replies.count()

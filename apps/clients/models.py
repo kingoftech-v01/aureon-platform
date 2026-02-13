@@ -500,3 +500,90 @@ class ClientDocument(models.Model):
         if self.file:
             self.file_size = self.file.size
         super().save(*args, **kwargs)
+
+
+class PortalMessage(models.Model):
+    """
+    Messages exchanged between staff and clients via the portal.
+    """
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name='portal_messages',
+        help_text=_('Client this message is associated with')
+    )
+
+    sender = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='sent_portal_messages',
+        help_text=_('User who sent the message')
+    )
+
+    subject = models.CharField(
+        _('Subject'),
+        max_length=255,
+        help_text=_('Message subject')
+    )
+
+    content = models.TextField(
+        _('Content'),
+        help_text=_('Message content')
+    )
+
+    is_from_client = models.BooleanField(
+        _('From Client'),
+        default=False,
+        help_text=_('Whether the message is from the client')
+    )
+
+    is_read = models.BooleanField(
+        _('Read'),
+        default=False
+    )
+
+    read_at = models.DateTimeField(
+        _('Read At'),
+        null=True,
+        blank=True
+    )
+
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='replies',
+        help_text=_('Parent message for threading')
+    )
+
+    created_at = models.DateTimeField(_('Created At'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('Updated At'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('Portal Message')
+        verbose_name_plural = _('Portal Messages')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['client', '-created_at']),
+            models.Index(fields=['sender']),
+            models.Index(fields=['is_read']),
+        ]
+
+    def __str__(self):
+        return f"Message: {self.subject} ({self.client})"
+
+    def mark_as_read(self):
+        """Mark message as read."""
+        from django.utils import timezone
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save(update_fields=['is_read', 'read_at', 'updated_at'])

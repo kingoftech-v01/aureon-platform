@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
-from .models import User, UserInvitation, ApiKey
+from .models import User, UserInvitation, ApiKey, Team, TeamMember, TeamInvitation
 
 
 @admin.register(User)
@@ -277,3 +277,108 @@ class ApiKeyAdmin(admin.ModelAdmin):
         updated = queryset.update(is_active=True)
         self.message_user(request, f'{updated} API key(s) activated.')
     activate_keys.short_description = _('Activate selected keys')
+
+
+class TeamMemberInline(admin.TabularInline):
+    """Inline admin for team members."""
+    model = TeamMember
+    extra = 0
+    fields = ('user', 'role', 'joined_at')
+    readonly_fields = ('joined_at',)
+
+
+@admin.register(Team)
+class TeamAdmin(admin.ModelAdmin):
+    """Admin for Team model."""
+
+    list_display = ['name', 'owner', 'member_count', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['name', 'owner__email', 'owner__full_name']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    inlines = [TeamMemberInline]
+
+    fieldsets = (
+        (_('Team Information'), {
+            'fields': ('id', 'name', 'description', 'owner', 'is_active')
+        }),
+        (_('Metadata'), {
+            'fields': ('metadata',),
+            'classes': ('collapse',)
+        }),
+        (_('Timestamps'), {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def member_count(self, obj):
+        """Display member count."""
+        return obj.member_count
+    member_count.short_description = _('Members')
+
+
+@admin.register(TeamMember)
+class TeamMemberAdmin(admin.ModelAdmin):
+    """Admin for TeamMember model."""
+
+    list_display = ['team', 'user', 'role', 'joined_at']
+    list_filter = ['role', 'joined_at']
+    search_fields = ['team__name', 'user__email', 'user__full_name']
+    readonly_fields = ['joined_at']
+
+    fieldsets = (
+        (_('Membership'), {
+            'fields': ('team', 'user', 'role')
+        }),
+        (_('Dates'), {
+            'fields': ('joined_at',),
+        }),
+    )
+
+
+@admin.register(TeamInvitation)
+class TeamInvitationAdmin(admin.ModelAdmin):
+    """Admin for TeamInvitation model."""
+
+    list_display = ['team', 'email', 'role', 'status_badge', 'invited_by', 'created_at']
+    list_filter = ['status', 'role', 'created_at']
+    search_fields = ['email', 'team__name', 'invited_by__email']
+    readonly_fields = ['id', 'invitation_token', 'created_at', 'accepted_at']
+
+    fieldsets = (
+        (_('Invitation Details'), {
+            'fields': ('id', 'team', 'email', 'role')
+        }),
+        (_('Status'), {
+            'fields': ('status', 'invitation_token', 'invited_by')
+        }),
+        (_('Dates'), {
+            'fields': ('created_at', 'expires_at', 'accepted_at')
+        }),
+    )
+
+    def status_badge(self, obj):
+        """Display colored badge for invitation status."""
+        colors = {
+            'pending': 'orange',
+            'accepted': 'green',
+            'expired': 'gray',
+            'cancelled': 'red',
+        }
+        color = colors.get(obj.status, 'gray')
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color, obj.get_status_display()
+        )
+    status_badge.short_description = _('Status')
+
+    actions = ['cancel_invitations']
+
+    def cancel_invitations(self, request, queryset):
+        """Cancel selected team invitations."""
+        updated = 0
+        for invitation in queryset.filter(status='pending'):
+            invitation.cancel()
+            updated += 1
+        self.message_user(request, f'{updated} team invitation(s) cancelled.')
+    cancel_invitations.short_description = _('Cancel selected invitations')

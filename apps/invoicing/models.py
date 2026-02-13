@@ -402,3 +402,484 @@ class InvoiceItem(models.Model):
         """Calculate amount on save."""
         self.amount = self.quantity * self.unit_price
         super().save(*args, **kwargs)
+
+
+class RecurringInvoice(models.Model):
+    """
+    Recurring invoice template for automatic invoice generation.
+    """
+
+    # Frequency choices
+    WEEKLY = 'weekly'
+    BIWEEKLY = 'biweekly'
+    MONTHLY = 'monthly'
+    QUARTERLY = 'quarterly'
+    ANNUALLY = 'annually'
+
+    FREQUENCY_CHOICES = [
+        (WEEKLY, _('Weekly')),
+        (BIWEEKLY, _('Bi-weekly')),
+        (MONTHLY, _('Monthly')),
+        (QUARTERLY, _('Quarterly')),
+        (ANNUALLY, _('Annually')),
+    ]
+
+    # Status choices
+    ACTIVE = 'active'
+    PAUSED = 'paused'
+    CANCELLED = 'cancelled'
+    COMPLETED = 'completed'
+
+    STATUS_CHOICES = [
+        (ACTIVE, _('Active')),
+        (PAUSED, _('Paused')),
+        (CANCELLED, _('Cancelled')),
+        (COMPLETED, _('Completed')),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    client = models.ForeignKey(
+        'clients.Client',
+        on_delete=models.CASCADE,
+        related_name='recurring_invoices',
+        help_text=_('Client to invoice')
+    )
+
+    contract = models.ForeignKey(
+        'contracts.Contract',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recurring_invoices',
+        help_text=_('Associated contract')
+    )
+
+    template_name = models.CharField(
+        _('Template Name'),
+        max_length=255,
+        help_text=_('Descriptive name for this recurring invoice')
+    )
+
+    frequency = models.CharField(
+        _('Frequency'),
+        max_length=20,
+        choices=FREQUENCY_CHOICES,
+        default=MONTHLY
+    )
+
+    start_date = models.DateField(
+        _('Start Date'),
+        help_text=_('When to start generating invoices')
+    )
+
+    end_date = models.DateField(
+        _('End Date'),
+        blank=True,
+        null=True,
+        help_text=_('When to stop generating invoices (optional)')
+    )
+
+    next_run_date = models.DateField(
+        _('Next Run Date'),
+        help_text=_('Next date to generate invoice')
+    )
+
+    amount = models.DecimalField(
+        _('Amount'),
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        help_text=_('Invoice amount per cycle')
+    )
+
+    currency = models.CharField(
+        _('Currency'),
+        max_length=3,
+        default='USD'
+    )
+
+    tax_rate = models.DecimalField(
+        _('Tax Rate (%)'),
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(Decimal('0.00'))]
+    )
+
+    discount_amount = models.DecimalField(
+        _('Discount Amount'),
+        max_digits=12,
+        decimal_places=2,
+        default=0
+    )
+
+    items_template = models.JSONField(
+        _('Items Template'),
+        default=list,
+        blank=True,
+        help_text=_('Template for invoice line items')
+    )
+
+    auto_send = models.BooleanField(
+        _('Auto Send'),
+        default=True,
+        help_text=_('Automatically send invoice after generation')
+    )
+
+    status = models.CharField(
+        _('Status'),
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=ACTIVE
+    )
+
+    invoices_generated = models.IntegerField(
+        _('Invoices Generated'),
+        default=0,
+        help_text=_('Number of invoices generated')
+    )
+
+    last_generated_at = models.DateTimeField(
+        _('Last Generated At'),
+        null=True,
+        blank=True
+    )
+
+    owner = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recurring_invoices',
+        help_text=_('Owner of this recurring invoice')
+    )
+
+    notes = models.TextField(
+        _('Notes'),
+        blank=True
+    )
+
+    metadata = models.JSONField(
+        _('Metadata'),
+        default=dict,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(_('Created At'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('Updated At'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('Recurring Invoice')
+        verbose_name_plural = _('Recurring Invoices')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['client']),
+            models.Index(fields=['status']),
+            models.Index(fields=['next_run_date']),
+            models.Index(fields=['frequency']),
+        ]
+
+    def __str__(self):
+        return f"{self.template_name} - {self.client} ({self.frequency})"
+
+    @property
+    def is_due(self):
+        """Check if invoice is due for generation."""
+        from django.utils import timezone
+        if self.status != self.ACTIVE:
+            return False
+        return self.next_run_date <= timezone.now().date()
+
+    def calculate_next_run_date(self):
+        """Calculate the next run date based on frequency."""
+        from dateutil.relativedelta import relativedelta
+
+        if self.frequency == self.WEEKLY:
+            self.next_run_date = self.next_run_date + relativedelta(weeks=1)
+        elif self.frequency == self.BIWEEKLY:
+            self.next_run_date = self.next_run_date + relativedelta(weeks=2)
+        elif self.frequency == self.MONTHLY:
+            self.next_run_date = self.next_run_date + relativedelta(months=1)
+        elif self.frequency == self.QUARTERLY:
+            self.next_run_date = self.next_run_date + relativedelta(months=3)
+        elif self.frequency == self.ANNUALLY:
+            self.next_run_date = self.next_run_date + relativedelta(years=1)
+
+        # Check if completed
+        if self.end_date and self.next_run_date > self.end_date:
+            self.status = self.COMPLETED
+
+        self.save(update_fields=['next_run_date', 'status', 'updated_at'])
+
+    def generate_invoice(self):
+        """Generate an invoice from this recurring template."""
+        from django.utils import timezone
+
+        invoice = Invoice.objects.create(
+            client=self.client,
+            contract=self.contract,
+            status=Invoice.DRAFT,
+            issue_date=timezone.now().date(),
+            due_date=timezone.now().date() + timezone.timedelta(days=30),
+            tax_rate=self.tax_rate,
+            discount_amount=self.discount_amount,
+            currency=self.currency,
+            notes=self.notes,
+        )
+
+        # Create items from template
+        for item_data in self.items_template:
+            InvoiceItem.objects.create(
+                invoice=invoice,
+                description=item_data.get('description', ''),
+                quantity=Decimal(str(item_data.get('quantity', 1))),
+                unit_price=Decimal(str(item_data.get('unit_price', 0))),
+                amount=Decimal(str(item_data.get('quantity', 1))) * Decimal(str(item_data.get('unit_price', 0))),
+                order=item_data.get('order', 0),
+            )
+
+        # If no template items, create a single item with the amount
+        if not self.items_template:
+            InvoiceItem.objects.create(
+                invoice=invoice,
+                description=self.template_name,
+                quantity=Decimal('1'),
+                unit_price=self.amount,
+                amount=self.amount,
+            )
+
+        invoice.calculate_totals()
+
+        # Update tracking
+        self.invoices_generated += 1
+        self.last_generated_at = timezone.now()
+        self.save(update_fields=['invoices_generated', 'last_generated_at', 'updated_at'])
+
+        # Calculate next run date
+        self.calculate_next_run_date()
+
+        # Auto-send if enabled
+        if self.auto_send:
+            invoice.mark_as_sent()
+
+        return invoice
+
+
+class LateFeePolicy(models.Model):
+    """
+    Policy for calculating and applying late fees to overdue invoices.
+    """
+
+    # Fee type choices
+    FLAT = 'flat'
+    PERCENTAGE = 'percentage'
+
+    FEE_TYPE_CHOICES = [
+        (FLAT, _('Flat Amount')),
+        (PERCENTAGE, _('Percentage of Invoice')),
+    ]
+
+    # Apply frequency choices
+    ONCE = 'once'
+    DAILY = 'daily'
+    WEEKLY = 'weekly'
+    MONTHLY = 'monthly'
+
+    APPLY_FREQUENCY_CHOICES = [
+        (ONCE, _('Once')),
+        (DAILY, _('Daily')),
+        (WEEKLY, _('Weekly')),
+        (MONTHLY, _('Monthly')),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    name = models.CharField(
+        _('Policy Name'),
+        max_length=255,
+        help_text=_('Name for this late fee policy')
+    )
+
+    fee_type = models.CharField(
+        _('Fee Type'),
+        max_length=20,
+        choices=FEE_TYPE_CHOICES,
+        default=PERCENTAGE
+    )
+
+    fee_amount = models.DecimalField(
+        _('Fee Amount'),
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text=_('Flat amount or percentage value')
+    )
+
+    grace_period_days = models.IntegerField(
+        _('Grace Period (days)'),
+        default=0,
+        help_text=_('Days after due date before late fees apply')
+    )
+
+    max_fee_amount = models.DecimalField(
+        _('Max Fee Amount'),
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_('Maximum fee cap (for percentage fees)')
+    )
+
+    is_compound = models.BooleanField(
+        _('Compound'),
+        default=False,
+        help_text=_('Whether to compound on previous fees')
+    )
+
+    apply_frequency = models.CharField(
+        _('Apply Frequency'),
+        max_length=20,
+        choices=APPLY_FREQUENCY_CHOICES,
+        default=ONCE
+    )
+
+    is_active = models.BooleanField(
+        _('Active'),
+        default=True
+    )
+
+    created_at = models.DateTimeField(_('Created At'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('Updated At'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('Late Fee Policy')
+        verbose_name_plural = _('Late Fee Policies')
+        ordering = ['name']
+
+    def __str__(self):
+        if self.fee_type == self.FLAT:
+            return f"{self.name} - ${self.fee_amount} flat"
+        return f"{self.name} - {self.fee_amount}%"
+
+    def calculate_fee(self, invoice_total):
+        """Calculate the late fee amount for a given invoice total."""
+        if self.fee_type == self.FLAT:
+            fee = self.fee_amount
+        else:
+            fee = (invoice_total * self.fee_amount) / Decimal('100')
+
+        if self.max_fee_amount and fee > self.max_fee_amount:
+            fee = self.max_fee_amount
+
+        return fee
+
+
+class PaymentReminder(models.Model):
+    """
+    Scheduled payment reminders for invoices.
+    """
+
+    # Reminder type choices
+    BEFORE_DUE = 'before_due'
+    ON_DUE = 'on_due'
+    AFTER_DUE = 'after_due'
+
+    REMINDER_TYPE_CHOICES = [
+        (BEFORE_DUE, _('Before Due Date')),
+        (ON_DUE, _('On Due Date')),
+        (AFTER_DUE, _('After Due Date')),
+    ]
+
+    # Status choices
+    SCHEDULED = 'scheduled'
+    SENT = 'sent'
+    CANCELLED = 'cancelled'
+
+    STATUS_CHOICES = [
+        (SCHEDULED, _('Scheduled')),
+        (SENT, _('Sent')),
+        (CANCELLED, _('Cancelled')),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.CASCADE,
+        related_name='payment_reminders',
+        help_text=_('Invoice this reminder is for')
+    )
+
+    reminder_type = models.CharField(
+        _('Reminder Type'),
+        max_length=20,
+        choices=REMINDER_TYPE_CHOICES,
+        default=BEFORE_DUE
+    )
+
+    days_offset = models.IntegerField(
+        _('Days Offset'),
+        default=7,
+        help_text=_('Days before/after due date to send reminder')
+    )
+
+    status = models.CharField(
+        _('Status'),
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=SCHEDULED
+    )
+
+    scheduled_date = models.DateField(
+        _('Scheduled Date'),
+        help_text=_('Date the reminder is scheduled to be sent')
+    )
+
+    sent_at = models.DateTimeField(
+        _('Sent At'),
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(_('Created At'), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('Payment Reminder')
+        verbose_name_plural = _('Payment Reminders')
+        ordering = ['scheduled_date']
+        indexes = [
+            models.Index(fields=['invoice', 'status']),
+            models.Index(fields=['scheduled_date']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"Reminder for {self.invoice.invoice_number} - {self.reminder_type} ({self.status})"
+
+    @property
+    def is_due(self):
+        """Check if reminder is due to be sent."""
+        from django.utils import timezone
+        if self.status != self.SCHEDULED:
+            return False
+        return self.scheduled_date <= timezone.now().date()
+
+    def mark_sent(self):
+        """Mark reminder as sent."""
+        from django.utils import timezone
+        self.status = self.SENT
+        self.sent_at = timezone.now()
+        self.save(update_fields=['status', 'sent_at'])

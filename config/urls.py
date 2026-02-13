@@ -48,6 +48,15 @@ urlpatterns = [
     path('api/integrations/', include('apps.integrations.urls')),
     path('api/analytics/', include('apps.analytics.urls')),
 
+    # New feature API routes (explicit prefix)
+    path('api/workflows/', include('apps.workflows.urls')),
+    path('api/tasks/', include('apps.tasks.urls')),
+    path('api/emails/', include('apps.emails.urls')),
+    path('api/calendar/', include('apps.calendar_app.urls')),
+    path('api/proposals/', include('apps.proposals.urls')),
+    path('api/expenses/', include('apps.expenses.urls')),
+    path('api/ai/', include('apps.ai_assistant.urls')),
+
     # Core Business Apps API (generic api/ prefix — order matters)
     path('api/', include('apps.clients.urls')),
     path('api/', include('apps.contracts.urls')),

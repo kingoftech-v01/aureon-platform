@@ -6,7 +6,7 @@ import re
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from .models import UserInvitation, ApiKey
+from .models import UserInvitation, ApiKey, Team, TeamMember, TeamInvitation
 
 
 def strip_html_tags(value):
@@ -196,3 +196,88 @@ class ApiKeySerializer(serializers.ModelSerializer):
             'usage_count',
             'created_at',
         ]
+
+
+# --- Team Serializers ---
+
+class TeamMemberSerializer(serializers.ModelSerializer):
+    """Serializer for team members."""
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeamMember
+        fields = ['id', 'team', 'user', 'user_email', 'user_name', 'role', 'joined_at']
+        read_only_fields = ['id', 'joined_at']
+
+    def get_user_name(self, obj):
+        return obj.user.get_full_name()
+
+
+class TeamSerializer(serializers.ModelSerializer):
+    """Serializer for team list view."""
+    owner_name = serializers.SerializerMethodField()
+    member_count = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Team
+        fields = [
+            'id', 'name', 'description', 'owner', 'owner_name',
+            'is_active', 'member_count', 'metadata', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'owner', 'created_at', 'updated_at']
+
+    def get_owner_name(self, obj):
+        return obj.owner.get_full_name()
+
+
+class TeamDetailSerializer(serializers.ModelSerializer):
+    """Serializer for team detail with members."""
+    owner_name = serializers.SerializerMethodField()
+    member_count = serializers.ReadOnlyField()
+    members = TeamMemberSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Team
+        fields = [
+            'id', 'name', 'description', 'owner', 'owner_name',
+            'is_active', 'member_count', 'members', 'metadata',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'owner', 'created_at', 'updated_at']
+
+    def get_owner_name(self, obj):
+        return obj.owner.get_full_name()
+
+
+class TeamCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating teams."""
+
+    class Meta:
+        model = Team
+        fields = ['name', 'description', 'is_active', 'metadata']
+
+
+class TeamInvitationSerializer(serializers.ModelSerializer):
+    """Serializer for team invitations."""
+    invited_by_name = serializers.SerializerMethodField()
+    team_name = serializers.SerializerMethodField()
+    is_expired = serializers.ReadOnlyField()
+
+    class Meta:
+        model = TeamInvitation
+        fields = [
+            'id', 'team', 'team_name', 'email', 'role', 'invited_by',
+            'invited_by_name', 'status', 'is_expired', 'created_at',
+            'expires_at', 'accepted_at'
+        ]
+        read_only_fields = [
+            'id', 'invited_by', 'status', 'invitation_token',
+            'created_at', 'expires_at', 'accepted_at'
+        ]
+
+    def get_invited_by_name(self, obj):
+        return obj.invited_by.get_full_name()
+
+    def get_team_name(self, obj):
+        return obj.team.name

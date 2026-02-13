@@ -3,7 +3,7 @@ Admin configuration for invoicing app.
 """
 
 from django.contrib import admin
-from .models import Invoice, InvoiceItem
+from .models import Invoice, InvoiceItem, RecurringInvoice, LateFeePolicy, PaymentReminder
 
 
 class InvoiceItemInline(admin.TabularInline):
@@ -82,5 +82,87 @@ class InvoiceItemAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Basic Information', {
             'fields': ('invoice', 'description', 'quantity', 'unit_price', 'amount', 'order')
+        }),
+    )
+
+
+@admin.register(RecurringInvoice)
+class RecurringInvoiceAdmin(admin.ModelAdmin):
+    """Admin for RecurringInvoice model."""
+
+    list_display = [
+        'name', 'client', 'frequency', 'status', 'amount',
+        'next_run_date', 'total_generated', 'auto_send'
+    ]
+    list_filter = ['status', 'frequency', 'auto_send', 'next_run_date']
+    search_fields = ['name', 'client__first_name', 'client__last_name', 'client__company_name']
+    readonly_fields = ['total_generated', 'last_generated_at', 'created_at', 'updated_at']
+
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'client', 'contract', 'status')
+        }),
+        ('Schedule', {
+            'fields': ('frequency', 'start_date', 'end_date', 'next_run_date')
+        }),
+        ('Invoice Details', {
+            'fields': ('amount', 'tax_rate', 'currency', 'items_template')
+        }),
+        ('Settings', {
+            'fields': ('auto_send', 'payment_terms_days')
+        }),
+        ('Statistics', {
+            'fields': ('total_generated', 'last_generated_at'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(LateFeePolicy)
+class LateFeePolicyAdmin(admin.ModelAdmin):
+    """Admin for LateFeePolicy model."""
+
+    list_display = ['name', 'fee_type', 'fee_amount', 'grace_period_days', 'apply_frequency', 'is_active']
+    list_filter = ['fee_type', 'apply_frequency', 'is_active']
+    search_fields = ['name']
+    readonly_fields = ['created_at', 'updated_at']
+
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'is_active')
+        }),
+        ('Fee Configuration', {
+            'fields': ('fee_type', 'fee_amount', 'max_fee_amount', 'grace_period_days', 'apply_frequency')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(PaymentReminder)
+class PaymentReminderAdmin(admin.ModelAdmin):
+    """Admin for PaymentReminder model."""
+
+    list_display = ['invoice', 'reminder_type', 'days_offset', 'scheduled_date', 'status', 'sent_at']
+    list_filter = ['reminder_type', 'status', 'scheduled_date']
+    search_fields = ['invoice__invoice_number']
+    readonly_fields = ['sent_at', 'created_at']
+
+    fieldsets = (
+        ('Reminder Details', {
+            'fields': ('invoice', 'reminder_type', 'days_offset', 'scheduled_date')
+        }),
+        ('Status', {
+            'fields': ('status', 'sent_at', 'subject', 'message')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
         }),
     )

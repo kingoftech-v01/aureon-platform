@@ -3,7 +3,7 @@ Serializers for the invoicing app.
 """
 
 from rest_framework import serializers
-from .models import Invoice, InvoiceItem
+from .models import Invoice, InvoiceItem, RecurringInvoice, LateFeePolicy, PaymentReminder
 from apps.clients.serializers import ClientListSerializer
 from apps.contracts.serializers import ContractListSerializer
 
@@ -147,3 +147,82 @@ class InvoiceStatsSerializer(serializers.Serializer):
     total_invoiced = serializers.DecimalField(max_digits=12, decimal_places=2)
     total_paid = serializers.DecimalField(max_digits=12, decimal_places=2)
     total_outstanding = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
+# --- Recurring Invoice Serializers ---
+
+class RecurringInvoiceSerializer(serializers.ModelSerializer):
+    """Serializer for recurring invoice list and detail."""
+    client_name = serializers.SerializerMethodField()
+    is_due = serializers.ReadOnlyField()
+
+    class Meta:
+        model = RecurringInvoice
+        fields = [
+            'id', 'client', 'client_name', 'contract', 'template_name',
+            'frequency', 'start_date', 'end_date', 'next_run_date',
+            'amount', 'currency', 'tax_rate', 'discount_amount',
+            'items_template', 'auto_send', 'status', 'invoices_generated',
+            'last_generated_at', 'owner', 'notes', 'metadata',
+            'is_due', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'invoices_generated', 'last_generated_at', 'created_at', 'updated_at']
+
+    def get_client_name(self, obj):
+        return obj.client.get_display_name()
+
+
+class RecurringInvoiceCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating recurring invoices."""
+
+    class Meta:
+        model = RecurringInvoice
+        fields = [
+            'client', 'contract', 'template_name', 'frequency',
+            'start_date', 'end_date', 'next_run_date', 'amount',
+            'currency', 'tax_rate', 'discount_amount', 'items_template',
+            'auto_send', 'notes', 'metadata'
+        ]
+
+    def validate(self, data):
+        if data.get('end_date') and data.get('start_date'):
+            if data['end_date'] < data['start_date']:
+                raise serializers.ValidationError({
+                    'end_date': 'End date must be after start date.'
+                })
+        return data
+
+
+# --- Late Fee Policy Serializers ---
+
+class LateFeePolicySerializer(serializers.ModelSerializer):
+    """Serializer for late fee policies."""
+
+    class Meta:
+        model = LateFeePolicy
+        fields = [
+            'id', 'name', 'fee_type', 'fee_amount', 'grace_period_days',
+            'max_fee_amount', 'is_compound', 'apply_frequency', 'is_active',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+# --- Payment Reminder Serializers ---
+
+class PaymentReminderSerializer(serializers.ModelSerializer):
+    """Serializer for payment reminders."""
+    invoice_number = serializers.SerializerMethodField()
+    is_due = serializers.ReadOnlyField()
+
+    class Meta:
+        model = PaymentReminder
+        fields = [
+            'id', 'invoice', 'invoice_number', 'reminder_type',
+            'days_offset', 'status', 'scheduled_date', 'sent_at',
+            'is_due', 'created_at'
+        ]
+        read_only_fields = ['id', 'sent_at', 'created_at']
+
+    def get_invoice_number(self, obj):
+        return obj.invoice.invoice_number

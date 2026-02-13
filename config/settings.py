@@ -104,6 +104,13 @@ INSTALLED_APPS = [
     'apps.integrations',
     'apps.webhooks',
     'apps.subscriptions',  # Subscription management
+    'apps.workflows',  # Automated workflows & triggers
+    'apps.tasks',  # Task & activity management
+    'apps.emails',  # Built-in email system
+    'apps.calendar_app',  # Calendar & scheduling
+    'apps.proposals',  # Proposal builder
+    'apps.expenses',  # Expense tracking
+    'apps.ai_assistant',  # AI-powered suggestions & insights
 ]
 
 MIDDLEWARE = [
