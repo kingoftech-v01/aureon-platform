@@ -11,10 +11,19 @@ from .models import (
 )
 
 
+class UUIDPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
+    """PrimaryKeyRelatedField that serializes UUID primary keys as strings."""
+
+    def to_representation(self, value):
+        pk = super().to_representation(value)
+        return str(pk)
+
+
 class WorkflowActionSerializer(serializers.ModelSerializer):
     """
     Serializer for workflow actions.
     """
+    workflow = UUIDPrimaryKeyRelatedField(queryset=Workflow.objects.all())
 
     class Meta:
         model = WorkflowAction
@@ -30,6 +39,8 @@ class WorkflowActionExecutionSerializer(serializers.ModelSerializer):
     """
     Serializer for workflow action executions.
     """
+    execution = UUIDPrimaryKeyRelatedField(queryset=WorkflowExecution.objects.all())
+    action = UUIDPrimaryKeyRelatedField(queryset=WorkflowAction.objects.all())
 
     class Meta:
         model = WorkflowActionExecution
@@ -65,6 +76,11 @@ class WorkflowDetailSerializer(serializers.ModelSerializer):
     Detailed serializer for workflow detail view.
     """
     actions = WorkflowActionSerializer(many=True, read_only=True)
+    owner = UUIDPrimaryKeyRelatedField(
+        queryset=Workflow.owner.field.related_model.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Workflow
@@ -95,6 +111,12 @@ class WorkflowExecutionSerializer(serializers.ModelSerializer):
     """
     action_executions = WorkflowActionExecutionSerializer(many=True, read_only=True)
     duration = serializers.SerializerMethodField()
+    workflow = UUIDPrimaryKeyRelatedField(queryset=Workflow.objects.all())
+    triggered_by = UUIDPrimaryKeyRelatedField(
+        queryset=WorkflowExecution.triggered_by.field.related_model.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = WorkflowExecution

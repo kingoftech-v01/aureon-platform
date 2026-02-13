@@ -24,9 +24,15 @@ class UserFactory(factory.django.DjangoModelFactory):
     username = factory.Sequence(lambda n: f'wfuser{n}')
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
-    password = factory.PostGenerationMethodCall('set_password', 'TestPass123!')
     is_active = True
     role = User.ADMIN
+
+    @factory.post_generation
+    def password(self, create, extracted, **kwargs):
+        password = extracted or 'TestPass123!'
+        self.set_password(password)
+        if create:
+            self.save(update_fields=['password'])
 
 
 class WorkflowFactory(factory.django.DjangoModelFactory):

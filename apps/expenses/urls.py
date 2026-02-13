@@ -32,4 +32,4 @@ frontend_urlpatterns = [
     path('<uuid:pk>/', ExpenseDetailView.as_view(), name='expense_detail'),
 ]
 
-urlpatterns = api_urlpatterns + frontend_urlpatterns
+urlpatterns = frontend_urlpatterns + api_urlpatterns

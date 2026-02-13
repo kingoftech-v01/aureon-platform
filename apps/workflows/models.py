@@ -103,6 +103,12 @@ class Workflow(models.Model):
     def __str__(self):
         return self.name
 
+    def delete(self, *args, **kwargs):
+        pk = self.pk
+        result = super().delete(*args, **kwargs)
+        self.pk = pk
+        return result
+
 
 class WorkflowAction(models.Model):
     """
@@ -183,6 +189,12 @@ class WorkflowAction(models.Model):
 
     def __str__(self):
         return f"{self.workflow.name} - {self.action_type} (#{self.order})"
+
+    def delete(self, *args, **kwargs):
+        pk = self.pk
+        result = super().delete(*args, **kwargs)
+        self.pk = pk
+        return result
 
 
 class WorkflowExecution(models.Model):
@@ -272,6 +284,12 @@ class WorkflowExecution(models.Model):
 
     def __str__(self):
         return f"Execution of {self.workflow.name} - {self.status}"
+
+    def delete(self, *args, **kwargs):
+        pk = self.pk
+        result = super().delete(*args, **kwargs)
+        self.pk = pk
+        return result
 
     @property
     def duration(self):

@@ -182,3 +182,9 @@ class PortalMessageSerializer(serializers.ModelSerializer):
 
     def get_replies_count(self, obj):
         return obj.replies.count()
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if 'parent' in ret and ret['parent'] is not None:
+            ret['parent'] = str(ret['parent'])
+        return ret

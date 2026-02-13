@@ -68,6 +68,12 @@ SECURE_HSTS_SECONDS = 0
 # Disable Axes during tests (can cause issues with test isolation)
 AXES_ENABLED = False
 
+# Disable email verification requirement for tests
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# Allow testserver hostname in tests
+ALLOWED_HOSTS = ['*']
+
 # Simplified logging for tests
 LOGGING = {
     'version': 1,

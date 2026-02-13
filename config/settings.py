@@ -639,7 +639,7 @@ CELERY_CACHE_BACKEND = 'default'
 # ====================
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
+    'apps.accounts.backends.UsernameOrEmailBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
     'guardian.backends.ObjectPermissionBackend',
     'axes.backends.AxesBackend',

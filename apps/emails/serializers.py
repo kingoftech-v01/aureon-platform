@@ -16,6 +16,12 @@ class EmailAccountSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if 'user' in ret and ret['user'] is not None:
+            ret['user'] = str(ret['user'])
+        return ret
+
 
 class EmailAttachmentSerializer(serializers.ModelSerializer):
     """

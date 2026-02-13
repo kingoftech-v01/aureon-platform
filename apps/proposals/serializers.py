@@ -33,6 +33,7 @@ class ProposalActivitySerializer(serializers.ModelSerializer):
     Serializer for proposal activities (read-only).
     """
     user_name = serializers.SerializerMethodField()
+    ip_address = serializers.CharField(allow_null=True, required=False)
 
     class Meta:
         model = ProposalActivity

@@ -153,6 +153,13 @@ class Task(models.Model):
     def __str__(self):
         return self.title
 
+    def delete(self, using=None, keep_parents=False):
+        """Delete the task, preserving the PK for post-delete queries."""
+        pk = self.pk
+        result = super().delete(using=using, keep_parents=keep_parents)
+        self.pk = pk
+        return result
+
     @property
     def is_overdue(self):
         """Check if task is overdue."""

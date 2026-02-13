@@ -248,6 +248,14 @@ class BookingViewSet(
         """Filter queryset with select_related for performance."""
         return super().get_queryset().select_related('booking_link', 'event')
 
+    def create(self, request, *args, **kwargs):
+        """Create a booking and return full booking data."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        booking = serializer.save()
+        response_serializer = BookingSerializer(booking, context={'request': request})
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
         """

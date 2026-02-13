@@ -178,11 +178,12 @@ class RecurringInvoiceCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecurringInvoice
         fields = [
-            'client', 'contract', 'template_name', 'frequency',
+            'id', 'client', 'contract', 'template_name', 'frequency',
             'start_date', 'end_date', 'next_run_date', 'amount',
             'currency', 'tax_rate', 'discount_amount', 'items_template',
             'auto_send', 'notes', 'metadata'
         ]
+        read_only_fields = ['id']
 
     def validate(self, data):
         if data.get('end_date') and data.get('start_date'):

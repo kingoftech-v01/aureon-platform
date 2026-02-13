@@ -32,4 +32,4 @@ frontend_urlpatterns = [
     path('executions/', WorkflowExecutionListView.as_view(), name='execution_list'),
 ]
 
-urlpatterns = api_urlpatterns + frontend_urlpatterns
+urlpatterns = frontend_urlpatterns + api_urlpatterns

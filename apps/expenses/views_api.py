@@ -203,7 +203,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 
         # By status counts
         by_status = {}
-        status_counts = queryset.values('status').annotate(count=Count('id'))
+        status_counts = queryset.order_by().values('status').annotate(count=Count('id'))
         for entry in status_counts:
             by_status[entry['status']] = entry['count']
 

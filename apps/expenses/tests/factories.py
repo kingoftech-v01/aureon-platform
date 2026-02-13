@@ -16,7 +16,6 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = User
-        skip_postgeneration_save = True
 
     email = factory.Sequence(lambda n: f'expenseuser{n}@test.com')
     username = factory.Sequence(lambda n: f'expenseuser{n}')

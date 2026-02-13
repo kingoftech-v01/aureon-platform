@@ -13,10 +13,9 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = User
-        skip_postgeneration_save = True
 
     email = factory.Sequence(lambda n: f'taskuser{n}@test.com')
-    username = factory.Sequence(lambda n: f'taskuser{n}')
+    username = factory.LazyAttribute(lambda o: o.email)
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
     full_name = factory.LazyAttribute(lambda o: f'{o.first_name} {o.last_name}')

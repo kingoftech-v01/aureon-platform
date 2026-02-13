@@ -19,6 +19,12 @@ class EventAttendeeSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at']
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if 'event' in ret and ret['event'] is not None:
+            ret['event'] = str(ret['event'])
+        return ret
+
 
 class CalendarEventListSerializer(serializers.ModelSerializer):
     """
@@ -84,10 +90,11 @@ class CalendarEventCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CalendarEvent
         fields = [
-            'title', 'description', 'event_type', 'start_time', 'end_time',
+            'id', 'title', 'description', 'event_type', 'start_time', 'end_time',
             'all_day', 'location', 'video_link', 'client', 'contract',
             'recurrence_rule', 'reminder_minutes', 'color',
         ]
+        read_only_fields = ['id']
 
     def validate(self, data):
         """Validate event data."""
@@ -150,6 +157,12 @@ class BookingSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'confirmation_token', 'cancelled_at', 'created_at',
         ]
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if 'booking_link' in ret and ret['booking_link'] is not None:
+            ret['booking_link'] = str(ret['booking_link'])
+        return ret
 
 
 class BookingCreateSerializer(serializers.Serializer):

@@ -36,6 +36,7 @@ class EmailAccountViewSet(viewsets.ModelViewSet):
     queryset = EmailAccount.objects.all()
     serializer_class = EmailAccountSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['provider', 'is_active']
     ordering = ['-is_default', '-created_at']
@@ -238,6 +239,7 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
     queryset = EmailTemplate.objects.all()
     serializer_class = EmailTemplateSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category', 'is_active']
     search_fields = ['name', 'subject']

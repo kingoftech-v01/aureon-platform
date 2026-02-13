@@ -255,7 +255,7 @@ CELERY_TASK_TIME_LIMIT = 30 * 60
 # ====================
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
+    'apps.accounts.backends.UsernameOrEmailBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
     'guardian.backends.ObjectPermissionBackend',
     'axes.backends.AxesBackend',
