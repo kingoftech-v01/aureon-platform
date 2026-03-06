@@ -283,6 +283,44 @@ export const paymentService = {
   },
 
   /**
+   * Record a manual payment
+   */
+  createPayment: async (data: {
+    invoice_id: string;
+    amount: number;
+    payment_method: string;
+    payment_date: string;
+    notes?: string;
+  }): Promise<Payment> => {
+    const response = await apiClient.post('/payments/', data);
+    return response.data;
+  },
+
+  /**
+   * Refund a payment
+   */
+  refundPayment: async (
+    id: string,
+    data: { amount?: number; reason?: string }
+  ): Promise<Refund> => {
+    const response = await apiClient.post(`/payments/${id}/refund/`, data);
+    return response.data;
+  },
+
+  /**
+   * Get payment statistics (alias for getStats)
+   */
+  getPaymentStats: async (): Promise<{
+    total_received: number;
+    total_pending: number;
+    total_refunded: number;
+    failed_count: number;
+  }> => {
+    const response = await apiClient.get('/payments/stats/');
+    return response.data;
+  },
+
+  /**
    * Retry failed payment
    */
   retryPayment: async (id: string): Promise<Payment> => {

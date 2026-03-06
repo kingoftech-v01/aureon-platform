@@ -67,6 +67,6 @@ export default defineConfig({
       },
     },
   },
-  // Base URL for production (Django serves from /static/dashboard/)
-  base: '/static/dashboard/',
+  // Base URL - use '/' for dev, '/static/dashboard/' for production
+  base: process.env.NODE_ENV === 'production' ? '/static/dashboard/' : '/',
 })

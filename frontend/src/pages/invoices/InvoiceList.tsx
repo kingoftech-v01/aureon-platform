@@ -2,13 +2,14 @@
  * Invoice List Page
  * Aureon by Rhematek Solutions
  *
- * Main invoice management page with table, search, and filters
+ * Main invoice management page with table, search, filters, and bulk actions
  */
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoiceService } from '@/services';
+import apiClient from '@/services/api';
 import { useToast } from '@/components/common';
 import Button from '@/components/common/Button';
 import Input from '@/components/common/Input';
@@ -22,7 +23,8 @@ import type { Invoice, InvoiceStatus, PaginationConfig, SortConfig } from '@/typ
 
 const InvoiceList: React.FC = () => {
   const navigate = useNavigate();
-  const { error: showErrorToast } = useToast();
+  const queryClientInstance = useQueryClient();
+  const { success: showSuccess, error: showErrorToast } = useToast();
 
   // State for filters, pagination, and sorting
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +38,9 @@ const InvoiceList: React.FC = () => {
     direction: 'desc',
   });
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   // Fetch invoices with React Query
   const { data, isLoading, error } = useQuery({
     queryKey: ['invoices', pagination, sort, statusFilter, searchQuery],
@@ -48,6 +53,26 @@ const InvoiceList: React.FC = () => {
         },
         sort
       ),
+  });
+
+  // Bulk action mutation
+  const bulkActionMutation = useMutation({
+    mutationFn: ({ action, invoice_ids }: { action: string; invoice_ids: string[] }) =>
+      apiClient.post('/analytics/bulk/invoices/', { action, invoice_ids }),
+    onSuccess: (_data, variables) => {
+      queryClientInstance.invalidateQueries({ queryKey: ['invoices'] });
+      setSelectedIds(new Set());
+      const actionLabels: Record<string, string> = {
+        send: 'sent',
+        mark_paid: 'marked as paid',
+        cancel: 'cancelled',
+        delete: 'deleted',
+      };
+      showSuccess(`${variables.invoice_ids.length} invoice(s) ${actionLabels[variables.action] || 'updated'} successfully`);
+    },
+    onError: () => {
+      showErrorToast('Bulk action failed. Please try again.');
+    },
   });
 
   // Handle errors
@@ -69,6 +94,39 @@ const InvoiceList: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  // Bulk selection handlers
+  const allInvoiceIds = data?.results?.map((inv: Invoice) => inv.id) || [];
+  const allSelected = allInvoiceIds.length > 0 && allInvoiceIds.every((id: string) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0;
+
+  const handleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allInvoiceIds));
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleBulkAction = (action: string) => {
+    if (selectedIds.size === 0) return;
+    bulkActionMutation.mutate({
+      action,
+      invoice_ids: Array.from(selectedIds),
+    });
   };
 
   // Invoice status badge colors
@@ -140,6 +198,71 @@ const InvoiceList: React.FC = () => {
         </Link>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {someSelected && (
+        <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4 flex items-center justify-between animate-fade-in">
+          <span className="text-sm font-medium text-primary-700 dark:text-primary-300">
+            {selectedIds.size} invoice{selectedIds.size !== 1 ? 's' : ''} selected
+          </span>
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBulkAction('send')}
+              disabled={bulkActionMutation.isPending}
+            >
+              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Send All
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBulkAction('mark_paid')}
+              disabled={bulkActionMutation.isPending}
+            >
+              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Mark Paid
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBulkAction('cancel')}
+              disabled={bulkActionMutation.isPending}
+            >
+              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBulkAction('delete')}
+              disabled={bulkActionMutation.isPending}
+              className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
+            >
+              <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
+            </Button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              title="Clear selection"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
@@ -202,13 +325,22 @@ const InvoiceList: React.FC = () => {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-6">
-              <SkeletonTable rows={5} columns={6} />
+              <SkeletonTable rows={5} columns={7} />
             </div>
           ) : data && data.results.length > 0 ? (
             <>
               <Table>
                 <TableHead>
                   <TableRow>
+                    <TableHeaderCell>
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={handleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                        aria-label="Select all invoices"
+                      />
+                    </TableHeaderCell>
                     <TableHeaderCell
                       sortable
                       onSort={() => handleSort('invoice_number')}
@@ -255,7 +387,21 @@ const InvoiceList: React.FC = () => {
                       key={invoice.id}
                       hoverable
                       onClick={() => navigate(`/invoices/${invoice.id}`)}
+                      className={selectedIds.has(invoice.id) ? 'bg-primary-50 dark:bg-primary-900/10' : ''}
                     >
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(invoice.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleSelectOne(invoice.id);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                          aria-label={`Select invoice ${invoice.invoice_number}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <span className="font-mono text-sm font-medium text-primary-600 dark:text-primary-400">
                           {invoice.invoice_number}

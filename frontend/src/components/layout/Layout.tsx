@@ -6,11 +6,13 @@
  * Enhanced with accessibility features for Lighthouse 95+ compliance
  */
 
-import React, { useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { useState, useCallback, useEffect, useRef, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import Footer from './Footer';
 import { SkipLink } from '../common';
+import KeyboardShortcuts from '../common/KeyboardShortcuts';
 
 interface LayoutProps {
   children: ReactNode;
@@ -27,7 +29,11 @@ const Layout: React.FC<LayoutProps> = ({
   pageTitle,
   mainContentLabel = 'Main content',
 }) => {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const pendingKeyRef = useRef<string | null>(null);
+  const pendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const toggleSidebar = useCallback(() => {
     setSidebarOpen((prev) => !prev);
@@ -89,6 +95,95 @@ const Layout: React.FC<LayoutProps> = ({
     };
   }, [sidebarOpen]);
 
+  // Keyboard shortcuts listener
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't trigger when user is typing in input/textarea/select
+      const target = event.target as HTMLElement;
+      const tagName = target.tagName.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      // Ctrl+K for search
+      if ((event.ctrlKey || event.metaKey) && key === 'k') {
+        event.preventDefault();
+        navigate('/search');
+        return;
+      }
+
+      // ? for shortcuts modal
+      if (event.key === '?' && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        setShowShortcuts(true);
+        return;
+      }
+
+      // Handle two-key sequences: g then letter, n then letter
+      if (pendingKeyRef.current) {
+        const pending = pendingKeyRef.current;
+        pendingKeyRef.current = null;
+        if (pendingTimeoutRef.current) {
+          clearTimeout(pendingTimeoutRef.current);
+          pendingTimeoutRef.current = null;
+        }
+
+        if (pending === 'g') {
+          switch (key) {
+            case 'd':
+              navigate('/dashboard');
+              return;
+            case 'c':
+              navigate('/clients');
+              return;
+            case 'i':
+              navigate('/invoices');
+              return;
+            case 'p':
+              navigate('/payments');
+              return;
+            case 'a':
+              navigate('/analytics');
+              return;
+          }
+        }
+
+        if (pending === 'n') {
+          switch (key) {
+            case 'i':
+              navigate('/invoices/create');
+              return;
+            case 'c':
+              navigate('/clients/create');
+              return;
+          }
+        }
+        return;
+      }
+
+      // Start pending key sequence
+      if (key === 'g' || key === 'n') {
+        pendingKeyRef.current = key;
+        // Clear pending after 1 second if no follow-up key
+        pendingTimeoutRef.current = setTimeout(() => {
+          pendingKeyRef.current = null;
+          pendingTimeoutRef.current = null;
+        }, 1000);
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (pendingTimeoutRef.current) {
+        clearTimeout(pendingTimeoutRef.current);
+      }
+    };
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Skip Links for keyboard navigation */}
@@ -147,6 +242,12 @@ const Layout: React.FC<LayoutProps> = ({
         aria-atomic="true"
         className="sr-only"
         id="live-announcements"
+      />
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcuts
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
       />
     </div>
   );

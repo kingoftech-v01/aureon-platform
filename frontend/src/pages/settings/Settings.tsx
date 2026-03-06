@@ -45,6 +45,10 @@ const Settings: React.FC = () => {
   const [pushNotifications, setPushNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
 
+  const [timezone, setTimezone] = useState(user?.timezone || 'UTC');
+  const [currency, setCurrency] = useState('USD');
+  const [savingPreferences, setSavingPreferences] = useState(false);
+
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -89,6 +93,18 @@ const Settings: React.FC = () => {
       setConfirmPassword('');
     } catch (error) {
       showErrorToast('Failed to change password');
+    }
+  };
+
+  const handlePreferencesSave = async () => {
+    setSavingPreferences(true);
+    try {
+      await api.patch('/auth/api/users/me/', { timezone, language: currency });
+      showSuccessToast('Preferences saved successfully');
+    } catch (error) {
+      showErrorToast('Failed to save preferences');
+    } finally {
+      setSavingPreferences(false);
     }
   };
 
@@ -150,6 +166,7 @@ const Settings: React.FC = () => {
 
       {/* Tab Content */}
       {selectedTab === 'profile' && (
+        <>
         <form onSubmit={handleProfileSave} className="space-y-6">
           <Card>
             <CardHeader>
@@ -240,6 +257,7 @@ const Settings: React.FC = () => {
             </Button>
           </div>
         </form>
+        </>
       )}
 
       {selectedTab === 'company' && (
@@ -410,25 +428,53 @@ const Settings: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Timezone
                   </label>
-                  <select className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white">
-                    <option>UTC (GMT +0:00)</option>
-                    <option>Eastern Time (GMT -5:00)</option>
-                    <option>Pacific Time (GMT -8:00)</option>
+                  <select
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white"
+                  >
+                    <option value="UTC">UTC (GMT +0:00)</option>
+                    <option value="America/New_York">Eastern Time (GMT -5:00)</option>
+                    <option value="America/Chicago">Central Time (GMT -6:00)</option>
+                    <option value="America/Denver">Mountain Time (GMT -7:00)</option>
+                    <option value="America/Los_Angeles">Pacific Time (GMT -8:00)</option>
+                    <option value="Europe/London">London (GMT +0:00)</option>
+                    <option value="Europe/Paris">Central European (GMT +1:00)</option>
+                    <option value="Asia/Tokyo">Tokyo (GMT +9:00)</option>
+                    <option value="Australia/Sydney">Sydney (GMT +11:00)</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Currency
                   </label>
-                  <select className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white">
-                    <option>USD - US Dollar</option>
-                    <option>EUR - Euro</option>
-                    <option>GBP - British Pound</option>
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-white"
+                  >
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="CAD">CAD - Canadian Dollar</option>
+                    <option value="AUD">AUD - Australian Dollar</option>
+                    <option value="JPY">JPY - Japanese Yen</option>
+                    <option value="NGN">NGN - Nigerian Naira</option>
                   </select>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          <div className="flex justify-end">
+            <Button
+              variant="primary"
+              onClick={handlePreferencesSave}
+              disabled={savingPreferences}
+            >
+              {savingPreferences ? 'Saving...' : 'Save Preferences'}
+            </Button>
+          </div>
         </div>
       )}
 

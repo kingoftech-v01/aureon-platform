@@ -48,7 +48,7 @@ const Dashboard: React.FC = () => {
 
   // Calculate metrics
   const totalRevenue = payments?.results?.filter(p => p.status === 'succeeded').reduce((sum, p) => sum + p.amount, 0) || 0;
-  const activeClients = clients?.results?.filter(c => c.lifecycle_stage === 'customer').length || 0;
+  const activeClients = clients?.results?.filter(c => c.lifecycle_stage === 'active').length || 0;
   const pendingInvoices = invoices?.results?.filter(i => i.status === 'sent' || i.status === 'overdue').length || 0;
   const activeContracts = contracts?.results?.filter(c => c.status === 'active').length || 0;
   const totalOutstanding = invoices?.results?.filter(i => i.status !== 'paid' && i.status !== 'cancelled').reduce((sum, i) => sum + i.total, 0) || 0;
@@ -56,14 +56,15 @@ const Dashboard: React.FC = () => {
   // Generate monthly revenue data for chart
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const monthlyRevenueData = useMemo(() => {
-    const currentMonth = new Date().getMonth();
-
-    // Use real data from analytics if available, otherwise show zeros
-    return months.slice(Math.max(0, currentMonth - 5), currentMonth + 1).map((month) => ({
-      name: month,
-      value: 0,
-    }));
-  }, []);
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+      const monthRevenue = payments?.results
+        ?.filter(p => p.status === 'succeeded' && new Date(p.created_at).getMonth() === d.getMonth() && new Date(p.created_at).getFullYear() === d.getFullYear())
+        .reduce((sum, p) => sum + p.amount, 0) || 0;
+      return { name: months[d.getMonth()], value: monthRevenue };
+    });
+  }, [payments]);
 
   // Invoice status distribution for donut chart
   const invoiceStatusData = useMemo(() => {
@@ -89,8 +90,30 @@ const Dashboard: React.FC = () => {
   }, [invoices]);
 
   // Sparkline data for stats cards
-  const revenueSparkline: number[] = [];
-  const clientsSparkline: number[] = [];
+  const revenueSparkline: number[] = useMemo(() => {
+    if (!payments?.results) return [];
+    const now = new Date();
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+      return d.getMonth();
+    });
+    return last6Months.map(month =>
+      payments.results.filter(p => p.status === 'succeeded' && new Date(p.created_at).getMonth() === month)
+        .reduce((sum, p) => sum + p.amount, 0)
+    );
+  }, [payments]);
+
+  const clientsSparkline: number[] = useMemo(() => {
+    if (!clients?.results) return [];
+    const now = new Date();
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+      return d.getMonth();
+    });
+    return last6Months.map(month =>
+      clients.results.filter(c => new Date(c.created_at).getMonth() === month).length
+    );
+  }, [clients]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -113,6 +136,94 @@ const Dashboard: React.FC = () => {
   const collectionRate = totalRevenue > 0 && invoices?.results
     ? Math.min(100, (totalRevenue / (invoices.results.reduce((sum, i) => sum + i.total, 0) || 1)) * 100)
     : 0;
+
+  // AI Insights - dynamic insight generation from real data
+  const aiInsights = useMemo(() => {
+    const insights: Array<{ icon: string; title: string; description: string; color: string }> = [];
+
+    // Revenue trend insight
+    if (revenueSparkline.length >= 2) {
+      const latest = revenueSparkline[revenueSparkline.length - 1];
+      const previous = revenueSparkline[revenueSparkline.length - 2];
+      if (previous > 0) {
+        const changePercent = Math.round(((latest - previous) / previous) * 100);
+        if (changePercent > 0) {
+          insights.push({
+            icon: 'trending-up',
+            title: 'Revenue Trending Up',
+            description: `Revenue is trending up ${changePercent}% compared to the previous month. Keep the momentum going.`,
+            color: 'green',
+          });
+        } else if (changePercent < 0) {
+          insights.push({
+            icon: 'trending-down',
+            title: 'Revenue Dip Detected',
+            description: `Revenue decreased ${Math.abs(changePercent)}% from last month. Consider following up on pending proposals.`,
+            color: 'amber',
+          });
+        }
+      } else if (latest > 0) {
+        insights.push({
+          icon: 'trending-up',
+          title: 'First Revenue Recorded',
+          description: `Great start! You recorded ${formatCurrency(latest)} in revenue this month.`,
+          color: 'green',
+        });
+      }
+    }
+
+    // Overdue invoices insight
+    const overdueCount = invoices?.results?.filter(i => i.status === 'overdue').length || 0;
+    if (overdueCount > 0) {
+      const overdueTotal = invoices?.results?.filter(i => i.status === 'overdue').reduce((sum, i) => sum + i.total, 0) || 0;
+      insights.push({
+        icon: 'alert',
+        title: `${overdueCount} Overdue Invoice${overdueCount > 1 ? 's' : ''}`,
+        description: `${formatCurrency(overdueTotal)} is overdue and needs attention. Consider sending reminders to improve cash flow.`,
+        color: 'red',
+      });
+    }
+
+    // Client retention insight
+    const totalClientCount = clients?.count || 0;
+    if (totalClientCount > 0 && activeClients > 0) {
+      const retentionRate = Math.round((activeClients / totalClientCount) * 100);
+      insights.push({
+        icon: 'users',
+        title: 'Client Retention',
+        description: retentionRate >= 80
+          ? `Client retention rate is ${retentionRate}%, which is excellent. Your clients are staying engaged.`
+          : `Client retention rate is ${retentionRate}%. Consider reaching out to inactive clients to re-engage them.`,
+        color: retentionRate >= 80 ? 'blue' : 'amber',
+      });
+    }
+
+    // Collection efficiency insight
+    if (collectionRate > 0) {
+      insights.push({
+        icon: 'check-circle',
+        title: 'Collection Efficiency',
+        description: collectionRate >= 90
+          ? `Your collection rate is ${Math.round(collectionRate)}%. Outstanding performance in payment collection.`
+          : collectionRate >= 70
+          ? `Collection rate is ${Math.round(collectionRate)}%. There is room to improve by automating payment reminders.`
+          : `Collection rate is ${Math.round(collectionRate)}%. Consider enabling automatic payment retries to improve this metric.`,
+        color: collectionRate >= 90 ? 'green' : collectionRate >= 70 ? 'blue' : 'amber',
+      });
+    }
+
+    // Fallback insight if no data
+    if (insights.length === 0) {
+      insights.push({
+        icon: 'info',
+        title: 'Getting Started',
+        description: 'Start creating clients, contracts, and invoices to see AI-powered insights about your business performance.',
+        color: 'blue',
+      });
+    }
+
+    return insights;
+  }, [revenueSparkline, invoices, clients, activeClients, collectionRate]);
 
   return (
     <div className="space-y-6">
@@ -513,7 +624,7 @@ const Dashboard: React.FC = () => {
                         <p className="font-semibold text-gray-900 dark:text-white">
                           {formatCurrency(client.total_revenue || 0)}
                         </p>
-                        <Badge variant={client.lifecycle_stage === 'customer' ? 'success' : 'default'} size="sm">
+                        <Badge variant={client.lifecycle_stage === 'active' ? 'success' : 'default'} size="sm">
                           {client.lifecycle_stage}
                         </Badge>
                       </div>
@@ -635,6 +746,78 @@ const Dashboard: React.FC = () => {
                 <p className="text-sm text-gray-500 dark:text-gray-400">Active customers</p>
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Insights */}
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-6 py-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">AI Insights</h3>
+              <p className="text-sm text-white/80">Smart recommendations based on your data</p>
+            </div>
+          </div>
+        </div>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {aiInsights.map((insight, index) => {
+              const colorClasses: Record<string, { bg: string; icon: string; border: string }> = {
+                green: {
+                  bg: 'bg-green-50 dark:bg-green-900/20',
+                  icon: 'text-green-600 dark:text-green-400',
+                  border: 'border-green-200 dark:border-green-800/30',
+                },
+                amber: {
+                  bg: 'bg-amber-50 dark:bg-amber-900/20',
+                  icon: 'text-amber-600 dark:text-amber-400',
+                  border: 'border-amber-200 dark:border-amber-800/30',
+                },
+                red: {
+                  bg: 'bg-red-50 dark:bg-red-900/20',
+                  icon: 'text-red-600 dark:text-red-400',
+                  border: 'border-red-200 dark:border-red-800/30',
+                },
+                blue: {
+                  bg: 'bg-blue-50 dark:bg-blue-900/20',
+                  icon: 'text-blue-600 dark:text-blue-400',
+                  border: 'border-blue-200 dark:border-blue-800/30',
+                },
+              };
+              const colors = colorClasses[insight.color] || colorClasses.blue;
+
+              const iconPaths: Record<string, string> = {
+                'trending-up': 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
+                'trending-down': 'M13 17h8m0 0V9m0 8l-8-8-4 4-6-6',
+                'alert': 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+                'users': 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+                'check-circle': 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+                'info': 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+              };
+
+              return (
+                <div
+                  key={index}
+                  className={`flex items-start space-x-4 p-4 rounded-xl border ${colors.bg} ${colors.border} transition-all duration-200 hover:shadow-sm`}
+                >
+                  <div className={`mt-0.5 flex-shrink-0 ${colors.icon}`}>
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={iconPaths[insight.icon] || iconPaths.info} />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 dark:text-white text-sm">{insight.title}</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{insight.description}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

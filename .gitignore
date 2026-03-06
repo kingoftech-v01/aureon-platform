@@ -84,6 +84,8 @@ Thumbs.db
 # Docker
 docker/postgres/data/
 docker/redis/data/
+deploy/docker/postgres/data/
+deploy/docker/redis/data/
 
 # Backups
 backups/
@@ -112,3 +114,16 @@ celerybeat.pid
 # Local development
 local_settings.py
 *.local.py
+
+# Mobile
+mobile/node_modules/
+mobile/android/
+mobile/ios/
+mobile/.gradle/
+
+# Marketing frontend (deleted - empty shell)
+frontend-marketing/
+
+# Template files
+*.zip
+templates_*/

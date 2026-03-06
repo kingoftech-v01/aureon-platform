@@ -129,7 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setUser(null);
       setError(null);
-      navigate('/login', { replace: true });
+      navigate('/auth/login', { replace: true });
       setIsLoading(false);
     }
   }, [navigate]);
@@ -218,7 +218,7 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredRoles = [],
-  redirectTo = '/login',
+  redirectTo = '/auth/login',
 }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();

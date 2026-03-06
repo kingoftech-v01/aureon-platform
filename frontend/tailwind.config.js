@@ -8,8 +8,15 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Semantic tokens used in index.css
+        border: 'rgb(229 231 235 / <alpha-value>)',
+        background: 'rgb(255 255 255 / <alpha-value>)',
+        foreground: 'rgb(30 41 59 / <alpha-value>)',
+
         // Aureon Brand Colors (from Project Plan)
         primary: {
+          DEFAULT: '#007cff',
+          dark: '#0063cc',
           50: '#e6f2ff',
           100: '#cce5ff',
           200: '#99cbff',
@@ -20,8 +27,10 @@ export default {
           700: '#004a99',
           800: '#003166',
           900: '#001933',
+          950: '#000d1a',
         },
         accent: {
+          DEFAULT: '#00d9c0',
           50: '#e6fffa',
           100: '#ccfff5',
           200: '#99ffeb',

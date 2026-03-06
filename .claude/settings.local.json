@@ -1,8 +1,4 @@
 {
-  "project": "Aureon",
-  "organization": "Rhematek Solutions",
-  "approved_by": "Stéphane Arthur Victor <stephane@rhematek-solutions.com>",
-  "defaultMode": "acceptEdits",
   "permissions": {
     "allow": [
       "Bash(python manage.py startapp:*)",
@@ -102,9 +98,34 @@
       "Bash(\".venv\\\\Scripts\\\\pip.exe\" install pytest pytest-django pytest-cov --quiet)",
       "Bash(\".venv\\\\Scripts\\\\python.exe\" -m pytest apps/accounts/tests/ -v --tb=short)",
       "Bash(\".venv\\\\Scripts\\\\pip.exe\" install djangorestframework django-environ --quiet)",
-      "Bash(\".venv\\\\Scripts\\\\python.exe\" -m pytest apps/accounts/tests/test_models.py -v --tb=short)"
+      "Bash(\".venv\\\\Scripts\\\\python.exe\" -m pytest apps/accounts/tests/test_models.py -v --tb=short)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nv2.2.0: Rhematek Production Shield + One-Command Dockploy Deployment\n\nBREAKING: Single command deployment now handles everything automatically\n\nFeatures:\n- One-command Dockploy deployment: docker compose -f docker-compose.prod.yml up -d\n- Auto migrations, static files, superuser creation, demo data seeding\n- Updated dependencies: Django 5.1.4, Celery 5.4.0, React 18.3.1\n- Security middleware: XSS sanitization, honeypot, CSRF enhancement\n- Comprehensive test suite with pytest fixtures\n- Load testing with Locust \\(500K concurrent users target\\)\n- Prometheus + Grafana monitoring stack\n- PostgreSQL 16 + Redis 7.4 + PgBouncer connection pooling\n\nDocumentation:\n- Simplified README with one-command deployment section\n- Updated DEPLOYMENT_GUIDE for Dockploy\n- Removed 12+ outdated MD files\n- Added API_DOCUMENTATION.md, SECURITY_AUDIT_REPORT.md\n\nSecurity:\n- Fixed bandit MD5 hash issue \\(usedforsecurity=False\\)\n- Updated cryptography to 44.0.0\n- Rate limiting, brute force protection, 2FA support\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(.venv/Scripts/pip.exe install:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Add Gratech-based marketing website with CMS integration\n\n- Added marketing website templates \\(home, about, services, pricing, contact, blog, case-studies\\)\n- Integrated Gratech HTML template assets \\(CSS, JS, images, webfonts\\)\n- Added CMS models: CaseStudy, Service, TeamMember, FAQ, Testimonial\n- Updated admin with rich editing interfaces for all CMS models\n- Added case study views and URL routing\n- Removed original HTML template files \\(cleanup\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npm install:*)",
+      "Bash(where npm:*)",
+      "Bash(.venvScriptspython.exe manage.py makemigrations website)",
+      "Bash(\".venv\\\\Scripts\\\\python.exe\" manage.py makemigrations website)",
+      "Bash(.venvScriptspython.exe manage.py:*)",
+      "Bash(\".venv\\\\Scripts\\\\python.exe\" manage.py makemigrations:*)",
+      "Bash(unzip:*)",
+      "Bash(npm run build:*)",
+      "Bash(node --version:*)",
+      "Bash(dir:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Unify UI/UX with Plax template design for marketing site\n\n- Update all marketing pages to use base_plax.html template\n- Convert about, services, pricing, contact, blog, faq pages to Plax design\n- Delete old duplicate templates from templates/website/\n- Ensure consistent mil-* CSS classes throughout\n- Add modern accordions, cards, and CTA sections\n\nPages updated:\n- about.html: New mission/vision/values sections with team grid\n- services.html: Service cards with icons and testimonials\n- pricing.html: Pricing cards with toggle and FAQ accordion\n- contact.html: Contact form with info sidebar\n- blog.html: Blog grid with search and newsletter CTA\n- faq.html: Categorized FAQ accordions\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Update website views to serve React SPA instead of HTML templates\n\n- Convert all website page views to serve React SPA via ReactPageView\n- Remove template_name references from all views\n- Keep form submission endpoints \\(contact, newsletter\\) as JSON APIs\n- Update urls.py with inline robots.txt and sitemap.xml responses\n- Add contact_submit endpoint for AJAX form handling\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npm install)",
+      "Bash(where:*)",
+      "mcp__claude_ai_Figma__get_metadata",
+      "mcp__claude_ai_Figma__get_screenshot"
     ]
   },
+  "project": "Aureon",
+  "organization": "Rhematek Solutions",
+  "approved_by": "Stéphane Arthur Victor <stephane@rhematek-solutions.com>",
+  "defaultMode": "acceptEdits",
   "execution_policy": {
     "require_confirmation": false,
     "auto_execute": true,

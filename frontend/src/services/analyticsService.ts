@@ -372,6 +372,27 @@ export const analyticsService = {
   },
 
   /**
+   * Get revenue forecast with AI-powered projections
+   */
+  getRevenueForecast: async (params?: {
+    months?: number;
+  }): Promise<{
+    history: Array<{ month: string; revenue: number; confidence?: number }>;
+    forecast: Array<{ month: string; revenue: number; confidence?: number }>;
+    recurring_monthly_revenue: number;
+    pending_receivables: number;
+    trend: 'up' | 'down' | 'stable';
+    average_monthly_revenue: number;
+  }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.months) queryParams.set('months', params.months.toString());
+
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    const response = await apiClient.get(`/analytics/forecast/${queryString}`);
+    return response.data;
+  },
+
+  /**
    * Get custom analytics query
    */
   customQuery: async (query: {

@@ -8,7 +8,7 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 import type { ApiError } from '@/types';
 
 // API Base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Create Axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -116,7 +116,7 @@ apiClient.interceptors.response.use(
 
       if (!refreshToken) {
         tokenService.clearTokens();
-        window.location.href = '/login';
+        window.location.href = '/auth/login';
         return Promise.reject(error);
       }
 
@@ -142,7 +142,7 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null);
         isRefreshing = false;
         tokenService.clearTokens();
-        window.location.href = '/login';
+        window.location.href = '/auth/login';
         return Promise.reject(refreshError);
       }
     }

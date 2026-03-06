@@ -25,7 +25,31 @@ import {
 
 const Analytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState('30');
-  const { success: showSuccessToast } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
+  const { success: showSuccessToast, error: showErrorToast } = useToast();
+
+  const handleExportReport = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await analyticsService.exportReport({
+        report_type: 'comprehensive',
+        format: 'pdf',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `aureon-analytics-report-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showSuccessToast('Report downloaded successfully.');
+    } catch (err) {
+      showErrorToast('Failed to export report. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Fetch dashboard statistics
   const { data: clients } = useQuery({
@@ -58,7 +82,7 @@ const Analytics: React.FC = () => {
   const totalInvoiced = invoices?.results?.reduce((sum, i) => sum + i.total, 0) || 0;
   const totalOutstanding = invoices?.results?.filter(i => i.status !== 'paid' && i.status !== 'cancelled').reduce((sum, i) => sum + i.total, 0) || 0;
   const totalClients = clients?.count || 0;
-  const activeClients = clients?.results?.filter(c => c.lifecycle_stage === 'customer').length || 0;
+  const activeClients = clients?.results?.filter(c => c.lifecycle_stage === 'active').length || 0;
   const collectionRate = totalInvoiced > 0 ? (totalRevenue / totalInvoiced) * 100 : 0;
 
   // Generate monthly revenue data for chart
@@ -163,13 +187,18 @@ const Analytics: React.FC = () => {
             ]}
             className="w-40"
           />
-          <Button variant="outline" onClick={() => {
-            showSuccessToast('Report generation queued. You will be notified when it is ready.');
-          }}>
-            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Export Report
+          <Button variant="outline" onClick={handleExportReport} disabled={isExporting}>
+            {isExporting ? (
+              <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            )}
+            {isExporting ? 'Exporting...' : 'Export Report'}
           </Button>
         </div>
       </div>
@@ -470,7 +499,7 @@ const Analytics: React.FC = () => {
                       <p className="font-semibold text-gray-900 dark:text-white">
                         {formatCurrency(client.total_revenue || 0)}
                       </p>
-                      <Badge variant={client.lifecycle_stage === 'customer' ? 'success' : 'default'} size="sm">
+                      <Badge variant={client.lifecycle_stage === 'active' ? 'success' : 'default'} size="sm">
                         {client.lifecycle_stage}
                       </Badge>
                     </div>

@@ -14,6 +14,7 @@ export { default as notificationService } from './notificationService';
 export { default as documentService } from './documentService';
 export { default as tenantService } from './tenantService';
 export { default as webhookService } from './webhookService';
+export { default as marketingService } from './marketingService';
 
 // Re-export types for convenience
 export type * from '@/types';

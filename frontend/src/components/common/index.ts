@@ -62,3 +62,15 @@ export {
   COLORS,
   CHART_COLORS,
 } from './Charts';
+
+export { default as ESignatureCanvas } from './ESignatureCanvas';
+
+export { Breadcrumb } from './Breadcrumb';
+
+export { CommandPalette } from './CommandPalette';
+
+export { QuickNotes } from './QuickNotes';
+
+export { NotificationBell } from './NotificationBell';
+
+export { default as KeyboardShortcuts } from './KeyboardShortcuts';
